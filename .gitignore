@@ -36,3 +36,10 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+wallet/
+logs/
+dist/
+blockchain-network/channel-artifacts/
+blockchain-network/bin/
+
+blockchain-network/organizations/

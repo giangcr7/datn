@@ -1,0 +1,18 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
+import { apiCall } from '@/lib/api';
+
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions) as any;
+    const { searchParams } = new URL(req.url);
+    const page = searchParams.get('page') || '1';
+    const limit = searchParams.get('limit') || '20';
+    const search = searchParams.get('search') || '';
+    const result = await apiCall(`/cert?page=${page}&limit=${limit}&search=${search}`, 'GET', undefined, session?.accessToken);
+    return NextResponse.json({ success: true, data: result.data, pagination: result.pagination });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
