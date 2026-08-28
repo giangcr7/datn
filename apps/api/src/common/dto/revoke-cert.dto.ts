@@ -1,11 +1,11 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
 export class RevokeCertDto {
-  @IsNotEmpty({ message: 'certUUID không được để trống' })
-  @IsString()
+  @IsNotEmpty({ message: 'Mã văn bằng (certUUID) không được để trống' })
+  @IsString({ message: 'Mã văn bằng (certUUID) phải là chuỗi ký tự' })
   certUUID: string;
 
   @IsNotEmpty({ message: 'Lý do thu hồi không được để trống' })
-  @IsString()
+  @IsString({ message: 'Lý do thu hồi phải là chuỗi ký tự' })
   reason: string;
 }

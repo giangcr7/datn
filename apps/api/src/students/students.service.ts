@@ -59,13 +59,20 @@ export class StudentsService {
       $or: [{ email }, { fabricEnrollmentId: studentId }],
     });
     if (existing) throw new BadRequestException('Email hoặc MSSV đã tồn tại!');
+
+    // Sinh mật khẩu tạm ngẫu nhiên (giống hệt pattern trong importFromExcel) —
+    // schema User yêu cầu password không được rỗng, và sinh viên sẽ tự đặt lại
+    // mật khẩu thật qua /auth/register lúc kích hoạt tài khoản.
+    const tempPassword = crypto.randomBytes(4).toString('hex');
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
     await this.userModel.create({
       name,
       email,
       fabricEnrollmentId: studentId,
       mssv: studentId,
       role: 'student',
-      password: '',
+      password: hashedPassword,
       mustChangePassword: true,
     });
     return { success: true };

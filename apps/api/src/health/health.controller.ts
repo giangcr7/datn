@@ -9,7 +9,7 @@ import {
 import { FabricHealthIndicator } from './indicators/fabric-health.indicator';
 
 @Controller('health')
-@SkipThrottle() // app có global ThrottlerGuard — k8s/docker probe gọi liên tục không nên bị 429
+@SkipThrottle({ short: true, medium: true }) // phải chỉ rõ tên từng throttler — 'default' không khớp vì app dùng tên 'short'/'medium'
 export class HealthController {
   constructor(
     private health: HealthCheckService,
