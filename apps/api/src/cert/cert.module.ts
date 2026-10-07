@@ -5,7 +5,10 @@ import { CertController } from './cert.controller';
 import { FabricModule } from '../fabric/fabric.module';
 import { NotifyModule } from '../notify/notify.module';
 import { AuditModule } from '../audit/audit.module';
-import { Certificate, CertificateSchema } from '../mongo/schemas/certificate.schema';
+import {
+  Certificate,
+  CertificateSchema,
+} from '../mongo/schemas/certificate.schema';
 import { User, UserSchema } from '../mongo/schemas/user.schema';
 
 @Module({

@@ -33,7 +33,7 @@ function LoginContent() {
         message.error(res.error);
       } else {
         message.success('Đăng nhập thành công!');
-        if (values.role === 'university') {
+        if (values.role === 'university' || values.role === 'admin') {
           router.push('/dashboard'); 
         } else {
           router.push('/student/dashboard'); 
@@ -106,20 +106,37 @@ function LoginContent() {
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      minHeight: '85vh', 
-      background: '#f0f2f5',
-      padding: '20px' 
+      minHeight: '90vh', 
+      background: 'linear-gradient(135deg, #f0f5ff 0%, #e6f0ff 100%)',
+      padding: '24px 16px' 
     }}>
       <Card 
         style={{ 
           width: '100%', 
-          maxWidth: '450px', 
-          borderRadius: '8px', 
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+          maxWidth: '460px', 
+          borderRadius: '12px', 
+          boxShadow: '0 8px 24px rgba(0, 59, 147, 0.12)',
+          borderTop: '4px solid #003b93',
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <Title level={4} type="secondary">VUI LÒNG ĐĂNG NHẬP ĐỂ TIẾP TỤC HỆ THỐNG</Title>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <img
+            src="/logo-tlu.png"
+            alt="Logo Trường Đại học Thủy Lợi"
+            style={{
+              width: 80,
+              height: 80,
+              objectFit: 'contain',
+              marginBottom: 12,
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+            }}
+          />
+          <Title level={4} style={{ color: '#002140', margin: '0 0 4px', fontWeight: 'bold' }}>
+            TRƯỜNG ĐẠI HỌC THỦY LỢI
+          </Title>
+          <Text style={{ color: '#003b93', fontSize: 13, fontWeight: 600, display: 'block' }}>
+            HỆ THỐNG QUẢN LÝ & XÁC THỰC VĂN BẰNG BLOCKCHAIN
+          </Text>
         </div>
 
         <Tabs
@@ -136,6 +153,11 @@ function LoginContent() {
               key: 'university',
               label: 'Nhà trường',
               children: renderLoginForm('university'),
+            },
+            {
+              key: 'admin',
+              label: 'Quản trị viên',
+              children: renderLoginForm('admin'),
             },
           ]}
         />

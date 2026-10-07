@@ -1,6 +1,9 @@
 #!/bin/bash
 echo "=== KHOI DONG HE THONG VAN BANG BLOCKCHAIN ==="
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 # 1. Kiem tra Docker
 if ! docker info > /dev/null 2>&1; then
   echo "Docker chua chay. Hay khoi dong Docker truoc."
@@ -9,7 +12,7 @@ fi
 
 # 2. Khoi dong Fabric network
 echo ">>> Khoi dong Fabric network..."
-cd ~/Documents/datn/blockchain/blockchain-network
+cd "$SCRIPT_DIR/blockchain-network"
 DOCKER_SOCK=/var/run/docker.sock docker compose \
   -f compose/compose-test-net.yaml \
   -f compose/docker/docker-compose-test-net.yaml \
@@ -28,7 +31,7 @@ fi
 echo "Fabric network dang chay!"
 
 # 4. Kiem tra wallet
-cd ~/Documents/datn/blockchain
+cd "$SCRIPT_DIR"
 if [ ! -f "wallet/admin.json" ] || [ ! -f "wallet/admin-org2.json" ]; then
   echo ">>> Wallet chua co, tao lai..."
   node -e "
@@ -60,7 +63,7 @@ echo "=== KHOI DONG MONOREPO ==="
 
 # 5. Chay NestJS api
 echo ">>> Khoi dong NestJS API (port 3001)..."
-cd ~/Documents/datn/blockchain/apps/api
+cd "$SCRIPT_DIR/apps/api"
 NODE_TLS_REJECT_UNAUTHORIZED=0 npm run start:dev &
 API_PID=$!
 echo "NestJS PID: $API_PID"
@@ -69,7 +72,7 @@ sleep 3
 
 # 6. Chay Next.js web
 echo ">>> Khoi dong Next.js Web (port 3000)..."
-cd ~/Documents/datn/blockchain/apps/web
+cd "$SCRIPT_DIR/apps/web"
 NODE_TLS_REJECT_UNAUTHORIZED=0 npm run dev &
 WEB_PID=$!
 echo "Next.js PID: $WEB_PID"

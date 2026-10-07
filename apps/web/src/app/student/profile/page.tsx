@@ -1,8 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
-import { connectDB } from "@/lib/db/connect";
-import { User } from "@/lib/db/models/User";
+import { apiCall } from "@/lib/api";
 import StudentProfileClient from "./StudentProfileClient";
 
 export default async function StudentProfilePage() {
@@ -12,18 +11,24 @@ export default async function StudentProfilePage() {
     redirect('/login');
   }
 
-  await connectDB();
-  const user = await User.findOne({ email: session.user?.email }).lean() as any;
+  let profile = session.user as any;
+  try {
+    const me = await apiCall('/auth/me', 'GET', undefined, (session as any).accessToken);
+    if (me) profile = me;
+  } catch {
+    // Fallback sang thông tin session nếu mạng bận
+  }
 
   return (
     <StudentProfileClient
       user={{
-        name: user?.name || '',
-        email: user?.email || '',
-        mssv: user?.fabricEnrollmentId || user?.mssv || '',
-        role: user?.role || 'student',
-        createdAt: user?.createdAt?.toISOString() || '',
+        name: profile?.name || '',
+        email: profile?.email || '',
+        mssv: profile?.fabricEnrollmentId || profile?.mssv || '',
+        role: profile?.role || 'student',
+        createdAt: profile?.createdAt ? new Date(profile.createdAt).toISOString() : '',
       }}
     />
   );
 }
+

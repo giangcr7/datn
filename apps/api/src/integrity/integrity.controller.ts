@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { IntegrityService } from './integrity.service';
@@ -13,10 +21,7 @@ export class IntegrityController {
   constructor(private readonly integrityService: IntegrityService) {}
 
   @Post('check')
-  runCheck(
-    @Query('days') days = '1',
-    @Query('limit') limit = '50',
-  ) {
+  runCheck(@Query('days') days = '1', @Query('limit') limit = '50') {
     return this.integrityService.checkIncremental(+days, +limit);
   }
 
@@ -31,10 +36,7 @@ export class IntegrityController {
   }
 
   @Post('alerts/:id/resolve')
-  resolveAlert(
-    @Param('id') id: string,
-    @Body() body: { note: string },
-  ) {
+  resolveAlert(@Param('id') id: string, @Body() body: { note: string }) {
     return this.integrityService.resolveAlert(id, body.note);
   }
 }

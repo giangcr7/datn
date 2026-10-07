@@ -3,9 +3,7 @@ import React from 'react';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { connectDB } from '@/lib/db/connect';
-import { Certificate } from '@/lib/db/models/Certificate';
-import { User } from '@/lib/db/models/User';
+import { apiCall } from '@/lib/api';
 import StudentDashboardClient from './StudentDashboardClient';
 
 export default async function StudentDashboardPage() {
@@ -21,20 +19,21 @@ export default async function StudentDashboardPage() {
     redirect('/change-password');
   }
 
-  // 2. Kết nối Off-chain DB
-  await connectDB();
+  // 2. Truy vấn danh sách văn bằng qua REST API Backend theo MSSV duy nhất
+  const studentMssv = (session.user as any)?.mssv;
+  let rawCertificates: any[] = [];
 
-  // 3. Tìm thông tin sinh viên hiện tại và truy vấn văn bằng tương ứng
-  // Giả định liên kết qua trường email hoặc một định danh mapping nào đó
-  const userEmail = session.user?.email;
-  const studentInfo = await User.findOne({ email: userEmail });
-  
-  // Truy vấn văn bằng đã được cấp phát cho sinh viên này
-  // (Trong thực tế, bạn có thể map qua MSSV thay vì fullName/email)
-  const rawCertificates = await Certificate.find({ 
-    fullName: studentInfo?.name,
-    status: 'ON_CHAIN' // Chỉ hiện văn bằng đã có trên Blockchain
-  }).lean();
+  if (studentMssv) {
+    try {
+      const res = await apiCall(`/cert/student/${studentMssv}`, 'GET', undefined, (session as any).accessToken);
+      if (Array.isArray(res)) {
+        rawCertificates = res.filter((c: any) => c.status === 'ON_CHAIN');
+      }
+    } catch {
+      // Trường hợp không có văn bằng hoặc lỗi kết nối
+      rawCertificates = [];
+    }
+  }
 
   // 4. Chuẩn hóa dữ liệu để gửi xuống Client
   const certificates = rawCertificates.map((cert: any) => ({

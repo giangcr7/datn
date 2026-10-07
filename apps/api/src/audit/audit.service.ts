@@ -54,13 +54,22 @@ export class AuditService {
     if (action) query.action = action;
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.auditModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      this.auditModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       this.auditModel.countDocuments(query),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findByUser(userId: string) {
-    return this.auditModel.find({ userId }).sort({ createdAt: -1 }).limit(50).lean();
+    return this.auditModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
   }
 }

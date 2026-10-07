@@ -13,6 +13,10 @@ export class RegisterDto {
   @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
   password: string;
 
+  @IsNotEmpty({ message: 'Mã xác thực OTP không được để trống' })
+  @IsString({ message: 'Mã OTP phải là chuỗi ký tự' })
+  otp: string;
+
   @IsNotEmpty({ message: 'Vai trò không được để trống' })
   @IsString({ message: 'Vai trò phải là chuỗi ký tự' })
   role: string;

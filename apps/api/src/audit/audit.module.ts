@@ -6,7 +6,9 @@ import { AuditLog, AuditLogSchema } from '../mongo/schemas/audit-log.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: AuditLog.name, schema: AuditLogSchema }]),
+    MongooseModule.forFeature([
+      { name: AuditLog.name, schema: AuditLogSchema },
+    ]),
   ],
   controllers: [AuditController],
   providers: [AuditService],

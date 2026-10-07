@@ -9,15 +9,22 @@ const { Title, Text } = Typography;
 
 const COLORS = ['#0056b3', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16'];
 
-export default function DashboardClient({ stats }: { stats: any }) {
+export default function DashboardClient({ stats, initialChartData }: { stats: any; initialChartData?: any }) {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [chartData, setChartData] = useState<any>(null);
+  const [chartData, setChartData] = useState<any>(initialChartData || null);
 
   useEffect(() => {
-    fetch('/api/statistics')
-      .then(r => r.json())
-      .then(d => { if (d.success) setChartData(d.data); });
-  }, []);
+    if (!initialChartData) {
+      fetch('/api/statistics')
+        .then(r => r.json())
+        .then(d => {
+          if (d) {
+            setChartData(d.data || d);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [initialChartData]);
 
   const handleSync = async () => {
     setIsSyncing(true);

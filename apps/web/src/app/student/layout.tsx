@@ -40,12 +40,38 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   return (
     <Layout className="min-h-screen">
       {/* HEADER CHO SINH VIÊN */}
-      <Header className="flex items-center bg-gray-900 px-6 shadow-md z-10">
-        
+      <Header
+        style={{
+          background: 'linear-gradient(135deg, #001a38 0%, #003b93 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px',
+          boxShadow: '0 2px 8px rgba(0, 33, 64, 0.2)',
+          zIndex: 10,
+        }}
+      >
         {/* Tên hệ thống phía Sinh viên */}
-        <div className="text-white text-lg font-bold tracking-wide mr-auto flex items-center gap-2">
-          <SafetyCertificateOutlined className="text-xl text-blue-400" />
-          <span>CỔNG THÔNG TIN VĂN BẰNG SINH VIÊN</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto' }}>
+          <img
+            src="/logo-tlu.png"
+            alt="Đại học Thủy Lợi"
+            style={{
+              width: 38,
+              height: 38,
+              objectFit: 'contain',
+              background: '#fff',
+              borderRadius: '50%',
+              padding: 2,
+            }}
+          />
+          <div>
+            <div style={{ color: '#fff', fontWeight: 'bold', fontSize: 16, lineHeight: 1.2 }}>
+              TRƯỜNG ĐẠI HỌC THỦY LỢI
+            </div>
+            <div style={{ color: '#91caff', fontSize: 11, fontWeight: 500 }}>
+              CỔNG THÔNG TIN VĂN BẰNG SINH VIÊN
+            </div>
+          </div>
         </div>
 
         {/* Menu Điều hướng */}
@@ -55,7 +81,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           selectedKeys={[pathname]}
           items={menuItems}
           onClick={handleMenuClick}
-          className="bg-transparent border-none min-w-[300px] justify-end"
+          style={{ background: 'transparent', borderBottom: 0, minWidth: 300, justifyContent: 'flex-end' }}
         />
       </Header>
 

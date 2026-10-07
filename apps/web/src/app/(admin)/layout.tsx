@@ -1,9 +1,24 @@
-// src/app/(admin)/layout.tsx
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+import React from 'react';
+import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
+import { authOptions } from '../api/auth/[...nextauth]/route';
+import AdminShell from './AdminShell';
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect('/login');
+  }
+
+  const role = (session.user as any)?.role?.toUpperCase();
+  if (role === 'STUDENT') {
+    redirect('/student/dashboard');
+  }
+
   return (
-    <main className="min-h-screen bg-white">
-      {/* Đã loại bỏ Header xanh đậm và Sidebar trùng lặp */}
+    <AdminShell user={session.user as any}>
       {children}
-    </main>
+    </AdminShell>
   );
-}
+}

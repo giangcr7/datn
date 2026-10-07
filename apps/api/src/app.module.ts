@@ -16,10 +16,14 @@ import { envValidationSchema } from './config/env.validation';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './config/logger.config';
 import { HealthModule } from './health/health.module';
+import { ExplorerModule } from './explorer/explorer.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validationSchema: envValidationSchema }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
@@ -42,9 +46,8 @@ import { HealthModule } from './health/health.module';
     AuditModule,
     IntegrityModule,
     HealthModule,
+    ExplorerModule,
   ],
-  providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-  ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

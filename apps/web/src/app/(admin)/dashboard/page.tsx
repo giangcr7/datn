@@ -7,18 +7,24 @@ export default async function UniversityDashboard() {
   const session = await getServerSession(authOptions) as any;
   const token = session?.accessToken;
 
-  const [certStats, studentsResult] = await Promise.all([
-    apiCall('/cert/statistics', 'GET', undefined, token),
-    apiCall('/students?page=1&limit=1', 'GET', undefined, token),
-  ]);
+  let stats = { totalStudents: 0, totalOffChain: 0, totalOnChain: 0 };
+  let initialChartData: any = null;
 
-  return (
-    <DashboardClient
-      stats={{
-        totalStudents: studentsResult.total,
-        totalOffChain: certStats.totalAll,
-        totalOnChain: certStats.total,
-      }}
-    />
-  );
+  try {
+    const [certStats, studentsResult] = await Promise.all([
+      apiCall('/cert/statistics', 'GET', undefined, token),
+      apiCall('/students?page=1&limit=1', 'GET', undefined, token),
+    ]);
+    initialChartData = certStats;
+    stats = {
+      totalStudents: studentsResult?.total || 0,
+      totalOffChain: certStats?.totalAll || 0,
+      totalOnChain: certStats?.total || 0,
+    };
+  } catch {
+    // Fallback nếu chưa có dữ liệu ban đầu
+  }
+
+  return <DashboardClient stats={stats} initialChartData={initialChartData} />;
 }
+

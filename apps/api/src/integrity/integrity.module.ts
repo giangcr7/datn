@@ -4,8 +4,14 @@ import { IntegrityService } from './integrity.service';
 import { IntegrityController } from './integrity.controller';
 import { FabricModule } from '../fabric/fabric.module';
 import { NotifyModule } from '../notify/notify.module';
-import { Certificate, CertificateSchema } from '../mongo/schemas/certificate.schema';
-import { IntegrityAlert, IntegrityAlertSchema } from '../mongo/schemas/integrity-alert.schema';
+import {
+  Certificate,
+  CertificateSchema,
+} from '../mongo/schemas/certificate.schema';
+import {
+  IntegrityAlert,
+  IntegrityAlertSchema,
+} from '../mongo/schemas/integrity-alert.schema';
 
 @Module({
   imports: [

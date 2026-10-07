@@ -22,9 +22,15 @@ export class IssueCertDto {
   @IsNumber({}, { message: 'GPA phải là số' })
   gpa: number;
 
-  @IsOptional() @IsString({ message: 'Số hiệu phải là chuỗi ký tự' }) soHieu: string;
-  @IsOptional() @IsString({ message: 'Số vào sổ phải là chuỗi ký tự' }) soVaoSo: string;
-  @IsOptional() @IsString({ message: 'Tên lớp phải là chuỗi ký tự' }) className: string;
+  @IsOptional()
+  @IsString({ message: 'Số hiệu phải là chuỗi ký tự' })
+  soHieu: string;
+  @IsOptional()
+  @IsString({ message: 'Số vào sổ phải là chuỗi ký tự' })
+  soVaoSo: string;
+  @IsOptional()
+  @IsString({ message: 'Tên lớp phải là chuỗi ký tự' })
+  className: string;
 
   @IsOptional()
   @Type(() => Number)

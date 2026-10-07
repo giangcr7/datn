@@ -16,4 +16,5 @@ export class IntegrityAlert {
   @Prop() note: string;
 }
 
-export const IntegrityAlertSchema = SchemaFactory.createForClass(IntegrityAlert);
+export const IntegrityAlertSchema =
+  SchemaFactory.createForClass(IntegrityAlert);

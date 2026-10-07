@@ -15,6 +15,7 @@ import { LoginDto } from '../common/dto/login.dto';
 import { ChangePasswordDto } from '../common/dto/change-password.dto';
 import { RefreshTokenDto } from '../common/dto/refresh-token.dto';
 import { RegisterDto } from '../common/dto/register.dto';
+import { SendOtpDto } from '../common/dto/send-otp.dto';
 import { JwtAuthGuard } from './jwt.guard';
 
 @ApiTags('auth')
@@ -76,6 +77,12 @@ export class AuthController {
     );
   }
 
+  @Post('send-otp')
+  @Throttle({ short: { ttl: 60000, limit: 3 } })
+  sendOtp(@Body() body: SendOtpDto) {
+    return this.authService.sendOtp(body.mssv, body.email);
+  }
+
   @Post('register')
   @Throttle({ short: { ttl: 60000, limit: 5 } })
   register(@Body() body: RegisterDto, @Req() req: Request) {
@@ -84,8 +91,16 @@ export class AuthController {
       body.mssv,
       body.email,
       body.password,
+      body.otp,
       ip,
     );
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  getProfile(@Req() req: any) {
+    return this.authService.getProfile(req.user.id);
   }
 
   @Get('users')

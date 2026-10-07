@@ -11,7 +11,9 @@ import {
   RefreshToken,
   RefreshTokenSchema,
 } from '../mongo/schemas/refresh-token.schema';
+import { Otp, OtpSchema } from '../mongo/schemas/otp.schema';
 import { AuditModule } from '../audit/audit.module';
+import { NotifyModule } from '../notify/notify.module';
 
 @Module({
   imports: [
@@ -28,8 +30,10 @@ import { AuditModule } from '../audit/audit.module';
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
+      { name: Otp.name, schema: OtpSchema },
     ]),
     AuditModule,
+    NotifyModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

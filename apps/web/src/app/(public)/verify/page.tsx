@@ -196,10 +196,22 @@ function VerifyContent() {
   const isValid = verifyResult?.isValid;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-16 px-4">
-      <div className="max-w-3xl w-full bg-white p-8 rounded-lg shadow-sm border">
-        <div className="mb-8">
-          <Title level={3} style={{ margin: 0 }}>Cổng Xác Thực Văn Bằng Số</Title>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-10 px-4">
+      <div className="max-w-3xl w-full bg-white p-8 rounded-xl shadow-sm border border-blue-100">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, borderBottom: '2px solid #e6f0ff', paddingBottom: 16 }}>
+          <img
+            src="/logo-tlu.png"
+            alt="Trường Đại học Thủy Lợi"
+            style={{ width: 64, height: 64, objectFit: 'contain' }}
+          />
+          <div>
+            <Title level={3} style={{ margin: 0, color: '#002140', fontWeight: 'bold' }}>
+              TRƯỜNG ĐẠI HỌC THỦY LỢI
+            </Title>
+            <Text style={{ color: '#003b93', fontWeight: 600, fontSize: 14 }}>
+              CỔNG XÁC THỰC VĂN BẰNG TỐT NGHIỆP TRÊN BLOCKCHAIN
+            </Text>
+          </div>
         </div>
 
         <div style={{display:'flex', gap:8, marginBottom:16}}>

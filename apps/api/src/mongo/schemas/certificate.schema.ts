@@ -26,16 +26,24 @@ export class Certificate {
   status: string;
 
   // Thông tin duyệt
-  @Prop() requestedBy: string;     // userId Org1 tạo yêu cầu
-  @Prop() requestedAt: Date;       // Thời điểm Org1 gửi
-  @Prop() approvedBy: string;      // userId Org2 phê duyệt
-  @Prop() approvedAt: Date;        // Thời điểm Org2 duyệt
-  @Prop() rejectedBy: string;      // userId Org2 từ chối
-  @Prop() rejectedAt: Date;        // Thời điểm từ chối
-  @Prop() rejectReason: string;    // Lý do từ chối
+  @Prop() requestedBy: string; // userId Org1 tạo yêu cầu
+  @Prop() requestedAt: Date; // Thời điểm Org1 gửi
+  @Prop() approvedBy: string; // userId Org2 phê duyệt
+  @Prop() approvedAt: Date; // Thời điểm Org2 duyệt
+  @Prop() rejectedBy: string; // userId Org2 từ chối
+  @Prop() rejectedAt: Date; // Thời điểm từ chối
+  @Prop() rejectReason: string; // Lý do từ chối
   @Prop() revokedReason: string;
   @Prop() revokedAt: Date;
-  @Prop() org: string;             // 'ORG1' hoặc 'ORG2' — SV thuộc cơ sở nào
+  @Prop() org: string; // 'ORG1' hoặc 'ORG2' — SV thuộc cơ sở nào
 }
 
 export const CertificateSchema = SchemaFactory.createForClass(Certificate);
+
+// Performance Indexes for high-frequency queries
+CertificateSchema.index({ mssv: 1 });
+CertificateSchema.index({ status: 1, createdAt: -1 });
+CertificateSchema.index({ soHieu: 1 });
+CertificateSchema.index({ soVaoSo: 1 });
+CertificateSchema.index({ certHash: 1 });
+CertificateSchema.index({ requestedAt: -1 });

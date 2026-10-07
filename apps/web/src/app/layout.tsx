@@ -1,10 +1,12 @@
-// src/app/layout.tsx
 import React from 'react';
-// import './globals.css'; // Bỏ comment dòng này nếu bạn đã có file cấu hình Tailwind CSS
+import ThemeRegistry from './ThemeRegistry';
 
 export const metadata = {
-  title: 'Hệ thống Văn bằng ĐHTL',
-  description: 'Quản lý văn bằng trên nền tảng Blockchain',
+  title: 'Hệ thống Xác thực Văn bằng Blockchain — Trường Đại học Thủy Lợi',
+  description: 'Quản lý và xác thực văn bằng tốt nghiệp trên nền tảng Hyperledger Fabric — Trường Đại học Thủy Lợi',
+  icons: {
+    icon: '/logo-tlu.png',
+  },
 };
 
 export default function RootLayout({
@@ -15,8 +17,9 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body style={{ margin: 0, padding: 0, backgroundColor: '#f0f2f5' }}>
-        {/* Next.js sẽ tự động "bơm" các layout con như (admin), (public) vào biến children này */}
-        {children}
+        <ThemeRegistry>
+          {children}
+        </ThemeRegistry>
       </body>
     </html>
   );

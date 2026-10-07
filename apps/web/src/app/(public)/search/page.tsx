@@ -35,12 +35,28 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div style={{ background: "#0056b3", padding: "40px 20px", textAlign: "center" }}>
-        <Title level={2} style={{ color: "white", margin: 0 }}>Tra Cứu Văn Bằng Tốt Nghiệp</Title>
-        <Text style={{ color: "#cce0ff", display: "block", marginTop: 8 }}>Trường Đại học Thủy Lợi — Hệ thống Blockchain</Text>
-        <div style={{ maxWidth: 600, margin: "24px auto 0" }}>
-          <Input size="large" placeholder="Nhập họ tên hoặc mã số sinh viên..." prefix={<SearchOutlined />}
-            value={query} onChange={e => setQuery(e.target.value)} style={{ borderRadius: 8 }} allowClear />
+      <div style={{ background: "linear-gradient(135deg, #001a38 0%, #003b93 60%, #0056b3 100%)", padding: "48px 20px", textAlign: "center" }}>
+        <img
+          src="/logo-tlu.png"
+          alt="Đại học Thủy Lợi"
+          style={{
+            width: 76,
+            height: 76,
+            objectFit: 'contain',
+            background: '#fff',
+            borderRadius: '50%',
+            padding: 4,
+            marginBottom: 16,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+          }}
+        />
+        <Title level={2} style={{ color: "white", margin: 0, fontWeight: 'bold' }}>TRA CỨU VĂN BẰNG TỐT NGHIỆP</Title>
+        <Text style={{ color: "#cce0ff", display: "block", marginTop: 8, fontSize: 15 }}>
+          Trường Đại học Thủy Lợi — Hệ thống Xác thực Blockchain
+        </Text>
+        <div style={{ maxWidth: 650, margin: "28px auto 0" }}>
+          <Input size="large" placeholder="Nhập họ tên hoặc mã số sinh viên (MSSV)..." prefix={<SearchOutlined />}
+            value={query} onChange={e => setQuery(e.target.value)} style={{ borderRadius: 8, height: 48, fontSize: 15 }} allowClear />
         </div>
       </div>
 

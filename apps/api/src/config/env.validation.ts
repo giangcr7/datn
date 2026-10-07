@@ -1,7 +1,9 @@
 import * as Joi from 'joi';
 
 export const envValidationSchema = Joi.object({
-  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  NODE_ENV: Joi.string()
+    .valid('development', 'production', 'test')
+    .default('development'),
   PORT: Joi.number().default(3001),
 
   MONGODB_URI: Joi.string().required(),
@@ -27,7 +29,10 @@ export const envValidationSchema = Joi.object({
 })
   .unknown(true) // cho phép các biến khác như PEER_ENDPOINT, TLS_CERT_PATH...
   .custom((value, helpers) => {
-    if (value.NODE_ENV === 'production' && value.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
+    if (
+      value.NODE_ENV === 'production' &&
+      value.NODE_TLS_REJECT_UNAUTHORIZED === '0'
+    ) {
       return helpers.message({
         custom:
           'NODE_TLS_REJECT_UNAUTHORIZED=0 không được phép bật khi NODE_ENV=production (tắt xác thực TLS, mất an toàn kết nối Fabric)',

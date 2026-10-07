@@ -18,7 +18,10 @@ async function bootstrap() {
   app.use(helmet());
   app.setGlobalPrefix('api');
   app.enableCors({
-    origin: [process.env.WEB_URL || 'http://localhost:3000', 'http://localhost:3001'],
+    origin: [
+      process.env.WEB_URL || 'http://localhost:3000',
+      'http://localhost:3001',
+    ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
   });
@@ -32,10 +35,7 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(
-    new AllExceptionsFilter(),
-    new HttpExceptionFilter(),
-  );
+  app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
 
   const config = new DocumentBuilder()
     .setTitle('Diploma Chain API')

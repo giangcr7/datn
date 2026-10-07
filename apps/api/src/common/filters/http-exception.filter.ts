@@ -1,6 +1,10 @@
 import {
-  ExceptionFilter, Catch, ArgumentsHost,
-  HttpException, HttpStatus, Logger,
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
@@ -28,7 +32,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
-    this.logger.warn(`[${req.method}] ${req.url} → ${status}: ${JSON.stringify(message)}`);
+    this.logger.warn(
+      `[${req.method}] ${req.url} → ${status}: ${JSON.stringify(message)}`,
+    );
     res.status(status).json(body);
   }
 }

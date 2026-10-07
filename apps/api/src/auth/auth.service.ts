@@ -11,6 +11,9 @@ import {
 } from '../mongo/schemas/refresh-token.schema';
 import { AuditService, AuditAction } from '../audit/audit.service';
 
+import { Otp, OtpDocument } from '../mongo/schemas/otp.schema';
+import { NotifyService } from '../notify/notify.service';
+
 const REFRESH_TOKEN_TTL_DAYS = 7;
 const REFRESH_TOKEN_BYTES = 40; // entropy cao — token dạng random, không phải JWT
 
@@ -20,8 +23,10 @@ export class AuthService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(RefreshToken.name)
     private refreshTokenModel: Model<RefreshTokenDocument>,
+    @InjectModel(Otp.name) private otpModel: Model<OtpDocument>,
     private jwtService: JwtService,
     private auditService: AuditService,
+    private notifyService: NotifyService,
   ) {}
 
   private hashToken(token: string): string {
@@ -263,10 +268,53 @@ export class AuthService {
     return { success: true, message: 'Đổi mật khẩu thành công' };
   }
 
+  async sendOtp(mssv: string, email: string) {
+    const student = await this.userModel.findOne({
+      $or: [{ mssv }, { fabricEnrollmentId: mssv }],
+      email,
+      role: { $regex: new RegExp('^student$', 'i') },
+    });
+
+    if (!student) {
+      throw new UnauthorizedException(
+        'MSSV hoặc Email không tồn tại trong danh sách sinh viên trường!',
+      );
+    }
+
+    // Sinh mã ngẫu nhiên 6 số bảo mật
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
+
+    // Xóa OTP cũ nếu có
+    await this.otpModel.deleteMany({ email, mssv });
+
+    // Lưu OTP mới
+    await this.otpModel.create({
+      email,
+      mssv,
+      otp,
+      expiresAt,
+    });
+
+    // In ra console log để dev / kiểm thử dễ dàng
+    console.log(
+      `[AUTH-OTP] Mã kích hoạt cho SV ${student.name} (${mssv} - ${email}): >>> ${otp} <<< (Hạn 5 phút)`,
+    );
+
+    // Gửi email
+    await this.notifyService.sendActivationOtp(email, student.name, otp);
+
+    return {
+      success: true,
+      message: `Mã OTP đã được gửi tới email ${email}. Vui lòng kiểm tra hộp thư!`,
+    };
+  }
+
   async registerStudent(
     mssv: string,
     email: string,
     password: string,
+    otp: string,
     ip?: string,
   ) {
     const existing = await this.userModel.findOne({
@@ -280,8 +328,35 @@ export class AuthService {
         'MSSV hoặc Email không tồn tại trong hệ thống!',
       );
 
+    // Xác thực mã OTP
+    const validOtp = await this.otpModel.findOne({
+      email,
+      mssv,
+      otp: otp.trim(),
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!validOtp) {
+      await this.auditService.log({
+        userId: existing._id.toString(),
+        userEmail: email,
+        action: AuditAction.REGISTER,
+        result: 'FAILED',
+        errorMessage: 'Mã OTP không chính xác hoặc đã hết hạn',
+        target: mssv,
+        ip,
+      });
+      throw new UnauthorizedException(
+        'Mã OTP không chính xác hoặc đã hết hạn!',
+      );
+    }
+
+    // Xóa mã OTP sau khi dùng thành công (ngăn chặn replay attack)
+    await this.otpModel.deleteMany({ email, mssv });
+
     const hashed = await bcrypt.hash(password, 10);
     existing.password = hashed;
+    existing.mustChangePassword = false;
     await existing.save();
 
     await this.auditService.log({
@@ -293,7 +368,19 @@ export class AuthService {
       ip,
     });
 
-    return { success: true, message: 'Kích hoạt tài khoản thành công!' };
+    return {
+      success: true,
+      message: 'Kích hoạt tài khoản thành công! Vui lòng đăng nhập.',
+    };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .select('-password')
+      .lean();
+    if (!user) throw new UnauthorizedException('Không tìm thấy người dùng');
+    return user;
   }
 
   async findAllUsers() {

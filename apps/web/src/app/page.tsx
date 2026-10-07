@@ -15,26 +15,114 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Top Header Navbar */}
+      <div
+        style={{
+          background: '#fff',
+          borderBottom: '2px solid #e6f0ff',
+          padding: '12px 32px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxShadow: '0 2px 8px rgba(0, 59, 147, 0.06)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img
+            src="/logo-tlu.png"
+            alt="Đại học Thủy Lợi"
+            style={{ width: 48, height: 48, objectFit: 'contain' }}
+          />
+          <div>
+            <div style={{ color: '#002140', fontWeight: 'bold', fontSize: 16, lineHeight: 1.2 }}>
+              TRƯỜNG ĐẠI HỌC THỦY LỢI
+            </div>
+            <div style={{ color: '#003b93', fontSize: 12, fontWeight: 600 }}>
+              HỆ THỐNG XÁC THỰC VĂN BẰNG SỐ
+            </div>
+          </div>
+        </div>
+
+        <Row gutter={12}>
+          <Col>
+            <Button icon={<SearchOutlined />} onClick={() => router.push('/search')}>
+              Tra cứu
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type="primary"
+              style={{ background: '#003b93' }}
+              icon={<SafetyCertificateOutlined />}
+              onClick={() => router.push('/verify')}
+            >
+              Cổng Xác thực
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type="default"
+              icon={<LoginOutlined />}
+              onClick={() => router.push('/login')}
+            >
+              Đăng nhập
+            </Button>
+          </Col>
+        </Row>
+      </div>
 
       {/* Hero Section */}
-      <div style={{ background: 'linear-gradient(135deg, #003a8c 0%, #0056b3 50%, #1890ff 100%)', padding: '60px 20px' }}>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #001a38 0%, #003b93 60%, #0056b3 100%)',
+          padding: '64px 20px',
+        }}
+      >
         <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
-          <Title level={1} style={{ color: 'white', margin: '0 0 16px', fontSize: 36 }}>
-            Hệ thống Xác thực Văn bằng Số
+          <img
+            src="/logo-tlu.png"
+            alt="Logo ĐH Thủy Lợi"
+            style={{
+              width: 110,
+              height: 110,
+              objectFit: 'contain',
+              background: '#fff',
+              borderRadius: '50%',
+              padding: 6,
+              marginBottom: 20,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+            }}
+          />
+          <Title level={1} style={{ color: 'white', margin: '0 0 12px', fontSize: 34, fontWeight: 'bold' }}>
+            HỆ THỐNG QUẢN LÝ & XÁC THỰC VĂN BẰNG SỐ
           </Title>
+          <Paragraph style={{ color: '#d0e2ff', fontSize: 16, maxWidth: 700, margin: '0 auto 28px' }}>
+            Nền tảng ứng dụng công nghệ chuỗi khối Hyperledger Fabric — Bảo đảm tính bất biến, minh bạch và chống làm giả văn bằng tốt nghiệp của Trường Đại học Thủy Lợi.
+          </Paragraph>
 
           <Row gutter={16} justify="center">
             <Col>
-              <Button size="large" type="primary" 
-                style={{ background: 'white', color: '#0056b3', border: 'none', fontWeight: 600 }}
+              <Button
+                size="large"
+                type="primary"
+                style={{ background: 'white', color: '#003b93', border: 'none', fontWeight: 'bold', height: 46, padding: '0 28px' }}
                 icon={<SearchOutlined />}
-                onClick={() => router.push('/search')}>
+                onClick={() => router.push('/search')}
+              >
                 Tra cứu văn bằng
               </Button>
             </Col>
             <Col>
-              <Button size="large" ghost icon={<SafetyCertificateOutlined />}
-                onClick={() => router.push('/verify')}>
+              <Button
+                size="large"
+                ghost
+                style={{ fontWeight: 600, height: 46, padding: '0 28px', borderColor: '#fff', color: '#fff' }}
+                icon={<SafetyCertificateOutlined />}
+                onClick={() => router.push('/verify')}
+              >
                 Xác thực ngay
               </Button>
             </Col>

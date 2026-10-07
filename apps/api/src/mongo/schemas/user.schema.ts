@@ -20,3 +20,7 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// Performance Indexes
+UserSchema.index({ role: 1 });
+UserSchema.index({ fabricEnrollmentId: 1 });

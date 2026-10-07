@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { HealthIndicator, HealthIndicatorResult, HealthCheckError } from '@nestjs/terminus';
+import {
+  HealthIndicator,
+  HealthIndicatorResult,
+  HealthCheckError,
+} from '@nestjs/terminus';
 import { FabricService } from '../../fabric/fabric.service';
 
 @Injectable()
@@ -9,7 +13,8 @@ export class FabricHealthIndicator extends HealthIndicator {
   }
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
-    const { connected, latencyMs, error } = await this.fabricService.checkConnection();
+    const { connected, latencyMs, error } =
+      await this.fabricService.checkConnection();
     const status = this.getStatus(key, connected, { latencyMs, error });
 
     if (!connected) {

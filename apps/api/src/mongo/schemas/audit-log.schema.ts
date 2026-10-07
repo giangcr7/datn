@@ -17,3 +17,8 @@ export class AuditLog {
 }
 
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
+
+// Performance Indexes for sorting and filtering
+AuditLogSchema.index({ createdAt: -1 });
+AuditLogSchema.index({ userId: 1, createdAt: -1 });
+AuditLogSchema.index({ action: 1, createdAt: -1 });
