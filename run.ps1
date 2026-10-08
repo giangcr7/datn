@@ -21,20 +21,51 @@ if (-not (Test-Path 'blockchain-network\network.sh')) {
     exit 1
 }
 
-$bash = Get-Command bash -ErrorAction SilentlyContinue
-if ($null -eq $bash) {
-    Write-Host 'Loi: can Git Bash hoac WSL de chay Fabric network.sh.' -ForegroundColor Red
+$bashPath = $null
+$gitBashCandidates = @(
+    'C:\Program Files\Git\bin\bash.exe',
+    'C:\Program Files (x86)\Git\bin\bash.exe'
+)
+foreach ($candidate in $gitBashCandidates) {
+    if (Test-Path $candidate) {
+        $bashPath = $candidate
+        break
+    }
+}
+
+if ($null -eq $bashPath) {
+    $bashCommand = Get-Command bash -ErrorAction SilentlyContinue
+    if ($null -ne $bashCommand) {
+        try {
+            & $bashCommand.Source -lc 'command -v bash >/dev/null 2>&1'
+            if ($LASTEXITCODE -eq 0) { $bashPath = $bashCommand.Source }
+        }
+        catch { $bashPath = $null }
+    }
+}
+
+if ($null -eq $bashPath) {
+    Write-Host 'Loi: can cai Git for Windows (Git Bash) de chay Fabric network.' -ForegroundColor Red
+    Write-Host 'Tai tai: https://git-scm.com/download/win' -ForegroundColor Yellow
     exit 1
 }
 
 Write-Host '1/2 Kiem tra va khoi dong Fabric network...' -ForegroundColor Yellow
+$fabricBin = Join-Path $projectRoot 'blockchain-network\bin\peer'
+if (-not (Test-Path $fabricBin)) {
+    Write-Host 'Loi: chua co Fabric binaries tai blockchain-network\bin.' -ForegroundColor Red
+    Write-Host 'Hay cai Fabric binaries theo huong dan Hyperledger Fabric truoc khi chay lai.' -ForegroundColor Yellow
+    Write-Host 'https://hyperledger-fabric.readthedocs.io/en/latest/install.html' -ForegroundColor Yellow
+    exit 1
+}
+
 $fabricContainers = docker ps --filter 'name=peer0.org1.example.com' --format '{{.Names}}'
 if ([string]::IsNullOrWhiteSpace(($fabricContainers -join ''))) {
     Push-Location 'blockchain-network'
     try {
-        & $bash.Source './network.sh' up createChannel -ca
+        & $bashPath './network.sh' up createChannel -ca
         if ($LASTEXITCODE -ne 0) { throw 'Fabric network khoi dong that bai.' }
-        & $bash.Source './network.sh' deployCC -ccn educert -ccp ../chaincode -ccl typescript
+        & $bashPath './network.sh' deployCC -ccn educert -ccp ../chaincode -ccl typescript
         if ($LASTEXITCODE -ne 0) { throw 'Deploy chaincode that bai.' }
     }
     finally {
