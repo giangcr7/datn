@@ -46,3 +46,6 @@ blockchain-network/organizations/
 blockchain-network/log.txt
 .data/
 
+# Local document render QA artifacts
+.docx_qa/
+
