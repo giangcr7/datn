@@ -3,19 +3,25 @@ Write-Host "=== KHOI DONG HE THONG VAN BANG BLOCKCHAIN (DIPLOMACHAIN) ===" -Fore
 
 # 1. Khoi dong MongoDB Local
 Write-Host ">>> 1. Khoi dong MongoDB Database (Port 27017)..." -ForegroundColor Yellow
-$mongoProc = Start-Process -FilePath "node" -ArgumentList "scripts/start-mongo.js" -PassThru -NoNewWindow
+$mongoListening = Get-NetTCPConnection -LocalPort 27017 -State Listen -ErrorAction SilentlyContinue
+if ($null -eq $mongoListening) {
+    $mongoProc = Start-Process -FilePath "node.exe" -ArgumentList "scripts/start-mongo.js" -PassThru -NoNewWindow
+} else {
+    Write-Host ">>> MongoDB da dang chay, bo qua khoi dong lai." -ForegroundColor DarkGray
+    $mongoProc = $null
+}
 
 Start-Sleep -Seconds 3
 
 # 2. Khoi dong NestJS Backend
 Write-Host ">>> 2. Khoi dong NestJS API Backend (Port 3001)..." -ForegroundColor Yellow
-$apiProc = Start-Process -FilePath "npm" -ArgumentList "run start:dev --workspace=api" -PassThru -NoNewWindow
+$apiProc = Start-Process -FilePath "npm.cmd" -ArgumentList "run start:dev --workspace=api" -PassThru -NoNewWindow
 
 Start-Sleep -Seconds 4
 
 # 3. Khoi dong Next.js Frontend
 Write-Host ">>> 3. Khoi dong Next.js Frontend (Port 3000)..." -ForegroundColor Yellow
-$webProc = Start-Process -FilePath "npm" -ArgumentList "run dev --workspace=@diploma-chain/web" -PassThru -NoNewWindow
+$webProc = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev --workspace=@diploma-chain/web" -PassThru -NoNewWindow
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
@@ -35,7 +41,7 @@ Write-Host "Nhan Enter hoac dong cua so nay de dung cac service."
 
 Read-Host
 
-Stop-Process -Id $mongoProc.Id -ErrorAction SilentlyContinue
-Stop-Process -Id $apiProc.Id -ErrorAction SilentlyContinue
-Stop-Process -Id $webProc.Id -ErrorAction SilentlyContinue
+if ($null -ne $mongoProc) { Stop-Process -Id $mongoProc.Id -ErrorAction SilentlyContinue }
+if ($null -ne $apiProc) { Stop-Process -Id $apiProc.Id -ErrorAction SilentlyContinue }
+if ($null -ne $webProc) { Stop-Process -Id $webProc.Id -ErrorAction SilentlyContinue }
 Write-Host "Da dung tat ca cac tien trinh." -ForegroundColor Yellow
