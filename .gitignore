@@ -49,3 +49,8 @@ blockchain-network/log.txt
 # Local document render QA artifacts
 .docx_qa/
 
+# Hyperledger Fabric binaries and generated config downloaded locally
+/bin/
+/config/
+blockchain-network/install-fabric.sh
+

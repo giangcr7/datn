@@ -51,12 +51,33 @@ if ($null -eq $bashPath) {
 }
 
 Write-Host '1/2 Kiem tra va khoi dong Fabric network...' -ForegroundColor Yellow
-$fabricBin = Join-Path $projectRoot 'blockchain-network\bin\peer'
+$fabricBin = Join-Path $projectRoot 'bin\peer.exe'
 if (-not (Test-Path $fabricBin)) {
-    Write-Host 'Loi: chua co Fabric binaries tai blockchain-network\bin.' -ForegroundColor Red
-    Write-Host 'Hay cai Fabric binaries theo huong dan Hyperledger Fabric truoc khi chay lai.' -ForegroundColor Yellow
-    Write-Host 'https://hyperledger-fabric.readthedocs.io/en/latest/install.html' -ForegroundColor Yellow
-    exit 1
+    Write-Host 'Chua co Fabric binaries. Dang tu dong tai Fabric binaries...' -ForegroundColor Yellow
+    Push-Location $projectRoot
+    try {
+        $installCommand = 'curl -sSLO https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh && bash install-fabric.sh binary'
+        & $bashPath -lc $installCommand
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'bin\peer.exe')) {
+            throw 'Khong tai duoc Fabric binaries.'
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+$requiredNetworkFiles = @(
+    'blockchain-network\organizations\fabric-ca\registerEnroll.sh',
+    'blockchain-network\organizations\ccp-generate.sh'
+)
+foreach ($requiredFile in $requiredNetworkFiles) {
+    if (-not (Test-Path (Join-Path $projectRoot $requiredFile))) {
+        Write-Host "Loi: thieu file Fabric network $requiredFile." -ForegroundColor Red
+        Write-Host 'Bo network trong repo dang thieu cac script dang ky identity va tao connection profile.' -ForegroundColor Yellow
+        Write-Host 'Can bo sung day du thu muc organizations tu Fabric network source truoc khi chay lai.' -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 $fabricContainers = docker ps --filter 'name=peer0.org1.example.com' --format '{{.Names}}'
