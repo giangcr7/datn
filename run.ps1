@@ -51,6 +51,8 @@ if ($null -eq $bashPath) {
 }
 
 Write-Host '1/2 Kiem tra va khoi dong Fabric network...' -ForegroundColor Yellow
+$env:MSYS_NO_PATHCONV = '1'
+$env:MSYS2_ARG_CONV_EXCL = '*'
 $fabricBin = Join-Path $projectRoot 'bin\peer.exe'
 if (-not (Test-Path $fabricBin)) {
     Write-Host 'Chua co Fabric binaries. Dang tu dong tai Fabric binaries...' -ForegroundColor Yellow
@@ -67,16 +69,21 @@ if (-not (Test-Path $fabricBin)) {
     }
 }
 
-$requiredNetworkFiles = @(
-    'blockchain-network\organizations\fabric-ca\registerEnroll.sh',
-    'blockchain-network\organizations\ccp-generate.sh'
+$fabricSupportFiles = @(
+    @('blockchain-network\organizations\fabric-ca\registerEnroll.sh', 'https://raw.githubusercontent.com/hyperledger/fabric-samples/main/test-network/organizations/fabric-ca/registerEnroll.sh'),
+    @('blockchain-network\organizations\ccp-generate.sh', 'https://raw.githubusercontent.com/hyperledger/fabric-samples/main/test-network/organizations/ccp-generate.sh'),
+    @('blockchain-network\organizations\ccp-template.json', 'https://raw.githubusercontent.com/hyperledger/fabric-samples/main/test-network/organizations/ccp-template.json'),
+    @('blockchain-network\organizations\ccp-template.yaml', 'https://raw.githubusercontent.com/hyperledger/fabric-samples/main/test-network/organizations/ccp-template.yaml')
 )
-foreach ($requiredFile in $requiredNetworkFiles) {
-    if (-not (Test-Path (Join-Path $projectRoot $requiredFile))) {
-        Write-Host "Loi: thieu file Fabric network $requiredFile." -ForegroundColor Red
-        Write-Host 'Bo network trong repo dang thieu cac script dang ky identity va tao connection profile.' -ForegroundColor Yellow
-        Write-Host 'Can bo sung day du thu muc organizations tu Fabric network source truoc khi chay lai.' -ForegroundColor Yellow
-        exit 1
+foreach ($supportFile in $fabricSupportFiles) {
+    $target = Join-Path $projectRoot $supportFile[0]
+    if (-not (Test-Path $target)) {
+        Write-Host "Dang bo sung file Fabric: $($supportFile[0])" -ForegroundColor Yellow
+        New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+        Invoke-WebRequest -Uri $supportFile[1] -OutFile $target
+        if (-not (Test-Path $target)) {
+            throw "Khong tai duoc file Fabric ho tro: $($supportFile[0])"
+        }
     }
 }
 
