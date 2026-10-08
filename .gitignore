@@ -53,4 +53,5 @@ blockchain-network/log.txt
 /bin/
 /config/
 blockchain-network/install-fabric.sh
+blockchain-network/builders/ccaas/bin/*.exe
 
