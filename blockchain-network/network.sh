@@ -484,7 +484,10 @@ COMPOSE_FILE_ORG3_CA=compose-ca-org3.yaml
 #
 
 # Get docker sock path from environment variable
-SOCK="${DOCKER_HOST:-/var/run/docker.sock}"
+# Git Bash on Windows rewrites a single-leading-slash path such as
+# /var/run/docker.sock to C:\\Program Files\\Git\\var. The double slash keeps
+# the Docker Desktop Unix socket path intact when compose interpolates it.
+SOCK="${DOCKER_HOST:-//var/run/docker.sock}"
 DOCKER_SOCK="${SOCK##unix://}"
 
 # BFT activated flag

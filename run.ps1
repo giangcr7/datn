@@ -85,13 +85,19 @@ foreach ($supportFile in $fabricSupportFiles) {
     }
 }
 
+$jqPath = Join-Path $projectRoot 'bin\jq.exe'
+if (-not (Test-Path $jqPath)) {
+    Write-Host 'Dang bo sung jq cho script Fabric...' -ForegroundColor Yellow
+    Invoke-WebRequest -Uri 'https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-amd64.exe' -OutFile $jqPath
+}
+
 $fabricContainers = docker ps --filter 'name=peer0.org1.example.com' --format '{{.Names}}'
 if ([string]::IsNullOrWhiteSpace(($fabricContainers -join ''))) {
     Push-Location 'blockchain-network'
     try {
-        & $bashPath './network.sh' up createChannel -ca
+        & $bashPath './network.sh' up createChannel -c diploma -ca
         if ($LASTEXITCODE -ne 0) { throw 'Fabric network khoi dong that bai.' }
-        & $bashPath './network.sh' deployCC -ccn educert -ccp ../chaincode -ccl typescript
+        & $bashPath './network.sh' deployCC -c diploma -ccn educert -ccp ../chaincode -ccl typescript -ccv 1.0 -ccs 1
         if ($LASTEXITCODE -ne 0) { throw 'Deploy chaincode that bai.' }
     }
     finally {
