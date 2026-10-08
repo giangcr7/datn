@@ -51,8 +51,6 @@ if ($null -eq $bashPath) {
 }
 
 Write-Host '1/2 Kiem tra va khoi dong Fabric network...' -ForegroundColor Yellow
-$env:MSYS_NO_PATHCONV = '1'
-$env:MSYS2_ARG_CONV_EXCL = '*'
 $fabricBin = Join-Path $projectRoot 'bin\peer.exe'
 if (-not (Test-Path $fabricBin)) {
     Write-Host 'Chua co Fabric binaries. Dang tu dong tai Fabric binaries...' -ForegroundColor Yellow
