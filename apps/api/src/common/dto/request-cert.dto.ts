@@ -1,49 +1,31 @@
 import {
+  IsDateString,
+  IsIn,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
-  IsIn,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class RequestCertDto {
-  @IsNotEmpty({ message: 'MSSV không được để trống' })
-  @IsString({ message: 'MSSV phải là chuỗi ký tự' })
-  mssv: string;
-
-  @IsNotEmpty({ message: 'Họ tên không được để trống' })
-  @IsString({ message: 'Họ tên phải là chuỗi ký tự' })
-  fullName: string;
-
-  @IsNotEmpty({ message: 'Ngành học không được để trống' })
-  @IsString({ message: 'Ngành học phải là chuỗi ký tự' })
-  major: string;
-
-  @IsNotEmpty({ message: 'Xếp loại không được để trống' })
-  @IsString({ message: 'Xếp loại phải là chuỗi ký tự' })
-  grade: string;
-
-  @Type(() => Number)
-  @IsNumber({}, { message: 'GPA phải là số' })
-  gpa: number;
-
-  @IsOptional()
-  @IsString({ message: 'Số hiệu phải là chuỗi ký tự' })
-  soHieu: string;
-  @IsOptional()
-  @IsString({ message: 'Số vào sổ phải là chuỗi ký tự' })
-  soVaoSo: string;
-  @IsOptional()
-  @IsString({ message: 'Tên lớp phải là chuỗi ký tự' })
-  className: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: 'Năm tốt nghiệp phải là số' })
-  namTotNghiep: number;
-
-  @IsNotEmpty({ message: 'Cơ sở không được để trống' })
-  @IsIn(['ORG1', 'ORG2'], { message: 'Cơ sở phải là ORG1 hoặc ORG2' })
-  org: string;
+  @IsString() @Matches(/^\d{10}$/) mssv!: string;
+  @IsString() @IsNotEmpty() @MaxLength(255) fullName!: string;
+  @IsString() @IsNotEmpty() @MaxLength(255) major!: string;
+  @IsString() @IsNotEmpty() grade!: string;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(4) gpa?:
+    | number
+    | null;
+  @IsString() @IsNotEmpty() @MaxLength(120) soHieu!: string;
+  @IsString() @IsNotEmpty() @MaxLength(180) soVaoSo!: string;
+  @IsOptional() @IsString() @MaxLength(100) className?: string;
+  @Type(() => Number) @IsInt() @Min(1900) namTotNghiep!: number;
+  @IsOptional() @IsIn(['ORG1', 'ORG2']) org?: string;
+  @IsOptional() @IsDateString() dob?: string;
+  @IsDateString() @IsNotEmpty() issueDate!: string;
 }

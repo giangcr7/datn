@@ -1,0 +1,583 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  UNIVERSITY
+  STUDENT
+  EMPLOYER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum Classification {
+  EXCELLENT
+  VERY_GOOD
+  GOOD
+  AVERAGE_GOOD
+  AVERAGE
+}
+
+enum DegreeType {
+  BACHELOR
+  ENGINEER
+  MASTER
+  DOCTOR
+  OTHER
+}
+
+enum DiplomaStatus {
+  DRAFT
+  ACTIVE
+  REVOKED
+  SUPERSEDED
+}
+
+enum WorkflowStatus {
+  DRAFT
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum AnchorStatus {
+  QUEUED
+  SUBMITTED
+  COMMITTED
+  FAILED
+}
+
+enum ImportStatus {
+  READY
+  REVIEW_REQUIRED
+  COMPLETED
+}
+
+enum ImportRowStatus {
+  READY
+  NEEDS_REVIEW
+  IMPORTED
+  SKIPPED
+}
+
+enum IssueSeverity {
+  ERROR
+  WARNING
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Institution {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code           String               @unique @db.VarChar(40)
+  name           String               @db.VarChar(255)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  campuses       Campus[]
+  programs       Program[]
+  programAliases ProgramAlias[]
+  students       Student[]
+  decisions      GraduationDecision[]
+  graduations    GraduationRecord[]
+  diplomas       Diploma[]
+  documents      SourceDocument[]
+  imports        ImportBatch[]
+  auditLogs      AuditLog[]
+
+  @@map("institutions")
+}
+
+model Campus {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId String              @map("institution_id") @db.Uuid
+  code          String              @db.VarChar(40)
+  name          String              @db.VarChar(255)
+  fabricMspId   String?             @unique @map("fabric_msp_id") @db.VarChar(100)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  institution   Institution         @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  classes       AcademicClass[]
+  enrollments   Enrollment[]
+  memberships   AccountMembership[]
+  imports       ImportBatch[]
+  diplomas      Diploma[]
+
+  @@unique([institutionId, code])
+  @@index([institutionId])
+  @@map("campuses")
+}
+
+model Program {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId String             @map("institution_id") @db.Uuid
+  code          String             @db.VarChar(80)
+  name          String             @db.VarChar(255)
+  nationalCode  String?            @map("national_code") @db.VarChar(30)
+  active        Boolean            @default(true)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  institution   Institution        @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  aliases       ProgramAlias[]
+  enrollments   Enrollment[]
+  graduations   GraduationRecord[]
+
+  @@unique([institutionId, code])
+  @@unique([institutionId, name])
+  @@map("programs")
+}
+
+model ProgramAlias {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String      @map("institution_id") @db.Uuid
+  programId      String      @map("program_id") @db.Uuid
+  normalizedName String      @map("normalized_name") @db.VarChar(255)
+  originalName   String      @map("original_name") @db.VarChar(255)
+  approvedById   String?     @map("approved_by_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  program        Program     @relation(fields: [programId], references: [id], onDelete: Restrict)
+  institution    Institution @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  approvedBy     Account?    @relation(fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@unique([institutionId, normalizedName])
+  @@map("program_aliases")
+}
+
+model AcademicClass {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campusId    String       @map("campus_id") @db.Uuid
+  code        String       @db.VarChar(100)
+  cohortCode  String?      @map("cohort_code") @db.VarChar(40)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  campus      Campus       @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  enrollments Enrollment[]
+
+  @@unique([campusId, code])
+  @@map("academic_classes")
+}
+
+model Student {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId String             @map("institution_id") @db.Uuid
+  studentCode   String             @map("student_code") @db.VarChar(40)
+  fullName      String             @map("full_name") @db.VarChar(255)
+  dateOfBirth   DateTime?          @map("date_of_birth") @db.Date
+  birthPlace    String?            @map("birth_place") @db.VarChar(255)
+  gender        Gender?
+  ethnicity     String?            @db.VarChar(80)
+  nationality   String?            @db.VarChar(100)
+  contactEmail  String?            @map("contact_email") @db.VarChar(320)
+  phone         String?            @db.VarChar(30)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  institution   Institution        @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  account       Account?
+  enrollments   Enrollment[]
+  graduations   GraduationRecord[]
+
+  @@unique([institutionId, studentCode])
+  @@index([institutionId, fullName])
+  @@map("students")
+}
+
+model Enrollment {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId     String             @map("student_id") @db.Uuid
+  programId     String             @map("program_id") @db.Uuid
+  campusId      String             @map("campus_id") @db.Uuid
+  classId       String?            @map("class_id") @db.Uuid
+  startYear     Int?               @map("start_year") @db.SmallInt
+  endYear       Int?               @map("end_year") @db.SmallInt
+  cohortCode    String?            @map("cohort_code") @db.VarChar(40)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  student       Student            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  program       Program            @relation(fields: [programId], references: [id], onDelete: Restrict)
+  campus        Campus             @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  academicClass AcademicClass?     @relation(fields: [classId], references: [id], onDelete: Restrict)
+  graduations   GraduationRecord[]
+
+  @@index([studentId, programId])
+  @@index([campusId, classId])
+  @@map("enrollments")
+}
+
+model GraduationDecision {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId    String             @map("institution_id") @db.Uuid
+  documentNumber   String             @map("document_number") @db.VarChar(120)
+  decisionYear     Int                @map("decision_year") @db.SmallInt
+  signedOn         DateTime?          @map("signed_on") @db.Date
+  signerName       String?            @map("signer_name") @db.VarChar(255)
+  sourceDocumentId String?            @map("source_document_id") @db.Uuid
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  institution      Institution        @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  sourceDocument   SourceDocument?    @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  graduations      GraduationRecord[]
+
+  @@unique([institutionId, documentNumber, decisionYear])
+  @@map("graduation_decisions")
+}
+
+model GraduationRecord {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String              @map("institution_id") @db.Uuid
+  studentId      String              @map("student_id") @db.Uuid
+  programId      String              @map("program_id") @db.Uuid
+  enrollmentId   String?             @map("enrollment_id") @db.Uuid
+  decisionId     String?             @map("decision_id") @db.Uuid
+  sourceRowId    String?             @unique @map("source_row_id") @db.Uuid
+  graduationYear Int                 @map("graduation_year") @db.SmallInt
+  gpa            Decimal?            @db.Decimal(4, 2)
+  gpaScale       Int                 @default(4) @map("gpa_scale") @db.SmallInt
+  classification Classification?
+  degreeType     DegreeType?         @map("degree_type")
+  specialization String?             @db.VarChar(255)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  institution    Institution         @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  program        Program             @relation(fields: [programId], references: [id], onDelete: Restrict)
+  enrollment     Enrollment?         @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  decision       GraduationDecision? @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  sourceRow      ImportRow?          @relation(fields: [sourceRowId], references: [id], onDelete: Restrict)
+  diplomas       Diploma[]
+
+  @@unique([studentId, programId, graduationYear])
+  @@index([institutionId, graduationYear])
+  @@map("graduation_records")
+}
+
+model Diploma {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String           @map("institution_id") @db.Uuid
+  campusId       String           @map("campus_id") @db.Uuid
+  graduationId   String           @map("graduation_id") @db.Uuid
+  certificateNo  String           @map("certificate_no") @db.VarChar(120)
+  registryNo     String           @map("registry_no") @db.VarChar(180)
+  issuedOn       DateTime?        @map("issued_on") @db.Date
+  status         DiplomaStatus    @default(DRAFT)
+  workflowStatus WorkflowStatus   @default(DRAFT) @map("workflow_status")
+  currentVersion Int              @default(1) @map("current_version")
+  requestedById  String?          @map("requested_by_id") @db.Uuid
+  approvedById   String?          @map("approved_by_id") @db.Uuid
+  requestedAt    DateTime?        @map("requested_at") @db.Timestamptz(3)
+  approvedAt     DateTime?        @map("approved_at") @db.Timestamptz(3)
+  supersedesId   String?          @unique @map("supersedes_id") @db.Uuid
+  revokedReason  String?          @map("revoked_reason") @db.Text
+  revokedAt      DateTime?        @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  institution    Institution      @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  campus         Campus           @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  graduation     GraduationRecord @relation(fields: [graduationId], references: [id], onDelete: Restrict)
+  requestedBy    Account?         @relation("DiplomaRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy     Account?         @relation("DiplomaApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  supersedes     Diploma?         @relation("Replacement", fields: [supersedesId], references: [id], onDelete: Restrict)
+  replacement    Diploma?         @relation("Replacement")
+  versions       DiplomaVersion[]
+  events         DiplomaEvent[]
+  alerts         IntegrityAlert[]
+
+  @@unique([institutionId, certificateNo])
+  @@unique([institutionId, registryNo])
+  @@index([campusId, workflowStatus, createdAt])
+  @@index([graduationId])
+  @@map("diplomas")
+}
+
+model DiplomaVersion {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diplomaId     String             @map("diploma_id") @db.Uuid
+  version       Int
+  schemaVersion String             @map("schema_version") @db.VarChar(20)
+  payload       Json               @db.JsonB
+  payloadHash   String             @map("payload_hash") @db.Char(64)
+  createdById   String?            @map("created_by_id") @db.Uuid
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  diploma       Diploma            @relation(fields: [diplomaId], references: [id], onDelete: Restrict)
+  createdBy     Account?           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  anchors       BlockchainAnchor[]
+  outboxEvents  OutboxEvent[]
+
+  @@unique([diplomaId, version])
+  @@map("diploma_versions")
+}
+
+model DiplomaEvent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diplomaId String   @map("diploma_id") @db.Uuid
+  eventType String   @map("event_type") @db.VarChar(60)
+  actorId   String?  @map("actor_id") @db.Uuid
+  reason    String?  @db.Text
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  diploma   Diploma  @relation(fields: [diplomaId], references: [id], onDelete: Restrict)
+  actor     Account? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([diplomaId, createdAt])
+  @@map("diploma_events")
+}
+
+model BlockchainAnchor {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  versionId     String         @map("version_id") @db.Uuid
+  eventType     String         @map("event_type") @db.VarChar(60)
+  status        AnchorStatus   @default(QUEUED)
+  channel       String         @db.VarChar(100)
+  chaincode     String         @db.VarChar(100)
+  transactionId String?        @unique @map("transaction_id") @db.VarChar(100)
+  blockNumber   BigInt?        @map("block_number")
+  issuerMspId   String?        @map("issuer_msp_id") @db.VarChar(100)
+  payloadHash   String         @map("payload_hash") @db.Char(64)
+  committedAt   DateTime?      @map("committed_at") @db.Timestamptz(3)
+  lastError     String?        @map("last_error") @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  version       DiplomaVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, eventType])
+  @@index([status, createdAt])
+  @@map("blockchain_anchors")
+}
+
+model SourceDocument {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId String               @map("institution_id") @db.Uuid
+  fileName      String               @map("file_name") @db.VarChar(255)
+  sha256        String               @db.Char(64)
+  byteSize      Int                  @map("byte_size")
+  mediaType     String               @map("media_type") @db.VarChar(100)
+  storageKey    String               @map("storage_key") @db.VarChar(500)
+  uploadedById  String?              @map("uploaded_by_id") @db.Uuid
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  institution   Institution          @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  uploadedBy    Account?             @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  imports       ImportBatch[]
+  decisions     GraduationDecision[]
+
+  @@unique([institutionId, sha256])
+  @@map("source_documents")
+}
+
+model ImportBatch {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String         @map("institution_id") @db.Uuid
+  campusId       String         @map("campus_id") @db.Uuid
+  documentId     String         @map("document_id") @db.Uuid
+  mappingVersion String         @map("mapping_version") @db.VarChar(40)
+  status         ImportStatus   @default(REVIEW_REQUIRED)
+  totalRows      Int            @default(0) @map("total_rows")
+  importedRows   Int            @default(0) @map("imported_rows")
+  createdById    String         @map("created_by_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(3)
+  institution    Institution    @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  campus         Campus         @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  document       SourceDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  createdBy      Account        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  rows           ImportRow[]
+
+  @@unique([documentId, campusId, mappingVersion])
+  @@index([institutionId, createdAt])
+  @@map("import_batches")
+}
+
+model ImportRow {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batchId        String            @map("batch_id") @db.Uuid
+  sheetName      String            @map("sheet_name") @db.VarChar(100)
+  rowNumber      Int               @map("row_number")
+  rawData        Json              @map("raw_data") @db.JsonB
+  normalizedData Json              @map("normalized_data") @db.JsonB
+  overrides      Json?             @db.JsonB
+  status         ImportRowStatus   @default(NEEDS_REVIEW)
+  reviewedById   String?           @map("reviewed_by_id") @db.Uuid
+  reviewedAt     DateTime?         @map("reviewed_at") @db.Timestamptz(3)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  batch          ImportBatch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  reviewedBy     Account?          @relation(fields: [reviewedById], references: [id], onDelete: Restrict)
+  issues         ValidationIssue[]
+  graduation     GraduationRecord?
+
+  @@unique([batchId, sheetName, rowNumber])
+  @@index([batchId, status])
+  @@map("import_rows")
+}
+
+model ValidationIssue {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rowId      String        @map("row_id") @db.Uuid
+  field      String        @db.VarChar(80)
+  code       String        @db.VarChar(80)
+  severity   IssueSeverity
+  message    String        @db.Text
+  resolvedAt DateTime?     @map("resolved_at") @db.Timestamptz(3)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  row        ImportRow     @relation(fields: [rowId], references: [id], onDelete: Cascade)
+
+  @@index([rowId, severity, resolvedAt])
+  @@map("validation_issues")
+}
+
+model Account {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String              @unique @db.VarChar(320)
+  passwordHash       String              @map("password_hash") @db.VarChar(255)
+  displayName        String              @map("display_name") @db.VarChar(255)
+  studentId          String?             @unique @map("student_id") @db.Uuid
+  active             Boolean             @default(true)
+  mustChangePassword Boolean             @default(true) @map("must_change_password")
+  sessionVersion     Int                 @default(0) @map("session_version")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  student            Student?            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  memberships        AccountMembership[]
+  sessions           RefreshSession[]
+  otpChallenges      OtpChallenge[]
+  requestedDiplomas  Diploma[]           @relation("DiplomaRequester")
+  approvedDiplomas   Diploma[]           @relation("DiplomaApprover")
+  versions           DiplomaVersion[]
+  events             DiplomaEvent[]
+  uploadedDocuments  SourceDocument[]
+  importBatches      ImportBatch[]
+  reviewedRows       ImportRow[]
+  approvedAliases    ProgramAlias[]
+  auditLogs          AuditLog[]
+  resolvedAlerts     IntegrityAlert[]
+
+  @@map("accounts")
+}
+
+model AccountMembership {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accountId String           @map("account_id") @db.Uuid
+  campusId  String           @map("campus_id") @db.Uuid
+  role      Role
+  active    Boolean          @default(true)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  account   Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  campus    Campus           @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  sessions  RefreshSession[]
+
+  @@unique([accountId, campusId, role])
+  @@index([campusId, role])
+  @@map("account_memberships")
+}
+
+model RefreshSession {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accountId    String            @map("account_id") @db.Uuid
+  membershipId String            @map("membership_id") @db.Uuid
+  familyId     String            @map("family_id") @db.Uuid
+  tokenHash    String            @unique @map("token_hash") @db.Char(64)
+  expiresAt    DateTime          @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime?         @map("revoked_at") @db.Timestamptz(3)
+  replacedById String?           @unique @map("replaced_by_id") @db.Uuid
+  ip           String?           @db.VarChar(100)
+  userAgent    String?           @map("user_agent") @db.VarChar(500)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  account      Account           @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  membership   AccountMembership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  replacedBy   RefreshSession?   @relation("SessionRotation", fields: [replacedById], references: [id], onDelete: Restrict)
+  replaces     RefreshSession?   @relation("SessionRotation")
+
+  @@index([accountId, familyId])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
+}
+
+model OtpChallenge {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accountId  String    @map("account_id") @db.Uuid
+  codeHash   String    @map("code_hash") @db.Char(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  account    Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([accountId, createdAt])
+  @@index([expiresAt])
+  @@map("otp_challenges")
+}
+
+model AuditLog {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId String?      @map("institution_id") @db.Uuid
+  actorId       String?      @map("actor_id") @db.Uuid
+  actorEmail    String       @map("actor_email") @db.VarChar(320)
+  action        String       @db.VarChar(100)
+  target        String?      @db.VarChar(255)
+  result        String       @db.VarChar(20)
+  ip            String?      @db.VarChar(100)
+  userAgent     String?      @map("user_agent") @db.VarChar(500)
+  errorMessage  String?      @map("error_message") @db.Text
+  metadata      Json?        @db.JsonB
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  actor         Account?     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([institutionId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+model IntegrityAlert {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diplomaId    String    @map("diploma_id") @db.Uuid
+  type         String    @db.VarChar(60)
+  databaseHash String?   @map("database_hash") @db.Char(64)
+  fabricHash   String?   @map("fabric_hash") @db.Char(64)
+  resolvedAt   DateTime? @map("resolved_at") @db.Timestamptz(3)
+  resolvedById String?   @map("resolved_by_id") @db.Uuid
+  note         String?   @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  diploma      Diploma   @relation(fields: [diplomaId], references: [id], onDelete: Restrict)
+  resolvedBy   Account?  @relation(fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  @@index([diplomaId, type, resolvedAt])
+  @@map("integrity_alerts")
+}
+
+model OutboxEvent {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  versionId   String         @map("version_id") @db.Uuid
+  eventType   String         @map("event_type") @db.VarChar(60)
+  payload     Json           @db.JsonB
+  status      OutboxStatus   @default(PENDING)
+  attempts    Int            @default(0)
+  availableAt DateTime       @default(now()) @map("available_at") @db.Timestamptz(3)
+  lockedUntil DateTime?      @map("locked_until") @db.Timestamptz(3)
+  lockToken   String?        @map("lock_token") @db.Uuid
+  lastError   String?        @map("last_error") @db.Text
+  completedAt DateTime?      @map("completed_at") @db.Timestamptz(3)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  version     DiplomaVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, eventType])
+  @@index([status, availableAt, lockedUntil])
+  @@map("outbox_events")
+}
+
+model LegacyIdMap {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source    String   @db.VarChar(100)
+  entity    String   @db.VarChar(60)
+  legacyId  String   @map("legacy_id") @db.VarChar(120)
+  targetId  String   @map("target_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([source, entity, legacyId])
+  @@map("legacy_id_maps")
+}

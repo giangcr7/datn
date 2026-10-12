@@ -6,6 +6,7 @@ import {
   Param,
   Req,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -17,6 +18,8 @@ import { RefreshTokenDto } from '../common/dto/refresh-token.dto';
 import { RegisterDto } from '../common/dto/register.dto';
 import { SendOtpDto } from '../common/dto/send-otp.dto';
 import { JwtAuthGuard } from './jwt.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -62,6 +65,7 @@ export class AuthController {
   }
 
   @Post('change-password/:id')
+  @UseGuards(JwtAuthGuard)
   @Throttle({ short: { ttl: 60000, limit: 3 } })
   changePassword(
     @Param('id') id: string,
@@ -69,6 +73,8 @@ export class AuthController {
     @Req() req: Request,
   ) {
     const ip = req.ip || (req.headers['x-forwarded-for'] as string);
+    if ((req as any).user.id !== id)
+      throw new ForbiddenException('Chỉ được đổi mật khẩu của chính mình');
     return this.authService.changePassword(
       id,
       body.oldPassword,
@@ -104,7 +110,8 @@ export class AuthController {
   }
 
   @Get('users')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @ApiBearerAuth()
   listUsers() {
     return this.authService.findAllUsers();

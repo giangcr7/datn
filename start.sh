@@ -1,89 +1,55 @@
-#!/bin/bash
-echo "=== KHOI DONG HE THONG VAN BANG BLOCKCHAIN ==="
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# 1. Kiem tra Docker
-if ! docker info > /dev/null 2>&1; then
-  echo "Docker chua chay. Hay khoi dong Docker truoc."
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Khong tim thay Docker CLI."
+  exit 1
+fi
+if ! command -v npm >/dev/null 2>&1; then
+  echo "Khong tim thay Node.js/npm."
+  exit 1
+fi
+if [[ ! -f .env.infrastructure ]]; then
+  echo "Thieu .env.infrastructure. Hay copy .env.infrastructure.example va dien secret."
+  exit 1
+fi
+if [[ ! -f apps/api/.env.database ]]; then
+  echo "Thieu apps/api/.env.database. Dien DIRECT_DATABASE_URL bang role migrator."
+  exit 1
+fi
+if [[ ! -f apps/api/.env ]]; then
+  echo "Thieu apps/api/.env. Hay copy apps/api/.env.example va dien DATABASE_URL/JWT_SECRET."
   exit 1
 fi
 
-# 2. Khoi dong Fabric network
-echo ">>> Khoi dong Fabric network..."
-cd "$SCRIPT_DIR/blockchain-network"
-DOCKER_SOCK=/var/run/docker.sock docker compose \
-  -f compose/compose-test-net.yaml \
-  -f compose/docker/docker-compose-test-net.yaml \
-  -f compose/compose-ca.yaml \
-  up -d
+mkdir -p .data/logs
+echo ">>> Khoi dong PostgreSQL..."
+docker compose --env-file .env.infrastructure -f compose.database.yaml up -d --wait
 
-echo ">>> Doi peer khoi dong..."
-sleep 5
+echo ">>> Generate Prisma, migrate va seed..."
+npm run db:generate -w api
+npm run db:migrate -w api
+npm run db:seed -w api
 
-# 3. Kiem tra peer
-PEER_STATUS=$(docker ps --filter "name=peer0.org1.example.com" --filter "status=running" -q)
-if [ -z "$PEER_STATUS" ]; then
-  echo "Peer chua chay. Thu chay setup.sh lan dau."
-  exit 1
-fi
-echo "Fabric network dang chay!"
-
-# 4. Kiem tra wallet
-cd "$SCRIPT_DIR"
-if [ ! -f "wallet/admin.json" ] || [ ! -f "wallet/admin-org2.json" ]; then
-  echo ">>> Wallet chua co, tao lai..."
-  node -e "
-const FabricCAServices = require('fabric-ca-client');
-const fs = require('fs'), path = require('path');
-const cwd = '$(pwd)';
-async function enroll(ccpFile, caName, walletFile, mspId) {
-  const ccp = JSON.parse(fs.readFileSync(path.resolve(cwd, ccpFile), 'utf8'));
-  const org = mspId === 'Org1MSP' ? 'org1' : 'org2';
-  const caCert = fs.readFileSync(path.resolve(cwd, 'blockchain-network/organizations/peerOrganizations/' + org + '.example.com/ca/ca.' + org + '.example.com-cert.pem'));
-  const ca = new FabricCAServices(ccp.certificateAuthorities[caName].url, { trustedRoots: caCert, verify: false }, caName);
-  const walletPath = path.join(cwd, 'wallet');
-  if (!fs.existsSync(walletPath)) fs.mkdirSync(walletPath, { recursive: true });
-  const adminPath = path.join(walletPath, walletFile);
-  if (fs.existsSync(adminPath)) { console.log(walletFile + ' da ton tai'); return; }
-  const enrollment = await ca.enroll({ enrollmentID: 'admin', enrollmentSecret: 'adminpw' });
-  fs.writeFileSync(adminPath, JSON.stringify({ credentials: { certificate: enrollment.certificate, privateKey: enrollment.key.toBytes() }, mspId, type: 'X.509' }, null, 2));
-  console.log('Da tao: ' + walletFile);
-}
-Promise.all([
-  enroll('blockchain-network/organizations/peerOrganizations/org1.example.com/connection-org1.json', 'ca.org1.example.com', 'wallet/admin.json', 'Org1MSP'),
-  enroll('blockchain-network/organizations/peerOrganizations/org2.example.com/connection-org2.json', 'ca.org2.example.com', 'wallet/admin-org2.json', 'Org2MSP'),
-]).catch(console.error);
-"
-fi
-
-echo ""
-echo "=== KHOI DONG MONOREPO ==="
-
-# 5. Chay NestJS api
-echo ">>> Khoi dong NestJS API (port 3001)..."
-cd "$SCRIPT_DIR/apps/api"
-NODE_TLS_REJECT_UNAUTHORIZED=0 npm run start:dev &
+echo ">>> Khoi dong API va Web..."
+npm run start:dev -w api > .data/logs/api.out.log 2> .data/logs/api.err.log &
 API_PID=$!
-echo "NestJS PID: $API_PID"
-
-sleep 3
-
-# 6. Chay Next.js web
-echo ">>> Khoi dong Next.js Web (port 3000)..."
-cd "$SCRIPT_DIR/apps/web"
-NODE_TLS_REJECT_UNAUTHORIZED=0 npm run dev &
+npm run dev -w @diploma-chain/web > .data/logs/web.out.log 2> .data/logs/web.err.log &
 WEB_PID=$!
-echo "Next.js PID: $WEB_PID"
 
-echo ""
-echo "=== HE THONG DA KHOI DONG ==="
+cleanup() {
+  kill "$API_PID" "$WEB_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+echo "=========================================================="
+echo "PostgreSQL, API va Web da duoc khoi dong."
 echo "Frontend : http://localhost:3000"
-echo "Backend  : http://localhost:3001"
+echo "API      : http://localhost:3001"
 echo "Swagger  : http://localhost:3001/docs"
-echo ""
-echo "Nhan Ctrl+C de dung tat ca."
-
-trap "kill $API_PID $WEB_PID 2>/dev/null; echo 'Da dung tat ca.'" EXIT
+echo "Fabric   : khong tu dong deploy; chi bat khi da review cutover."
+echo "Nhan Ctrl+C de dung API/Web."
 wait

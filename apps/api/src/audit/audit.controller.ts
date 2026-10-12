@@ -1,12 +1,15 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { AuditService } from './audit.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('audit')
 @Controller('audit')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
 @ApiBearerAuth()
 @SkipThrottle()
 export class AuditController {
@@ -22,7 +25,7 @@ export class AuditController {
   }
 
   @Get('user/:userId')
-  findByUser(@Query('userId') userId: string) {
+  findByUser(@Param('userId') userId: string) {
     return this.auditService.findByUser(userId);
   }
 }

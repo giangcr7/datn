@@ -1,105 +1,176 @@
 "use client";
-
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Form,
-  Select,
-  Input,
-  InputNumber,
+  Alert,
   Button,
-  Typography,
-  message,
   Card,
   DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Typography,
+  message,
 } from "antd";
 import { useRouter } from "next/navigation";
 
-const { Title } = Typography;
-
-export default function IssueClient({ students }: { students: any[] }) {
+export default function IssueClient() {
   const [loading, setLoading] = useState(false);
-  const [form] = Form.useForm();
+  const [programs, setPrograms] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/imports/programs")
+      .then((response) => response.json())
+      .then((result) => {
+        if (!result.success)
+          throw new Error(result.error || "Không tải được danh mục ngành");
+        setPrograms(result.data);
+      })
+      .catch((error) => message.error(error.message));
+  }, []);
   const router = useRouter();
-
-  const handleIssue = async (values: any) => {
+  async function submit(values: any) {
     setLoading(true);
-    // Chuẩn hóa định dạng ngày tháng trước khi gửi
-    const payload = {
-        ...values,
-        decisionDate: values.decisionDate?.format("YYYY-MM-DD"),
-    };
-    
     try {
-      const res = await fetch("/api/issue", {
+      const response = await fetch("/api/issue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...values,
+          dob: values.dob.format("YYYY-MM-DD"),
+          issueDate: values.issueDate.format("YYYY-MM-DD"),
+          gpa: values.gpa ?? null,
+        }),
       });
-
-      if (res.ok) {
-        message.success("Đã ký số và ghi sổ cái Blockchain thành công!");
-        router.push("/dashboard");
-      } else {
-        message.error("Lỗi khi ghi dữ liệu lên mạng lưới.");
-      }
-    } catch (error) {
-      message.error("Lỗi kết nối máy chủ.");
+      const result = await response.json();
+      if (!response.ok || !result.success)
+        throw new Error(
+          result.error || result.message || "Không lưu được yêu cầu",
+        );
+      message.success(
+        "Đã lưu yêu cầu. Cần cán bộ khác phê duyệt trước khi neo blockchain.",
+      );
+      router.push("/pending");
+    } catch (error: any) {
+      message.error(error.message);
     } finally {
       setLoading(false);
     }
-  };
-
+  }
   return (
-    <div className="p-8 bg-white min-h-screen">
-      <div className="max-w-3xl mx-auto">
-        <Title level={2} className="mb-2">CẤP PHÁT VĂN BẰNG ĐƠN LẺ</Title>
-
-        <Card variant="borderless" className="bg-gray-50 border-t-4 border-t-green-600 shadow-sm">
-          <Form form={form} layout="vertical" onFinish={handleIssue}>
-            {/* THÔNG TIN CHÍNH */}
-            <Form.Item name="studentObjId" label="Chọn Sinh viên" rules={[{ required: true }]}>
-              <Select options={students} size="large" placeholder="Tra cứu sinh viên..." showSearch />
+    <div className="p-6 max-w-4xl mx-auto">
+      <Typography.Title level={3}>Lập yêu cầu cấp văn bằng</Typography.Title>
+      <Alert
+        type="info"
+        showIcon
+        className="mb-5"
+        message="PostgreSQL lưu hồ sơ; Fabric chỉ nhận hash sau phê duyệt."
+        description="Không tự phê duyệt, không gán GPA hoặc ngày cấp nếu nguồn chưa xác nhận. Cơ sở được lấy từ tài khoản đăng nhập."
+      />
+      <Card>
+        <Form layout="vertical" onFinish={submit}>
+          <div className="grid md:grid-cols-2 gap-x-5">
+            <Form.Item
+              name="mssv"
+              label="Mã sinh viên"
+              rules={[
+                {
+                  required: true,
+                  pattern: /^\d{10}$/,
+                  message: "MSSV gồm 10 chữ số",
+                },
+              ]}
+            >
+              <Input />
             </Form.Item>
-
-            <Form.Item name="major" label="Ngành đào tạo" rules={[{ required: true }]}>
-              <Input size="large" placeholder="VD: Kỹ thuật phần mềm" />
+            <Form.Item
+              name="fullName"
+              label="Họ và tên theo hồ sơ"
+              rules={[{ required: true }]}
+            >
+              <Input maxLength={255} />
             </Form.Item>
-
-            {/* ĐIỂM SỐ & XẾP LOẠI */}
-            <div className="flex gap-4">
-              <Form.Item name="gpa" label="Điểm trung bình (GPA)" className="flex-1" rules={[{ required: true }]}>
-                <InputNumber size="large" style={{ width: "100%" }} step={0.01} max={4.0} min={0.0} />
-              </Form.Item>
-              <Form.Item name="classification" label="Xếp loại" className="flex-1" rules={[{ required: true }]}>
-                <Select size="large" options={[{value:"Xuất sắc", label:"Xuất sắc"}, {value:"Giỏi", label:"Giỏi"}, {value:"Khá", label:"Khá"}]} />
-              </Form.Item>
-            </div>
-
-            {/* CÁC TRƯỜNG BỔ SUNG ĐỒNG BỘ VỚI IMPORT EXCEL */}
-            <div className="flex gap-4">
-              <Form.Item name="soHieu" label="Số hiệu văn bằng" className="flex-1" rules={[{ required: true }]}>
-                <Input size="large" placeholder="VD: 570069" />
-              </Form.Item>
-              <Form.Item name="soVaoSo" label="Số vào sổ" className="flex-1" rules={[{ required: true }]}>
-                <Input size="large" placeholder="VD: 4.06.S16..." />
-              </Form.Item>
-            </div>
-
-            <div className="flex gap-4">
-              <Form.Item name="className" label="Lớp" className="flex-1">
-                <Input size="large" placeholder="VD: S16-55C-TL1" />
-              </Form.Item>
-              <Form.Item name="namTotNghiep" label="Năm tốt nghiệp" className="flex-1">
-                <InputNumber size="large" style={{ width: "100%" }} />
-              </Form.Item>
-            </div>
-
-            <Button type="primary" htmlType="submit" size="large" block loading={loading} style={{ backgroundColor: "#389e0d" }}>
-              Phát hành lên Blockchain
-            </Button>
-          </Form>
-        </Card>
-      </div>
+            <Form.Item
+              name="dob"
+              label="Ngày sinh đã xác nhận"
+              rules={[{ required: true }]}
+            >
+              <DatePicker format="DD/MM/YYYY" className="w-full" />
+            </Form.Item>
+            <Form.Item
+              name="major"
+              label="Ngành đào tạo"
+              rules={[{ required: true }]}
+            >
+              <Select
+                showSearch
+                options={programs.map((program) => ({
+                  value: program.name,
+                  label: program.name,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item
+              name="gpa"
+              label="GPA hệ 4 (để trống nếu nguồn không có)"
+            >
+              <InputNumber min={0} max={4} step={0.01} className="w-full" />
+            </Form.Item>
+            <Form.Item
+              name="grade"
+              label="Xếp loại theo sổ gốc"
+              rules={[{ required: true }]}
+            >
+              <Select
+                options={[
+                  "Trung bình",
+                  "Trung bình khá",
+                  "Khá",
+                  "Giỏi",
+                  "Xuất sắc",
+                ].map((value) => ({ value, label: value }))}
+              />
+            </Form.Item>
+            <Form.Item
+              name="soHieu"
+              label="Số hiệu văn bằng"
+              rules={[{ required: true }]}
+            >
+              <Input maxLength={120} />
+            </Form.Item>
+            <Form.Item
+              name="soVaoSo"
+              label="Số vào sổ"
+              rules={[{ required: true }]}
+            >
+              <Input maxLength={180} />
+            </Form.Item>
+            <Form.Item name="className" label="Lớp">
+              <Input maxLength={100} />
+            </Form.Item>
+            <Form.Item
+              name="namTotNghiep"
+              label="Năm tốt nghiệp đã xác nhận"
+              rules={[{ required: true }]}
+            >
+              <InputNumber
+                min={1900}
+                max={new Date().getFullYear()}
+                className="w-full"
+              />
+            </Form.Item>
+            <Form.Item
+              name="issueDate"
+              label="Ngày cấp thực tế"
+              rules={[{ required: true }]}
+            >
+              <DatePicker format="DD/MM/YYYY" className="w-full" />
+            </Form.Item>
+          </div>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Lưu và gửi phê duyệt
+          </Button>
+        </Form>
+      </Card>
     </div>
   );
 }

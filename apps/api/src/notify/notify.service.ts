@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
@@ -177,7 +181,10 @@ export class NotifyService {
       });
       this.logger.log(`Email OTP kích hoạt gửi thành công tới ${to}`);
     } catch (error: any) {
-      this.logger.warn(`Gửi email OTP thất bại: ${error.message}`);
+      this.logger.warn('Không gửi được email OTP; mã sẽ bị vô hiệu hóa');
+      throw new ServiceUnavailableException(
+        'Không gửi được email kích hoạt. Vui lòng thử lại sau.',
+      );
     }
   }
 }

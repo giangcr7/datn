@@ -1,0 +1,58 @@
+{
+  "scannedAt": "2026-10-11T14:50:20.552Z",
+  "fileName": "26.4 Sổ gốc Phân hiệu năm 2021.2022.2023.2024.xlsx",
+  "mappingVersion": "tlu-register-v1",
+  "success": true,
+  "sha256": "249b9d0d26d924eea4d6cde54c3e20ffdd5aa3ba600c529d780f259900dd49bb",
+  "summary": {
+    "total": 1955,
+    "ready": 483,
+    "needsReview": 1472,
+    "bySheet": {
+      "2020": {
+        "total": 350,
+        "errors": 359,
+        "warnings": 704
+      },
+      "2021": {
+        "total": 258,
+        "errors": 477,
+        "warnings": 0
+      },
+      "2022": {
+        "total": 321,
+        "errors": 1,
+        "warnings": 467
+      },
+      "2023": {
+        "total": 301,
+        "errors": 21,
+        "warnings": 644
+      },
+      "2024": {
+        "total": 264,
+        "errors": 24,
+        "warnings": 529
+      },
+      "2025": {
+        "total": 461,
+        "errors": 0,
+        "warnings": 284
+      }
+    },
+    "byCode": {
+      "EXTERNAL_FORMULA_CACHE": 1452,
+      "UNMAPPED_PROGRAM": 368,
+      "EXCEL_ERROR": 250,
+      "NOT_YET_ISSUED": 293,
+      "INVALID_STUDENT_CODE": 241,
+      "MISSING_ORDINAL": 1,
+      "COLUMN_REALIGNMENT": 321,
+      "YEAR_FROM_SHEET": 260,
+      "SWAPPED_YEAR_CLASSIFICATION": 184,
+      "GPA_COLUMN_REALIGNMENT": 115,
+      "REPEATED_STUDENT_CODE": 2,
+      "INVALID_DOCUMENT_DATE": 23
+    }
+  }
+}

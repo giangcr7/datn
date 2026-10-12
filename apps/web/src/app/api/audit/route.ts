@@ -1,13 +1,29 @@
-import { NextResponse } from 'next/server';
-import { apiCall } from '@/lib/api';
-
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import { apiCall } from "@/lib/api";
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const certId = searchParams.get('certId');
-    const result = await apiCall(`/cert/${certId}`);
-    return NextResponse.json(result);
+    const session = (await getServerSession(authOptions)) as any;
+    const params = new URL(req.url).searchParams;
+    const uuid = params.get("certUUID") || params.get("certId");
+    if (!uuid || !/^[0-9a-f-]{36}$/i.test(uuid))
+      return NextResponse.json(
+        { success: false, error: "UUID không hợp lệ" },
+        { status: 400 },
+      );
+    return NextResponse.json(
+      await apiCall(
+        "/cert/" + uuid + "/history",
+        "GET",
+        undefined,
+        session?.accessToken,
+      ),
+    );
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 400 },
+    );
   }
 }

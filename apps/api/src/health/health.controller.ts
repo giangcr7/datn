@@ -3,26 +3,29 @@ import { SkipThrottle } from '@nestjs/throttler';
 import {
   HealthCheck,
   HealthCheckService,
-  MongooseHealthIndicator,
   MemoryHealthIndicator,
 } from '@nestjs/terminus';
+import { DatabaseService } from '../database/database.service';
 import { FabricHealthIndicator } from './indicators/fabric-health.indicator';
 
 @Controller('health')
-@SkipThrottle({ short: true, medium: true }) // phải chỉ rõ tên từng throttler — 'default' không khớp vì app dùng tên 'short'/'medium'
+@SkipThrottle({ short: true, medium: true })
 export class HealthController {
   constructor(
-    private health: HealthCheckService,
-    private mongoose: MongooseHealthIndicator,
-    private memory: MemoryHealthIndicator,
-    private fabric: FabricHealthIndicator,
+    private readonly health: HealthCheckService,
+    private readonly database: DatabaseService,
+    private readonly memory: MemoryHealthIndicator,
+    private readonly fabric: FabricHealthIndicator,
   ) {}
-
   @Get()
   @HealthCheck()
   check() {
     return this.health.check([
-      () => this.mongoose.pingCheck('mongodb'),
+      async () => {
+        const started = Date.now();
+        await this.database.$queryRaw`SELECT 1`;
+        return { database: { status: 'up', latencyMs: Date.now() - started } };
+      },
       () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
       () => this.fabric.isHealthy('fabric'),
     ]);

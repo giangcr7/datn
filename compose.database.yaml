@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: diplomachain
+      POSTGRES_USER: diplomachain_admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD in .env.infrastructure}
+      MIGRATOR_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.infrastructure}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env.infrastructure}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - diplomachain_postgresql:/var/lib/postgresql
+      - ./infra/postgres/init-users.sh:/docker-entrypoint-initdb.d/01-users.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diplomachain_app -d diplomachain"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    stop_grace_period: 30s
+volumes:
+  diplomachain_postgresql:

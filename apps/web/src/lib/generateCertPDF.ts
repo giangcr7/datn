@@ -1,13 +1,29 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import QRCode from 'qrcode';
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import QRCode from "qrcode";
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? "").replace(
+    /[&<>\"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '\"': "&quot;",
+        "'": "&#39;",
+      })[character] || character,
+  );
 
 export async function generateCertPDF(record: any, verifyUrl: string) {
   // Tạo QR base64
-  const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 200, margin: 1 });
+  const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+    width: 200,
+    margin: 1,
+  });
 
   // Tạo div HTML tạm thời
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.style.cssText = `
     width: 1122px;
     height: 794px;
@@ -26,11 +42,11 @@ export async function generateCertPDF(record: any, verifyUrl: string) {
       <div style="background:#0056b3;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;">
         <div style="color:white;">
           <div style="font-size:22px;font-weight:bold;letter-spacing:1px;">TRƯỜNG ĐẠI HỌC THỦY LỢI</div>
-          <div style="font-size:13px;margin-top:4px;">PHÂN HIỆU TẠI THÀNH PHỐ HỒ CHÍ MINH</div>
+          <div style="font-size:13px;margin-top:4px;">${record.org === "ORG1" ? "TRỤ SỞ HÀ NỘI" : record.org === "ORG2" ? "PHÂN HIỆU TẠI THÀNH PHỐ HỒ CHÍ MINH" : "HỒ SƠ VĂN BẰNG SỐ"}</div>
         </div>
         <div style="color:white;text-align:right;font-size:12px;">
-          <div>Số hiệu: <b>${record.soHieu || ''}</b></div>
-          <div>Số vào sổ: <b>${record.soVaoSo || ''}</b></div>
+          <div>Số hiệu: <b>${escapeHtml(record.soHieu)}</b></div>
+          <div>Số vào sổ: <b>${escapeHtml(record.soVaoSo)}</b></div>
         </div>
       </div>
 
@@ -46,14 +62,14 @@ export async function generateCertPDF(record: any, verifyUrl: string) {
           </div>
 
           <table style="width:100%;border-collapse:collapse;font-size:15px;">
-            <tr><td style="padding:7px 0;color:#666;width:180px;">Họ và tên:</td><td style="padding:7px 0;font-weight:bold;font-size:17px;color:#1a1a1a;">${record.fullName || ''}</td></tr>
-            <tr><td style="padding:7px 0;color:#666;">Mã số sinh viên:</td><td style="padding:7px 0;font-weight:bold;">${record.mssv || ''}</td></tr>
-            <tr><td style="padding:7px 0;color:#666;">Ngành học:</td><td style="padding:7px 0;font-weight:bold;">${record.major || ''}</td></tr>
-            <tr><td style="padding:7px 0;color:#666;">Lớp:</td><td style="padding:7px 0;">${record.className || ''}</td></tr>
-            <tr><td style="padding:7px 0;color:#666;">Điểm TB (GPA):</td><td style="padding:7px 0;font-weight:bold;">${record.gpa || ''}</td></tr>
-            <tr><td style="padding:7px 0;color:#666;">Xếp loại:</td><td style="padding:7px 0;font-weight:bold;color:#0056b3;font-size:17px;">${record.grade || ''}</td></tr>
-            <tr><td style="padding:7px 0;color:#666;">Năm tốt nghiệp:</td><td style="padding:7px 0;font-weight:bold;">${record.namTotNghiep || ''}</td></tr>
-            <tr><td style="padding:7px 0;color:#666;">Ngày cấp:</td><td style="padding:7px 0;">${record.issueDate || ''}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;width:180px;">Họ và tên:</td><td style="padding:7px 0;font-weight:bold;font-size:17px;color:#1a1a1a;">${escapeHtml(record.fullName)}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;">Mã số sinh viên:</td><td style="padding:7px 0;font-weight:bold;">${escapeHtml(record.mssv)}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;">Ngành học:</td><td style="padding:7px 0;font-weight:bold;">${escapeHtml(record.major)}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;">Lớp:</td><td style="padding:7px 0;">${escapeHtml(record.className)}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;">Điểm TB (GPA):</td><td style="padding:7px 0;font-weight:bold;">${escapeHtml(record.gpa)}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;">Xếp loại:</td><td style="padding:7px 0;font-weight:bold;color:#0056b3;font-size:17px;">${escapeHtml(record.grade)}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;">Năm tốt nghiệp:</td><td style="padding:7px 0;font-weight:bold;">${escapeHtml(record.namTotNghiep)}</td></tr>
+            <tr><td style="padding:7px 0;color:#666;">Ngày cấp:</td><td style="padding:7px 0;">${escapeHtml(record.issueDate)}</td></tr>
           </table>
         </div>
 
@@ -62,9 +78,9 @@ export async function generateCertPDF(record: any, verifyUrl: string) {
           <img src="${qrDataUrl}" style="width:160px;height:160px;border:2px solid #0056b3;padding:4px;" />
           <div style="font-size:11px;color:#666;text-align:center;margin-top:8px;">Quét QR để xác thực<br/>trên Blockchain</div>
           <div style="margin-top:24px;text-align:center;">
-            <div style="font-size:11px;color:#666;margin-bottom:4px;">Đã xác thực bởi:</div>
-            <div style="font-size:11px;color:#0a7a3c;font-weight:bold;">✓ ĐH Thủy Lợi HN</div>
-            <div style="font-size:11px;color:#0a7a3c;font-weight:bold;">✓ Phân hiệu TP.HCM</div>
+            <div style="font-size:11px;color:#666;margin-bottom:4px;">Trạng thái hồ sơ tại thời điểm xuất:</div>
+            <div style="font-size:11px;color:#0056b3;font-weight:bold;">${escapeHtml(record.status)}</div>
+            <div style="font-size:10px;color:#666;margin-top:6px;">Kết luận xác thực chỉ có sau khi đối chiếu trực tiếp với Fabric.</div>
           </div>
         </div>
       </div>
@@ -73,10 +89,10 @@ export async function generateCertPDF(record: any, verifyUrl: string) {
       <div style="position:absolute;bottom:0;left:0;right:0;">
         <div style="background:#e8f0fe;padding:8px 40px;border-top:1px solid #c5d5f5;">
           <span style="font-size:11px;color:#0056b3;font-weight:bold;">BLOCKCHAIN HASH: </span>
-          <span style="font-size:10px;color:#333;font-family:monospace;">${record.certHash || ''}</span>
+          <span style="font-size:10px;color:#333;font-family:monospace;">${escapeHtml(record.certHash)}</span>
         </div>
         <div style="background:#0056b3;padding:6px;text-align:center;">
-          <span style="font-size:10px;color:white;">Hệ thống xác thực văn bằng số – Hyperledger Fabric Blockchain | ${new Date().toLocaleDateString('vi-VN')}</span>
+          <span style="font-size:10px;color:white;">Hệ thống xác thực văn bằng số – Hyperledger Fabric Blockchain | ${new Date().toLocaleDateString("vi-VN")}</span>
         </div>
       </div>
     </div>
@@ -88,33 +104,35 @@ export async function generateCertPDF(record: any, verifyUrl: string) {
     scale: 2,
     useCORS: true,
     allowTaint: true,
-    backgroundColor: '#f8f9ff',
+    backgroundColor: "#f8f9ff",
   });
 
   document.body.removeChild(div);
 
-  const imgData = canvas.toDataURL('image/png');
-  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
-  
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  pdf.addImage(imgData, "PNG", 0, 0, 297, 210);
+
   // Nhúng proof vào metadata PDF để đọc được khi upload
   pdf.setProperties({
-    title: 'Van Bang Tot Nghiep - ' + record.fullName,
-    subject: JSON.stringify({
-      certUUID: record.uuid,
-      certHash: record.certHash,
-      fullName: record.fullName,
-      mssv: record.mssv,
-      major: record.major,
-      gpa: record.gpa,
-      grade: record.grade,
-      issueDate: record.issueDate,
-      soHieu: record.soHieu,
-      soVaoSo: record.soVaoSo,
-      className: record.className,
-      namTotNghiep: record.namTotNghiep,
-    }),
-    author: 'Truong Dai hoc Thuy Loi',
+    title: "Van Bang Tot Nghiep - " + record.fullName,
+    subject: JSON.stringify(
+      record.proof || {
+        certUUID: record.uuid,
+        certHash: record.certHash,
+        fullName: record.fullName,
+        mssv: record.mssv,
+        major: record.major,
+        gpa: record.gpa,
+        grade: record.grade,
+        issueDate: record.issueDate,
+        soHieu: record.soHieu,
+        soVaoSo: record.soVaoSo,
+        className: record.className,
+        namTotNghiep: record.namTotNghiep,
+      },
+    ),
+    author: "Truong Dai hoc Thuy Loi",
     keywords: record.certHash,
   });
   pdf.save(`VanBang_${record.mssv}_${record.soHieu}.pdf`);

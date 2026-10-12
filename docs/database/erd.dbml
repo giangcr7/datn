@@ -1,0 +1,555 @@
+Project DiplomaChain {
+  database_type: 'PostgreSQL'
+  Note: 'Generated from migrated PostgreSQL catalog. Partial unique, CHECK and trigger details: constraints.md'
+}
+
+Enum AnchorStatus {
+  QUEUED
+  SUBMITTED
+  COMMITTED
+  FAILED
+}
+
+Enum Classification {
+  EXCELLENT
+  VERY_GOOD
+  GOOD
+  AVERAGE_GOOD
+  AVERAGE
+}
+
+Enum DegreeType {
+  BACHELOR
+  ENGINEER
+  MASTER
+  DOCTOR
+  OTHER
+}
+
+Enum DiplomaStatus {
+  DRAFT
+  ACTIVE
+  REVOKED
+  SUPERSEDED
+}
+
+Enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+Enum ImportRowStatus {
+  READY
+  NEEDS_REVIEW
+  IMPORTED
+  SKIPPED
+}
+
+Enum ImportStatus {
+  READY
+  REVIEW_REQUIRED
+  COMPLETED
+}
+
+Enum IssueSeverity {
+  ERROR
+  WARNING
+}
+
+Enum OutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+Enum Role {
+  ADMIN
+  UNIVERSITY
+  STUDENT
+  EMPLOYER
+}
+
+Enum WorkflowStatus {
+  DRAFT
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
+Table academic_classes {
+  id uuid [pk]
+  campus_id uuid [not null]
+  code varchar(100) [not null]
+  cohort_code varchar(40)
+  created_at timestamptz(3) [not null]
+  indexes {
+    (campus_id, code) [unique, name: 'academic_classes_campus_id_code_key']
+  }
+}
+
+Table account_memberships {
+  id uuid [pk]
+  account_id uuid [not null]
+  campus_id uuid [not null]
+  role Role [not null]
+  active boolean [not null]
+  created_at timestamptz(3) [not null]
+  indexes {
+    (account_id, campus_id, role) [unique, name: 'account_memberships_account_id_campus_id_role_key']
+    (campus_id, role) [name: 'account_memberships_campus_id_role_idx']
+    (id, account_id) [unique, name: 'memberships_account_key']
+  }
+}
+
+Table accounts {
+  id uuid [pk]
+  email varchar(320) [unique, not null]
+  password_hash varchar(255) [not null]
+  display_name varchar(255) [not null]
+  student_id uuid [unique]
+  active boolean [not null]
+  must_change_password boolean [not null]
+  session_version integer [not null]
+  created_at timestamptz(3) [not null]
+  updated_at timestamptz(3) [not null]
+  indexes {
+    (email) [unique, name: 'accounts_email_key']
+    (student_id) [unique, name: 'accounts_student_id_key']
+  }
+}
+
+Table audit_logs {
+  id uuid [pk]
+  institution_id uuid
+  actor_id uuid
+  actor_email varchar(320) [not null]
+  action varchar(100) [not null]
+  target varchar(255)
+  result varchar(20) [not null]
+  ip varchar(100)
+  user_agent varchar(500)
+  error_message text
+  metadata jsonb
+  created_at timestamptz(3) [not null]
+  indexes {
+    (action, created_at) [name: 'audit_logs_action_created_at_idx']
+    (actor_id, created_at) [name: 'audit_logs_actor_id_created_at_idx']
+    (institution_id, created_at) [name: 'audit_logs_institution_id_created_at_idx']
+  }
+}
+
+Table blockchain_anchors {
+  id uuid [pk]
+  version_id uuid [not null]
+  event_type varchar(60) [not null]
+  status AnchorStatus [not null]
+  channel varchar(100) [not null]
+  chaincode varchar(100) [not null]
+  transaction_id varchar(100) [unique]
+  block_number bigint
+  issuer_msp_id varchar(100)
+  payload_hash char(64) [not null]
+  committed_at timestamptz(3)
+  last_error text
+  created_at timestamptz(3) [not null]
+  indexes {
+    (status, created_at) [name: 'blockchain_anchors_status_created_at_idx']
+    (transaction_id) [unique, name: 'blockchain_anchors_transaction_id_key']
+    (version_id, event_type) [unique, name: 'blockchain_anchors_version_id_event_type_key']
+  }
+}
+
+Table campuses {
+  id uuid [pk]
+  institution_id uuid [not null]
+  code varchar(40) [not null]
+  name varchar(255) [not null]
+  fabric_msp_id varchar(100) [unique]
+  created_at timestamptz(3) [not null]
+  indexes {
+    (fabric_msp_id) [unique, name: 'campuses_fabric_msp_id_key']
+    (institution_id, code) [unique, name: 'campuses_institution_id_code_key']
+    (institution_id) [name: 'campuses_institution_id_idx']
+    (id, institution_id) [unique, name: 'campuses_scope_key']
+  }
+}
+
+Table diploma_events {
+  id uuid [pk]
+  diploma_id uuid [not null]
+  event_type varchar(60) [not null]
+  actor_id uuid
+  reason text
+  metadata jsonb
+  created_at timestamptz(3) [not null]
+  indexes {
+    (diploma_id, created_at) [name: 'diploma_events_diploma_id_created_at_idx']
+  }
+}
+
+Table diploma_versions {
+  id uuid [pk]
+  diploma_id uuid [not null]
+  version integer [not null]
+  schema_version varchar(20) [not null]
+  payload jsonb [not null]
+  payload_hash char(64) [not null]
+  created_by_id uuid
+  created_at timestamptz(3) [not null]
+  indexes {
+    (diploma_id, version) [unique, name: 'diploma_versions_diploma_id_version_key']
+  }
+}
+
+Table diplomas {
+  id uuid [pk]
+  institution_id uuid [not null]
+  campus_id uuid [not null]
+  graduation_id uuid [not null]
+  certificate_no varchar(120) [not null]
+  registry_no varchar(180) [not null]
+  issued_on date
+  status DiplomaStatus [not null]
+  workflow_status WorkflowStatus [not null]
+  current_version integer [not null]
+  requested_by_id uuid
+  approved_by_id uuid
+  requested_at timestamptz(3)
+  approved_at timestamptz(3)
+  supersedes_id uuid [unique]
+  revoked_reason text
+  revoked_at timestamptz(3)
+  created_at timestamptz(3) [not null]
+  updated_at timestamptz(3) [not null]
+  indexes {
+    (campus_id, workflow_status, created_at) [name: 'diplomas_campus_id_workflow_status_created_at_idx']
+    (graduation_id) [name: 'diplomas_graduation_id_idx']
+    (institution_id, certificate_no) [unique, name: 'diplomas_institution_id_certificate_no_key']
+    (institution_id, registry_no) [unique, name: 'diplomas_institution_id_registry_no_key']
+    (supersedes_id) [unique, name: 'diplomas_supersedes_id_key']
+  }
+}
+
+Table enrollments {
+  id uuid [pk]
+  student_id uuid [not null]
+  program_id uuid [not null]
+  campus_id uuid [not null]
+  class_id uuid
+  start_year smallint
+  end_year smallint
+  cohort_code varchar(40)
+  created_at timestamptz(3) [not null]
+  indexes {
+    (student_id, program_id, campus_id, class_id) [unique, name: 'enrollment_identity_key']
+    (campus_id, class_id) [name: 'enrollments_campus_id_class_id_idx']
+    (student_id, program_id) [name: 'enrollments_student_id_program_id_idx']
+  }
+}
+
+Table graduation_decisions {
+  id uuid [pk]
+  institution_id uuid [not null]
+  document_number varchar(120) [not null]
+  decision_year smallint [not null]
+  signed_on date
+  signer_name varchar(255)
+  source_document_id uuid
+  created_at timestamptz(3) [not null]
+  indexes {
+    (id, institution_id) [unique, name: 'decisions_scope_key']
+    (institution_id, document_number, decision_year) [unique, name: 'graduation_decisions_institution_id_document_number_decisio_key']
+  }
+}
+
+Table graduation_records {
+  id uuid [pk]
+  institution_id uuid [not null]
+  student_id uuid [not null]
+  program_id uuid [not null]
+  enrollment_id uuid
+  decision_id uuid
+  source_row_id uuid [unique]
+  graduation_year smallint [not null]
+  gpa decimal(4,2)
+  gpa_scale smallint [not null]
+  classification Classification
+  degree_type DegreeType
+  specialization varchar(255)
+  created_at timestamptz(3) [not null]
+  indexes {
+    (institution_id, graduation_year) [name: 'graduation_records_institution_id_graduation_year_idx']
+    (source_row_id) [unique, name: 'graduation_records_source_row_id_key']
+    (student_id, program_id, graduation_year) [unique, name: 'graduation_records_student_id_program_id_graduation_year_key']
+    (id, institution_id) [unique, name: 'graduations_scope_key']
+  }
+}
+
+Table import_batches {
+  id uuid [pk]
+  institution_id uuid [not null]
+  campus_id uuid [not null]
+  document_id uuid [not null]
+  mapping_version varchar(40) [not null]
+  status ImportStatus [not null]
+  total_rows integer [not null]
+  imported_rows integer [not null]
+  created_by_id uuid [not null]
+  created_at timestamptz(3) [not null]
+  completed_at timestamptz(3)
+  indexes {
+    (document_id, campus_id, mapping_version) [unique, name: 'import_batches_document_id_campus_id_mapping_version_key']
+    (institution_id, created_at) [name: 'import_batches_institution_id_created_at_idx']
+  }
+}
+
+Table import_rows {
+  id uuid [pk]
+  batch_id uuid [not null]
+  sheet_name varchar(100) [not null]
+  row_number integer [not null]
+  raw_data jsonb [not null]
+  normalized_data jsonb [not null]
+  overrides jsonb
+  status ImportRowStatus [not null]
+  reviewed_by_id uuid
+  reviewed_at timestamptz(3)
+  created_at timestamptz(3) [not null]
+  indexes {
+    (batch_id, sheet_name, row_number) [unique, name: 'import_rows_batch_id_sheet_name_row_number_key']
+    (batch_id, status) [name: 'import_rows_batch_id_status_idx']
+  }
+}
+
+Table institutions {
+  id uuid [pk]
+  code varchar(40) [unique, not null]
+  name varchar(255) [not null]
+  created_at timestamptz(3) [not null]
+  indexes {
+    (code) [unique, name: 'institutions_code_key']
+  }
+}
+
+Table integrity_alerts {
+  id uuid [pk]
+  diploma_id uuid [not null]
+  type varchar(60) [not null]
+  database_hash char(64)
+  fabric_hash char(64)
+  resolved_at timestamptz(3)
+  resolved_by_id uuid
+  note text
+  created_at timestamptz(3) [not null]
+  indexes {
+    (diploma_id, type, resolved_at) [name: 'integrity_alerts_diploma_id_type_resolved_at_idx']
+  }
+}
+
+Table legacy_id_maps {
+  id uuid [pk]
+  source varchar(100) [not null]
+  entity varchar(60) [not null]
+  legacy_id varchar(120) [not null]
+  target_id uuid [not null]
+  created_at timestamptz(3) [not null]
+  indexes {
+    (source, entity, legacy_id) [unique, name: 'legacy_id_maps_source_entity_legacy_id_key']
+  }
+}
+
+Table otp_challenges {
+  id uuid [pk]
+  account_id uuid [not null]
+  code_hash char(64) [not null]
+  expires_at timestamptz(3) [not null]
+  consumed_at timestamptz(3)
+  attempts integer [not null]
+  created_at timestamptz(3) [not null]
+  indexes {
+    (account_id, created_at) [name: 'otp_challenges_account_id_created_at_idx']
+    (expires_at) [name: 'otp_challenges_expires_at_idx']
+  }
+}
+
+Table outbox_events {
+  id uuid [pk]
+  version_id uuid [not null]
+  event_type varchar(60) [not null]
+  payload jsonb [not null]
+  status OutboxStatus [not null]
+  attempts integer [not null]
+  available_at timestamptz(3) [not null]
+  locked_until timestamptz(3)
+  lock_token uuid
+  last_error text
+  completed_at timestamptz(3)
+  created_at timestamptz(3) [not null]
+  indexes {
+    (status, available_at, locked_until) [name: 'outbox_events_status_available_at_locked_until_idx']
+    (version_id, event_type) [unique, name: 'outbox_events_version_id_event_type_key']
+  }
+}
+
+Table program_aliases {
+  id uuid [pk]
+  institution_id uuid [not null]
+  program_id uuid [not null]
+  normalized_name varchar(255) [not null]
+  original_name varchar(255) [not null]
+  approved_by_id uuid
+  created_at timestamptz(3) [not null]
+  indexes {
+    (institution_id, normalized_name) [unique, name: 'program_aliases_institution_id_normalized_name_key']
+  }
+}
+
+Table programs {
+  id uuid [pk]
+  institution_id uuid [not null]
+  code varchar(80) [not null]
+  name varchar(255) [not null]
+  national_code varchar(30)
+  active boolean [not null]
+  created_at timestamptz(3) [not null]
+  indexes {
+    (institution_id, code) [unique, name: 'programs_institution_id_code_key']
+    (institution_id, name) [unique, name: 'programs_institution_id_name_key']
+    (id, institution_id) [unique, name: 'programs_scope_key']
+  }
+}
+
+Table refresh_sessions {
+  id uuid [pk]
+  account_id uuid [not null]
+  membership_id uuid [not null]
+  family_id uuid [not null]
+  token_hash char(64) [unique, not null]
+  expires_at timestamptz(3) [not null]
+  revoked_at timestamptz(3)
+  replaced_by_id uuid [unique]
+  ip varchar(100)
+  user_agent varchar(500)
+  created_at timestamptz(3) [not null]
+  indexes {
+    (account_id, family_id) [name: 'refresh_sessions_account_id_family_id_idx']
+    (expires_at) [name: 'refresh_sessions_expires_at_idx']
+    (replaced_by_id) [unique, name: 'refresh_sessions_replaced_by_id_key']
+    (token_hash) [unique, name: 'refresh_sessions_token_hash_key']
+  }
+}
+
+Table source_documents {
+  id uuid [pk]
+  institution_id uuid [not null]
+  file_name varchar(255) [not null]
+  sha256 char(64) [not null]
+  byte_size integer [not null]
+  media_type varchar(100) [not null]
+  storage_key varchar(500) [not null]
+  uploaded_by_id uuid
+  created_at timestamptz(3) [not null]
+  indexes {
+    (institution_id, sha256) [unique, name: 'source_documents_institution_id_sha256_key']
+    (id, institution_id) [unique, name: 'source_documents_scope_key']
+  }
+}
+
+Table students {
+  id uuid [pk]
+  institution_id uuid [not null]
+  student_code varchar(40) [not null]
+  full_name varchar(255) [not null]
+  date_of_birth date
+  birth_place varchar(255)
+  gender Gender
+  ethnicity varchar(80)
+  nationality varchar(100)
+  contact_email varchar(320)
+  phone varchar(30)
+  created_at timestamptz(3) [not null]
+  updated_at timestamptz(3) [not null]
+  indexes {
+    (institution_id, full_name) [name: 'students_institution_id_full_name_idx']
+    (institution_id, student_code) [unique, name: 'students_institution_id_student_code_key']
+    (id, institution_id) [unique, name: 'students_scope_key']
+  }
+}
+
+Table validation_issues {
+  id uuid [pk]
+  row_id uuid [not null]
+  field varchar(80) [not null]
+  code varchar(80) [not null]
+  severity IssueSeverity [not null]
+  message text [not null]
+  resolved_at timestamptz(3)
+  created_at timestamptz(3) [not null]
+  indexes {
+    (row_id, severity, resolved_at) [name: 'validation_issues_row_id_severity_resolved_at_idx']
+  }
+}
+
+Ref academic_classes_campus_id_fkey: academic_classes.campus_id > campuses.id
+Ref account_memberships_account_id_fkey: account_memberships.account_id > accounts.id
+Ref account_memberships_campus_id_fkey: account_memberships.campus_id > campuses.id
+Ref accounts_student_id_fkey: accounts.student_id - students.id
+Ref audit_logs_actor_id_fkey: audit_logs.actor_id > accounts.id
+Ref audit_logs_institution_id_fkey: audit_logs.institution_id > institutions.id
+Ref blockchain_anchors_version_id_fkey: blockchain_anchors.version_id > diploma_versions.id
+Ref campuses_institution_id_fkey: campuses.institution_id > institutions.id
+Ref diploma_events_actor_id_fkey: diploma_events.actor_id > accounts.id
+Ref diploma_events_diploma_id_fkey: diploma_events.diploma_id > diplomas.id
+Ref diploma_versions_created_by_id_fkey: diploma_versions.created_by_id > accounts.id
+Ref diploma_versions_diploma_id_fkey: diploma_versions.diploma_id > diplomas.id
+Ref diploma_campus_scope: diplomas.(campus_id, institution_id) > campuses.(id, institution_id)
+Ref diploma_graduation_scope: diplomas.(graduation_id, institution_id) > graduation_records.(id, institution_id)
+Ref diplomas_approved_by_id_fkey: diplomas.approved_by_id > accounts.id
+Ref diplomas_campus_id_fkey: diplomas.campus_id > campuses.id
+Ref diplomas_graduation_id_fkey: diplomas.graduation_id > graduation_records.id
+Ref diplomas_institution_id_fkey: diplomas.institution_id > institutions.id
+Ref diplomas_requested_by_id_fkey: diplomas.requested_by_id > accounts.id
+Ref diplomas_supersedes_id_fkey: diplomas.supersedes_id - diplomas.id
+Ref enrollments_campus_id_fkey: enrollments.campus_id > campuses.id
+Ref enrollments_class_id_fkey: enrollments.class_id > academic_classes.id
+Ref enrollments_program_id_fkey: enrollments.program_id > programs.id
+Ref enrollments_student_id_fkey: enrollments.student_id > students.id
+Ref decision_document_scope: graduation_decisions.(source_document_id, institution_id) > source_documents.(id, institution_id)
+Ref graduation_decisions_institution_id_fkey: graduation_decisions.institution_id > institutions.id
+Ref graduation_decisions_source_document_id_fkey: graduation_decisions.source_document_id > source_documents.id
+Ref graduation_decision_scope: graduation_records.(decision_id, institution_id) > graduation_decisions.(id, institution_id)
+Ref graduation_program_scope: graduation_records.(program_id, institution_id) > programs.(id, institution_id)
+Ref graduation_records_decision_id_fkey: graduation_records.decision_id > graduation_decisions.id
+Ref graduation_records_enrollment_id_fkey: graduation_records.enrollment_id > enrollments.id
+Ref graduation_records_institution_id_fkey: graduation_records.institution_id > institutions.id
+Ref graduation_records_program_id_fkey: graduation_records.program_id > programs.id
+Ref graduation_records_source_row_id_fkey: graduation_records.source_row_id - import_rows.id
+Ref graduation_records_student_id_fkey: graduation_records.student_id > students.id
+Ref graduation_student_scope: graduation_records.(student_id, institution_id) > students.(id, institution_id)
+Ref import_batches_campus_id_fkey: import_batches.campus_id > campuses.id
+Ref import_batches_created_by_id_fkey: import_batches.created_by_id > accounts.id
+Ref import_batches_document_id_fkey: import_batches.document_id > source_documents.id
+Ref import_batches_institution_id_fkey: import_batches.institution_id > institutions.id
+Ref import_campus_scope: import_batches.(campus_id, institution_id) > campuses.(id, institution_id)
+Ref import_document_scope: import_batches.(document_id, institution_id) > source_documents.(id, institution_id)
+Ref import_rows_batch_id_fkey: import_rows.batch_id > import_batches.id
+Ref import_rows_reviewed_by_id_fkey: import_rows.reviewed_by_id > accounts.id
+Ref integrity_alerts_diploma_id_fkey: integrity_alerts.diploma_id > diplomas.id
+Ref integrity_alerts_resolved_by_id_fkey: integrity_alerts.resolved_by_id > accounts.id
+Ref otp_challenges_account_id_fkey: otp_challenges.account_id > accounts.id
+Ref outbox_events_version_id_fkey: outbox_events.version_id > diploma_versions.id
+Ref aliases_program_scope: program_aliases.(program_id, institution_id) > programs.(id, institution_id)
+Ref program_aliases_approved_by_id_fkey: program_aliases.approved_by_id > accounts.id
+Ref program_aliases_institution_id_fkey: program_aliases.institution_id > institutions.id
+Ref program_aliases_program_id_fkey: program_aliases.program_id > programs.id
+Ref programs_institution_id_fkey: programs.institution_id > institutions.id
+Ref refresh_membership_account: refresh_sessions.(membership_id, account_id) > account_memberships.(id, account_id)
+Ref refresh_sessions_account_id_fkey: refresh_sessions.account_id > accounts.id
+Ref refresh_sessions_membership_id_fkey: refresh_sessions.membership_id > account_memberships.id
+Ref refresh_sessions_replaced_by_id_fkey: refresh_sessions.replaced_by_id - refresh_sessions.id
+Ref source_documents_institution_id_fkey: source_documents.institution_id > institutions.id
+Ref source_documents_uploaded_by_id_fkey: source_documents.uploaded_by_id > accounts.id
+Ref students_institution_id_fkey: students.institution_id > institutions.id
+Ref validation_issues_row_id_fkey: validation_issues.row_id > import_rows.id

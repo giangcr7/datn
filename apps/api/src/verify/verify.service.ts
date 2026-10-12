@@ -1,135 +1,170 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import * as crypto from 'crypto';
-import { FabricService } from '../fabric/fabric.service';
 import {
-  Certificate,
-  CertificateDocument,
-} from '../mongo/schemas/certificate.schema';
-
-const GRADE_MAP: Record<string, string> = {
-  xuatsac: 'Xuất sắc',
-  gioi: 'Giỏi',
-  kha: 'Khá',
-  trungbinhkha: 'Trung bình khá',
-  trungbinh: 'Trung bình',
-};
-
-function normalizeGrade(raw: string): string {
-  const norm = String(raw || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/\s+/g, '');
-  return GRADE_MAP[norm] || raw;
-}
-
-function normalizeGpa(raw: any): string {
-  const n = Number(String(raw ?? '').trim());
-  return !isNaN(n) && n >= 0 && n <= 4 ? n.toFixed(2) : '2.00';
-}
-
-function computeHash(data: any): string {
-  const raw = [
-    data.uuid,
-    data.mssv || 'KĐ',
-    data.fullName || 'Ẩn danh',
-    data.major || 'Không xác định',
-    normalizeGpa(data.gpa),
-    normalizeGrade(data.grade || ''),
-    data.issueDate || '',
-    data.soHieu || '',
-    data.soVaoSo || '',
-    data.className || '',
-    String(data.namTotNghiep || ''),
-  ].join('|');
-  return crypto.createHash('sha256').update(raw).digest('hex');
-}
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import { FabricService } from '../fabric/fabric.service';
+import { DatabaseService } from '../database/database.service';
+import {
+  diplomaInclude,
+  diplomaProjection,
+} from '../database/diploma-projection';
+import {
+  HASH_SCHEMA_VERSION,
+  legacyHash,
+  payloadHash,
+} from '../database/diploma-hash';
 
 @Injectable()
 export class VerifyService {
   constructor(
     private readonly fabric: FabricService,
-    @InjectModel(Certificate.name)
-    private certModel: Model<CertificateDocument>,
+    private readonly database: DatabaseService,
   ) {}
-
   async verify(input: any) {
-    const proof = input.proofString ? JSON.parse(input.proofString) : input;
-    const certUUID = proof.certUUID || proof.uuid;
-    if (!certUUID) throw new Error('Thiếu certUUID');
-
-    const isUUIDOnly = !proof.fullName && !proof.certHash;
-
-    // 1. Query Blockchain
-    const onChainRaw = await this.fabric.execute(
-      'evaluate',
-      'QueryCertificate',
-      certUUID,
-    );
-    const onChain =
-      typeof onChainRaw.result === 'string'
-        ? JSON.parse(onChainRaw.result)
-        : onChainRaw.result;
-
-    if (!onChain?.certHash) throw new Error('Blockchain data không hợp lệ');
-
-    if (onChain.isRevoked) {
+    if (!input || typeof input !== 'object' || Array.isArray(input))
+      throw new BadRequestException('Minh chứng phải là object');
+    let proof: Record<string, any>;
+    try {
+      proof = input.proofString
+        ? JSON.parse(input.proofString)
+        : input.proof || input;
+    } catch {
+      throw new BadRequestException('Minh chứng JSON không hợp lệ');
+    }
+    if (!proof || typeof proof !== 'object' || Array.isArray(proof))
+      throw new BadRequestException('Minh chứng phải là object');
+    let uuid = proof.uuid || proof.certUUID;
+    if (!uuid && /^[0-9a-f]{64}$/i.test(proof.certHash || ''))
+      uuid = (
+        await this.database.diplomaVersion.findFirst({
+          where: { payloadHash: proof.certHash.toLowerCase() },
+          orderBy: { version: 'desc' },
+        })
+      )?.diplomaId;
+    if (
+      typeof uuid !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        uuid,
+      )
+    )
+      throw new BadRequestException('UUID không hợp lệ');
+    const diploma = await this.database.diploma.findUnique({
+      where: { id: uuid },
+      include: diplomaInclude,
+    });
+    if (!diploma) throw new NotFoundException('Không tìm thấy văn bằng');
+    const version = diploma.versions[0];
+    const view = diplomaProjection(diploma);
+    if (diploma.status === 'REVOKED' || diploma.status === 'SUPERSEDED')
       return {
         success: true,
         isValid: false,
-        isRevoked: true,
-        message: `Văn bằng đã bị thu hồi: ${onChain.revokedReason || ''}`,
+        isRevoked: diploma.status === 'REVOKED',
+        verificationStatus: diploma.status,
+        message: 'Văn bằng đã bị thu hồi hoặc thay thế',
         details: {
-          studentName: onChain.studentName,
-          revokedReason: onChain.revokedReason,
+          studentName: view.fullName,
+          revokedReason: diploma.revokedReason,
         },
       };
+    if (
+      !version ||
+      diploma.status !== 'ACTIVE' ||
+      diploma.workflowStatus !== 'APPROVED'
+    )
+      return {
+        success: true,
+        isValid: false,
+        verificationStatus: 'NOT_APPROVED',
+        message: 'Văn bằng chưa được phê duyệt',
+      };
+    const anchor = version.anchors.find((item) => item.eventType === 'ISSUE');
+    if (anchor?.status !== 'COMMITTED')
+      return {
+        success: true,
+        isValid: false,
+        verificationStatus: 'ANCHOR_PENDING',
+        message: 'Chưa có xác nhận commit từ blockchain',
+      };
+    const onlyId = Object.keys(proof).every((key) =>
+      ['uuid', 'certUUID', 'certHash'].includes(key),
+    );
+    const storedPayload = version.payload as Record<string, any>;
+    const databaseHash =
+      version.schemaVersion === HASH_SCHEMA_VERSION
+        ? payloadHash(storedPayload)
+        : legacyHash(storedPayload);
+    const proofHash = onlyId
+      ? proof.certHash || databaseHash
+      : version.schemaVersion === HASH_SCHEMA_VERSION
+        ? payloadHash(proof)
+        : legacyHash({ ...proof, uuid });
+    let chain: any;
+    try {
+      const response = await this.fabric.execute(
+        'evaluate',
+        version.schemaVersion === HASH_SCHEMA_VERSION
+          ? 'QueryDiplomaAnchor'
+          : 'QueryCertificate',
+        uuid,
+        ...(version.schemaVersion === HASH_SCHEMA_VERSION
+          ? [String(version.version)]
+          : []),
+      );
+      chain = response.result;
+      if (
+        !chain ||
+        typeof chain !== 'object' ||
+        typeof (chain.payloadHash || chain.certHash) !== 'string'
+      )
+        throw new Error('Invalid blockchain response');
+    } catch {
+      return {
+        success: true,
+        isValid: false,
+        verificationStatus: 'UNAVAILABLE',
+        message:
+          'Không thể kiểm tra blockchain. Không kết luận văn bằng hợp lệ.',
+      };
     }
-
-    // 2. Query MongoDB
-    const certDB = (await this.certModel
-      .findOne({ uuid: certUUID })
-      .lean()) as any;
-    if (!certDB) throw new Error('Không tìm thấy trong cơ sở dữ liệu');
-
-    // 3. Tính hash 3 chiều
-    const proofHash = computeHash({ uuid: certUUID, ...proof });
-    const dbHash = computeHash(certDB);
-    const onChainHash = onChain.certHash;
-
-    const proofMatchChain = proofHash === onChainHash;
-    const dbMatchChain = dbHash === onChainHash;
-    const isValid = isUUIDOnly ? dbMatchChain : proofMatchChain && dbMatchChain;
-
-    let message = 'Văn bằng hợp lệ!';
-    if (!proofMatchChain && !dbMatchChain)
-      message = 'Cả minh chứng và DB đều bị thay đổi!';
-    else if (!proofMatchChain) message = 'Minh chứng đã bị giả mạo!';
-    else if (!dbMatchChain)
-      message = 'Dữ liệu DB bị thay đổi so với Blockchain!';
-
+    const chainHash = chain.payloadHash || chain.certHash;
+    const databaseMatch =
+      databaseHash === version.payloadHash &&
+      databaseHash === anchor.payloadHash &&
+      databaseHash === chainHash;
+    const proofMatch = proofHash === chainHash;
+    const isRevoked = !!chain.isRevoked;
+    const isValid = databaseMatch && proofMatch && !isRevoked;
     return {
       success: true,
       isValid,
-      message,
+      isRevoked,
+      verificationStatus: isValid
+        ? 'VERIFIED'
+        : isRevoked
+          ? 'REVOKED'
+          : 'HASH_MISMATCH',
+      message: isValid
+        ? 'Văn bằng khớp snapshot đã phê duyệt và blockchain'
+        : isRevoked
+          ? 'Văn bằng đã bị thu hồi trên blockchain'
+          : 'Minh chứng hoặc snapshot không khớp blockchain',
       details: {
-        studentName: certDB.fullName,
-        mssv: certDB.mssv,
-        major: certDB.major,
-        gpa: certDB.gpa,
-        grade: certDB.grade,
-        issueDate: certDB.issueDate,
-        soHieu: certDB.soHieu,
-        namTotNghiep: certDB.namTotNghiep,
-        txId: certDB.txId,
-        onChainHash,
+        studentName: storedPayload.fullName,
+        mssv: storedPayload.mssv,
+        major: storedPayload.major,
+        grade: storedPayload.grade,
+        gpa: storedPayload.gpa,
+        issueDate: storedPayload.issueDate,
+        soHieu: storedPayload.soHieu,
+        namTotNghiep: storedPayload.namTotNghiep,
+        txId: anchor.transactionId,
+        onChainHash: chainHash,
         proofHash,
-        dbHash,
-        proofMatchChain,
-        dbMatchChain,
+        dbHash: databaseHash,
+        proofMatchChain: proofMatch,
+        dbMatchChain: databaseMatch,
       },
     };
   }

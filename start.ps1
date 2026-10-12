@@ -1,47 +1,71 @@
-# Script khoi dong toan bo he thong DiplomaChain tren Windows
-Write-Host "=== KHOI DONG HE THONG VAN BANG BLOCKCHAIN (DIPLOMACHAIN) ===" -ForegroundColor Cyan
+param(
+    [switch]$CheckOnly
+)
 
-# 1. Khoi dong MongoDB Local
-Write-Host ">>> 1. Khoi dong MongoDB Database (Port 27017)..." -ForegroundColor Yellow
-$mongoListening = Get-NetTCPConnection -LocalPort 27017 -State Listen -ErrorAction SilentlyContinue
-if ($null -eq $mongoListening) {
-    $mongoProc = Start-Process -FilePath "node.exe" -ArgumentList "scripts/start-mongo.js" -PassThru -NoNewWindow
-} else {
-    Write-Host ">>> MongoDB da dang chay, bo qua khoi dong lai." -ForegroundColor DarkGray
-    $mongoProc = $null
+$ErrorActionPreference = 'Stop'
+$projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location $projectRoot
+
+Write-Host '=== DIPLOMACHAIN - POSTGRESQL / API / WEB ===' -ForegroundColor Cyan
+
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Khong tim thay Docker CLI.' }
+if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) { throw 'Khong tim thay Node.js/npm.' }
+if (-not (Test-Path '.env.infrastructure')) { throw 'Thieu .env.infrastructure. Hay copy .env.infrastructure.example va dien secret.' }
+if (-not (Test-Path 'apps/api/.env.database')) { throw 'Thieu apps/api/.env.database. Dien DIRECT_DATABASE_URL bang role migrator.' }
+if (-not (Test-Path 'apps/api/.env')) { throw 'Thieu apps/api/.env. Hay copy apps/api/.env.example va dien DATABASE_URL/JWT_SECRET.' }
+
+Write-Host '>>> Kiem tra Docker Engine...' -ForegroundColor Yellow
+docker info *> $null
+if ($LASTEXITCODE -ne 0) { throw 'Docker Engine chua san sang.' }
+
+Write-Host '>>> Khoi dong PostgreSQL...' -ForegroundColor Yellow
+docker compose --env-file .env.infrastructure -f compose.database.yaml up -d --wait
+if ($LASTEXITCODE -ne 0) { throw 'Khong khoi dong duoc PostgreSQL.' }
+
+Write-Host '>>> Generate Prisma, migrate va seed...' -ForegroundColor Yellow
+npm run db:generate -w api
+if ($LASTEXITCODE -ne 0) { throw 'Prisma generate that bai.' }
+npm run db:migrate -w api
+if ($LASTEXITCODE -ne 0) { throw 'Prisma migrate that bai.' }
+npm run db:seed -w api
+if ($LASTEXITCODE -ne 0) { throw 'Prisma seed that bai.' }
+
+if ($CheckOnly) {
+    Write-Host 'Kiem tra database hoan tat; khong khoi dong API/Web.' -ForegroundColor Green
+    exit 0
 }
 
-Start-Sleep -Seconds 3
+$logDirectory = Join-Path $projectRoot '.data\logs'
+New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
+$apiOut = Join-Path $logDirectory 'api.out.log'
+$apiErr = Join-Path $logDirectory 'api.err.log'
+$webOut = Join-Path $logDirectory 'web.out.log'
+$webErr = Join-Path $logDirectory 'web.err.log'
 
-# 2. Khoi dong NestJS Backend
-Write-Host ">>> 2. Khoi dong NestJS API Backend (Port 3001)..." -ForegroundColor Yellow
-$apiProc = Start-Process -FilePath "npm.cmd" -ArgumentList "run start:dev --workspace=api" -PassThru -NoNewWindow
-
+Write-Host '>>> Khoi dong API (log trong .data\logs)...' -ForegroundColor Yellow
+$apiProc = Start-Process -FilePath 'npm.cmd' -ArgumentList @('run', 'start:dev', '-w', 'api') -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr -PassThru
 Start-Sleep -Seconds 4
 
-# 3. Khoi dong Next.js Frontend
-Write-Host ">>> 3. Khoi dong Next.js Frontend (Port 3000)..." -ForegroundColor Yellow
-$webProc = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev --workspace=@diploma-chain/web" -PassThru -NoNewWindow
+Write-Host '>>> Khoi dong Web (log trong .data\logs)...' -ForegroundColor Yellow
+$webProc = Start-Process -FilePath 'npm.cmd' -ArgumentList @('run', 'dev', '-w', '@diploma-chain/web') -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput $webOut -RedirectStandardError $webErr -PassThru
 
-Write-Host ""
-Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "   HE THONG DIPLOMACHAIN DA DUOC KHOI DONG THANH CONG!    " -ForegroundColor Green
-Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "Frontend (Giao dien web) : http://localhost:3000" -ForegroundColor Cyan
-Write-Host "Backend API              : http://localhost:3001" -ForegroundColor Cyan
-Write-Host "Swagger API Docs         : http://localhost:3001/docs" -ForegroundColor Cyan
-Write-Host "MongoDB Server           : mongodb://127.0.0.1:27017/diplomachain" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "--- TAI KHOAN MAU CO SAN DE DANG NHAP ---" -ForegroundColor Yellow
-Write-Host "1. Quan tri vien (Admin)  : admin@example.com      / Admin@123"
-Write-Host "2. Nha truong (University): university@example.com / Univ@123"
-Write-Host "3. Sinh vien (Student)    : student@example.com    / Student@123 (MSSV: 2151060001)"
-Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "Nhan Enter hoac dong cua so nay de dung cac service."
+Write-Host ''
+Write-Host '==========================================================' -ForegroundColor Green
+Write-Host ' PostgreSQL, API va Web da duoc khoi dong.' -ForegroundColor Green
+Write-Host ' Frontend : http://localhost:3000' -ForegroundColor Cyan
+Write-Host ' API      : http://localhost:3001' -ForegroundColor Cyan
+Write-Host ' Swagger  : http://localhost:3001/docs' -ForegroundColor Cyan
+Write-Host ' Fabric   : khong tu dong deploy; chi bat khi da review cutover.' -ForegroundColor Yellow
+Write-Host '==========================================================' -ForegroundColor Green
+Write-Host 'Nhan Enter de dung API/Web.' -ForegroundColor DarkGray
 
-Read-Host
-
-if ($null -ne $mongoProc) { Stop-Process -Id $mongoProc.Id -ErrorAction SilentlyContinue }
-if ($null -ne $apiProc) { Stop-Process -Id $apiProc.Id -ErrorAction SilentlyContinue }
-if ($null -ne $webProc) { Stop-Process -Id $webProc.Id -ErrorAction SilentlyContinue }
-Write-Host "Da dung tat ca cac tien trinh." -ForegroundColor Yellow
+try {
+    Read-Host | Out-Null
+}
+finally {
+    foreach ($process in @($apiProc, $webProc)) {
+        if ($null -ne $process -and -not $process.HasExited) {
+            taskkill.exe /PID $process.Id /T /F *> $null
+        }
+    }
+}

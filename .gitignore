@@ -45,9 +45,18 @@ blockchain-network/bin/
 blockchain-network/organizations/
 blockchain-network/log.txt
 .data/
+apps/api/src/generated/prisma/
+apps/api/.env.database
+.env.infrastructure
+reports/database/validation-output/
 
 # Local document render QA artifacts
 .docx_qa/
+
+# Local source workbooks and Windows shortcuts
+*.xlsx
+*.xls
+*.lnk
 
 # Hyperledger Fabric binaries and generated config downloaded locally
 /bin/

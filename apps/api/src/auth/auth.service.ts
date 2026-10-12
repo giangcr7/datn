@@ -1,58 +1,94 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
-import * as crypto from 'crypto';
-import { User, UserDocument } from '../mongo/schemas/user.schema';
+import { compare, hash } from 'bcryptjs';
 import {
-  RefreshToken,
-  RefreshTokenDocument,
-} from '../mongo/schemas/refresh-token.schema';
+  createHash,
+  createHmac,
+  randomBytes,
+  randomInt,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
+import { DatabaseService } from '../database/database.service';
+import { Prisma, Role } from '../generated/prisma/client';
 import { AuditService, AuditAction } from '../audit/audit.service';
-
-import { Otp, OtpDocument } from '../mongo/schemas/otp.schema';
 import { NotifyService } from '../notify/notify.service';
+import { AuthActor } from './auth-actor';
 
-const REFRESH_TOKEN_TTL_DAYS = 7;
-const REFRESH_TOKEN_BYTES = 40; // entropy cao — token dạng random, không phải JWT
+const accountInclude = {
+  student: true,
+  memberships: {
+    where: { active: true },
+    include: { campus: true },
+    orderBy: { createdAt: 'asc' as const },
+  },
+} satisfies Prisma.AccountInclude;
+type AccountWithMemberships = Prisma.AccountGetPayload<{
+  include: typeof accountInclude;
+}>;
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(RefreshToken.name)
-    private refreshTokenModel: Model<RefreshTokenDocument>,
-    @InjectModel(Otp.name) private otpModel: Model<OtpDocument>,
-    private jwtService: JwtService,
-    private auditService: AuditService,
-    private notifyService: NotifyService,
+    private readonly database: DatabaseService,
+    private readonly jwt: JwtService,
+    private readonly audit: AuditService,
+    private readonly notify: NotifyService,
   ) {}
 
-  private hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
+  private tokenHash(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+  private otpHash(accountId: string, code: string) {
+    return createHmac('sha256', process.env.JWT_SECRET!)
+      .update(accountId + ':' + code)
+      .digest('hex');
   }
 
-  private async issueRefreshToken(
-    userId: string,
+  actor(account: AccountWithMemberships, membershipId: string): AuthActor {
+    const membership = account.memberships.find(
+      (item) => item.id === membershipId,
+    );
+    if (!account.active || !membership)
+      throw new UnauthorizedException(
+        'Tài khoản hoặc quyền truy cập đã bị khóa',
+      );
+    return {
+      id: account.id,
+      email: account.email,
+      name: account.displayName,
+      role: membership.role.toLowerCase() as AuthActor['role'],
+      membershipId: membership.id,
+      institutionId: membership.campus.institutionId,
+      campusId: membership.campusId,
+      org: membership.campus.code,
+      studentId: account.studentId,
+      mssv: account.student?.studentCode || null,
+      mustChangePassword: account.mustChangePassword,
+      sessionVersion: account.sessionVersion,
+    };
+  }
+
+  private newSession(
+    accountId: string,
+    membershipId: string,
+    familyId: string = randomUUID(),
     ip?: string,
     userAgent?: string,
-  ): Promise<string> {
-    const token = crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
-    const expiresAt = new Date(
-      Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
-    );
-
-    await this.refreshTokenModel.create({
-      userId,
-      tokenHash: this.hashToken(token),
-      expiresAt,
-      isRevoked: false,
-      ip,
-      userAgent,
-    });
-
-    return token; // trả plaintext cho client — chỉ lần này thôi, DB chỉ giữ hash
+  ) {
+    const token = randomBytes(40).toString('hex');
+    return {
+      token,
+      data: {
+        accountId,
+        membershipId,
+        familyId: familyId as any,
+        tokenHash: this.tokenHash(token),
+        expiresAt: new Date(Date.now() + 7 * 86400000),
+        ip,
+        userAgent: userAgent?.slice(0, 500),
+      },
+    };
   }
 
   async login(
@@ -62,251 +98,233 @@ export class AuthService {
     ip?: string,
     userAgent?: string,
   ) {
-    const user = await this.userModel.findOne({ email }).lean();
-
-    if (!user) {
-      await this.auditService.log({
-        userId: 'unknown',
+    const account = await this.database.account.findUnique({
+      where: { email: email.trim().toLowerCase() },
+      include: accountInclude,
+    });
+    const membership = account?.memberships.find(
+      (item) => item.role === role.toUpperCase(),
+    );
+    if (
+      !account ||
+      !account.active ||
+      !membership ||
+      !(await compare(password, account.passwordHash))
+    ) {
+      await this.audit.log({
+        userId: account?.id,
         userEmail: email,
         action: AuditAction.LOGIN,
         result: 'FAILED',
-        errorMessage: 'Tài khoản không tồn tại',
         ip,
       });
-      throw new UnauthorizedException('Tài khoản không tồn tại!');
+      throw new UnauthorizedException(
+        'Email, mật khẩu hoặc cổng đăng nhập không hợp lệ',
+      );
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      await this.auditService.log({
-        userId: user._id.toString(),
-        userEmail: email,
-        action: AuditAction.LOGIN,
-        result: 'FAILED',
-        errorMessage: 'Mật khẩu không chính xác',
-        ip,
-      });
-      throw new UnauthorizedException('Mật khẩu không chính xác!');
-    }
-
-    if (user.role.toUpperCase() !== role.toUpperCase()) {
-      await this.auditService.log({
-        userId: user._id.toString(),
-        userEmail: email,
-        action: AuditAction.LOGIN,
-        result: 'FAILED',
-        errorMessage: 'Sai cổng đăng nhập',
-        ip,
-      });
-      throw new UnauthorizedException('Sai cổng đăng nhập!');
-    }
-
-    const payload = {
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      mssv: user.mssv || user.fabricEnrollmentId,
-      mustChangePassword: user.mustChangePassword || false,
-    };
-
-    await this.auditService.log({
-      userId: user._id.toString(),
-      userEmail: email,
+    const user = this.actor(account, membership.id);
+    const session = this.newSession(
+      account.id,
+      membership.id,
+      undefined,
+      ip,
+      userAgent,
+    );
+    await this.database.refreshSession.create({ data: session.data });
+    await this.audit.log({
+      userId: account.id,
+      userEmail: account.email,
       action: AuditAction.LOGIN,
-      result: 'SUCCESS',
       ip,
     });
-
-    const refreshToken = await this.issueRefreshToken(
-      user._id.toString(),
-      ip,
-      userAgent,
-    );
-
     return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: refreshToken,
-      user: payload,
+      access_token: this.jwt.sign(user),
+      refresh_token: session.token,
+      user,
     };
   }
 
-  /**
-   * Cấp access token mới từ refresh token hợp lệ.
-   * Áp dụng rotation: token cũ bị thu hồi ngay, cấp token mới thay thế.
-   * Nếu phát hiện dùng lại token đã bị thu hồi (reuse) → nghi ngờ bị đánh cắp,
-   * thu hồi TOÀN BỘ refresh token của user để buộc đăng nhập lại mọi nơi.
-   */
-  async refreshAccessToken(
-    refreshToken: string,
-    ip?: string,
-    userAgent?: string,
-  ) {
-    const tokenHash = this.hashToken(refreshToken);
-    const stored = await this.refreshTokenModel.findOne({ tokenHash });
-
-    if (!stored) {
-      throw new UnauthorizedException('Refresh token không hợp lệ');
-    }
-
-    if (stored.isRevoked) {
-      // Reuse detection: token này đã bị thu hồi (đã dùng rotation trước đó)
-      // mà vẫn có người dùng lại → khả năng bị đánh cắp.
-      await this.refreshTokenModel.updateMany(
-        { userId: stored.userId, isRevoked: false },
-        { isRevoked: true },
+  async validateActor(payload: AuthActor) {
+    if (!payload.id || !payload.membershipId)
+      throw new UnauthorizedException(
+        'Phiên cũ đã hết hiệu lực; vui lòng đăng nhập lại',
       );
-      await this.auditService.log({
-        userId: stored.userId,
-        userEmail: '',
-        action: AuditAction.LOGIN,
-        result: 'FAILED',
-        errorMessage:
-          'Phát hiện refresh token reuse — đã thu hồi toàn bộ session',
-        ip,
+    const account = await this.database.account.findUnique({
+      where: { id: payload.id },
+      include: accountInclude,
+    });
+    if (!account || account.sessionVersion !== payload.sessionVersion)
+      throw new UnauthorizedException('Phiên đăng nhập đã bị thu hồi');
+    return this.actor(account, payload.membershipId);
+  }
+
+  async refreshAccessToken(token: string, ip?: string, userAgent?: string) {
+    const outcome = await this.database.$transaction(async (transaction) => {
+      const stored = await transaction.refreshSession.findUnique({
+        where: { tokenHash: this.tokenHash(token) },
       });
-      throw new UnauthorizedException(
-        'Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại',
+      if (!stored) return null;
+      await transaction.$queryRaw`SELECT id FROM accounts WHERE id = ${stored.accountId}::uuid FOR UPDATE`;
+      const current = await transaction.refreshSession.findUniqueOrThrow({
+        where: { id: stored.id },
+      });
+      if (current.revokedAt) {
+        await transaction.refreshSession.updateMany({
+          where: {
+            accountId: current.accountId,
+            familyId: current.familyId,
+            revokedAt: null,
+          },
+          data: { revokedAt: new Date() },
+        });
+        await transaction.account.update({
+          where: { id: current.accountId },
+          data: { sessionVersion: { increment: 1 } },
+        });
+        return null;
+      }
+      if (current.expiresAt <= new Date()) return null;
+      const account = await transaction.account.findUniqueOrThrow({
+        where: { id: current.accountId },
+        include: accountInclude,
+      });
+      const user = this.actor(account, current.membershipId);
+      const session = this.newSession(
+        current.accountId,
+        current.membershipId,
+        current.familyId,
+        ip,
+        userAgent,
       );
-    }
-
-    if (stored.expiresAt.getTime() < Date.now()) {
+      const next = await transaction.refreshSession.create({
+        data: session.data,
+      });
+      await transaction.refreshSession.update({
+        where: { id: current.id },
+        data: { revokedAt: new Date(), replacedById: next.id },
+      });
+      return {
+        access_token: this.jwt.sign(user),
+        refresh_token: session.token,
+        user,
+      };
+    });
+    if (!outcome)
       throw new UnauthorizedException(
-        'Refresh token đã hết hạn, vui lòng đăng nhập lại',
+        'Refresh token hết hạn, bị thu hồi hoặc đã dùng lại',
       );
-    }
-
-    const user = await this.userModel.findById(stored.userId).lean();
-    if (!user) {
-      throw new UnauthorizedException('Không tìm thấy người dùng');
-    }
-
-    // Rotation: thu hồi token cũ, cấp token mới
-    const newRefreshToken = await this.issueRefreshToken(
-      stored.userId,
-      ip,
-      userAgent,
-    );
-    stored.isRevoked = true;
-    stored.replacedByTokenHash = this.hashToken(newRefreshToken);
-    await stored.save();
-
-    const payload = {
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      mssv: user.mssv || user.fabricEnrollmentId,
-      mustChangePassword: user.mustChangePassword || false,
-    };
-
-    return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: newRefreshToken,
-    };
+    return outcome;
   }
 
-  /**
-   * Logout — thu hồi 1 refresh token cụ thể (đăng xuất thiết bị hiện tại).
-   */
-  async logout(refreshToken: string) {
-    const tokenHash = this.hashToken(refreshToken);
-    await this.refreshTokenModel.updateOne({ tokenHash }, { isRevoked: true });
-    return { success: true, message: 'Đăng xuất thành công' };
+  async logout(token: string) {
+    await this.database.refreshSession.updateMany({
+      where: { tokenHash: this.tokenHash(token), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { success: true };
   }
 
-  /**
-   * Đăng xuất khỏi TẤT CẢ thiết bị — thu hồi toàn bộ refresh token của user.
-   * Hữu ích khi user đổi mật khẩu, hoặc nghi ngờ tài khoản bị chiếm.
-   */
-  async logoutAllDevices(userId: string) {
-    await this.refreshTokenModel.updateMany(
-      { userId, isRevoked: false },
-      { isRevoked: true },
-    );
-    return { success: true, message: 'Đã đăng xuất khỏi tất cả thiết bị' };
+  async logoutAllDevices(accountId: string) {
+    await this.database.$transaction([
+      this.database.refreshSession.updateMany({
+        where: { accountId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      this.database.account.update({
+        where: { id: accountId },
+        data: { sessionVersion: { increment: 1 } },
+      }),
+    ]);
+    return { success: true };
   }
 
   async changePassword(
-    userId: string,
+    accountId: string,
     oldPassword: string,
     newPassword: string,
     ip?: string,
   ) {
-    const user = await this.userModel.findById(userId);
-    if (!user) throw new UnauthorizedException('Không tìm thấy người dùng');
-
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      await this.auditService.log({
-        userId,
-        userEmail: user.email,
-        action: AuditAction.CHANGE_PASSWORD,
-        result: 'FAILED',
-        errorMessage: 'Mật khẩu cũ không đúng',
-        ip,
-      });
+    const account = await this.database.account.findUnique({
+      where: { id: accountId },
+    });
+    if (!account || !(await compare(oldPassword, account.passwordHash)))
       throw new UnauthorizedException('Mật khẩu cũ không đúng');
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.mustChangePassword = false;
-    await user.save();
-
-    // Đổi mật khẩu xong → thu hồi toàn bộ session cũ, bắt đăng nhập lại
-    // bằng mật khẩu mới trên mọi thiết bị (chuẩn bảo mật).
-    await this.logoutAllDevices(userId);
-
-    await this.auditService.log({
-      userId,
-      userEmail: user.email,
+    const passwordHash = await hash(newPassword, 12);
+    await this.database.$transaction([
+      this.database.account.update({
+        where: { id: accountId },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+          sessionVersion: { increment: 1 },
+        },
+      }),
+      this.database.refreshSession.updateMany({
+        where: { accountId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+    await this.audit.log({
+      userId: accountId,
+      userEmail: account.email,
       action: AuditAction.CHANGE_PASSWORD,
-      result: 'SUCCESS',
       ip,
     });
+    return {
+      success: true,
+      message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.',
+    };
+  }
 
-    return { success: true, message: 'Đổi mật khẩu thành công' };
+  private async activationAccount(mssv: string, email: string) {
+    const account = await this.database.account.findUnique({
+      where: { email: email.trim().toLowerCase() },
+      include: accountInclude,
+    });
+    if (
+      !account ||
+      !account.active ||
+      account.student?.studentCode !== mssv ||
+      !account.memberships.some((item) => item.role === Role.STUDENT) ||
+      !account.mustChangePassword
+    )
+      throw new UnauthorizedException('Thông tin kích hoạt không hợp lệ');
+    return account;
   }
 
   async sendOtp(mssv: string, email: string) {
-    const student = await this.userModel.findOne({
-      $or: [{ mssv }, { fabricEnrollmentId: mssv }],
-      email,
-      role: { $regex: new RegExp('^student$', 'i') },
+    const account = await this.activationAccount(mssv, email);
+    const code = randomInt(100000, 1000000).toString();
+    const challenge = await this.database.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM accounts WHERE id = ${account.id}::uuid FOR UPDATE`;
+      await transaction.otpChallenge.updateMany({
+        where: { accountId: account.id, consumedAt: null },
+        data: { consumedAt: new Date() },
+      });
+      return transaction.otpChallenge.create({
+        data: {
+          accountId: account.id,
+          codeHash: this.otpHash(account.id, code),
+          expiresAt: new Date(Date.now() + 5 * 60000),
+        },
+      });
     });
-
-    if (!student) {
-      throw new UnauthorizedException(
-        'MSSV hoặc Email không tồn tại trong danh sách sinh viên trường!',
+    try {
+      await this.notify.sendActivationOtp(
+        account.email,
+        account.displayName,
+        code,
       );
+    } catch (error) {
+      await this.database.otpChallenge.update({
+        where: { id: challenge.id },
+        data: { consumedAt: new Date() },
+      });
+      throw error;
     }
-
-    // Sinh mã ngẫu nhiên 6 số bảo mật
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
-
-    // Xóa OTP cũ nếu có
-    await this.otpModel.deleteMany({ email, mssv });
-
-    // Lưu OTP mới
-    await this.otpModel.create({
-      email,
-      mssv,
-      otp,
-      expiresAt,
-    });
-
-    // In ra console log để dev / kiểm thử dễ dàng
-    console.log(
-      `[AUTH-OTP] Mã kích hoạt cho SV ${student.name} (${mssv} - ${email}): >>> ${otp} <<< (Hạn 5 phút)`,
-    );
-
-    // Gửi email
-    await this.notifyService.sendActivationOtp(email, student.name, otp);
-
     return {
       success: true,
-      message: `Mã OTP đã được gửi tới email ${email}. Vui lòng kiểm tra hộp thư!`,
+      message: 'Mã kích hoạt đã được gửi tới email đã đăng ký',
     };
   }
 
@@ -317,74 +335,93 @@ export class AuthService {
     otp: string,
     ip?: string,
   ) {
-    const existing = await this.userModel.findOne({
-      $or: [{ mssv }, { fabricEnrollmentId: mssv }],
-      email,
-      role: { $regex: new RegExp('^student$', 'i') },
-    });
-
-    if (!existing)
-      throw new UnauthorizedException(
-        'MSSV hoặc Email không tồn tại trong hệ thống!',
-      );
-
-    // Xác thực mã OTP
-    const validOtp = await this.otpModel.findOne({
-      email,
-      mssv,
-      otp: otp.trim(),
-      expiresAt: { $gt: new Date() },
-    });
-
-    if (!validOtp) {
-      await this.auditService.log({
-        userId: existing._id.toString(),
-        userEmail: email,
-        action: AuditAction.REGISTER,
-        result: 'FAILED',
-        errorMessage: 'Mã OTP không chính xác hoặc đã hết hạn',
-        target: mssv,
-        ip,
+    const account = await this.activationAccount(mssv, email);
+    const passwordHash = await hash(password, 12);
+    const accepted = await this.database.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM accounts WHERE id = ${account.id}::uuid FOR UPDATE`;
+      const current = await transaction.account.findUniqueOrThrow({
+        where: { id: account.id },
       });
-      throw new UnauthorizedException(
-        'Mã OTP không chính xác hoặc đã hết hạn!',
+      if (!current.mustChangePassword) return false;
+      const challenge = await transaction.otpChallenge.findFirst({
+        where: {
+          accountId: account.id,
+          consumedAt: null,
+          expiresAt: { gt: new Date() },
+          attempts: { lt: 5 },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!challenge) return false;
+      const matched = timingSafeEqual(
+        Buffer.from(challenge.codeHash, 'hex'),
+        Buffer.from(this.otpHash(account.id, otp.trim()), 'hex'),
       );
-    }
-
-    // Xóa mã OTP sau khi dùng thành công (ngăn chặn replay attack)
-    await this.otpModel.deleteMany({ email, mssv });
-
-    const hashed = await bcrypt.hash(password, 10);
-    existing.password = hashed;
-    existing.mustChangePassword = false;
-    await existing.save();
-
-    await this.auditService.log({
-      userId: existing._id.toString(),
-      userEmail: email,
+      await transaction.otpChallenge.update({
+        where: { id: challenge.id },
+        data: {
+          attempts: { increment: 1 },
+          ...(matched ? { consumedAt: new Date() } : {}),
+        },
+      });
+      if (!matched) return false;
+      await transaction.account.update({
+        where: { id: account.id },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+          sessionVersion: { increment: 1 },
+        },
+      });
+      await transaction.refreshSession.updateMany({
+        where: { accountId: account.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return true;
+    });
+    if (!accepted)
+      throw new UnauthorizedException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    await this.audit.log({
+      userId: account.id,
+      userEmail: account.email,
       action: AuditAction.REGISTER,
-      result: 'SUCCESS',
-      target: mssv,
       ip,
     });
+    return { success: true, message: 'Kích hoạt tài khoản thành công' };
+  }
 
+  async getProfile(accountId: string) {
+    const account = await this.database.account.findUniqueOrThrow({
+      where: { id: accountId },
+      include: accountInclude,
+    });
     return {
-      success: true,
-      message: 'Kích hoạt tài khoản thành công! Vui lòng đăng nhập.',
+      id: account.id,
+      _id: account.id,
+      email: account.email,
+      name: account.displayName,
+      mssv: account.student?.studentCode,
+      mustChangePassword: account.mustChangePassword,
+      memberships: account.memberships.map((membership) => ({
+        id: membership.id,
+        role: membership.role.toLowerCase(),
+        campus: membership.campus.name,
+      })),
     };
   }
 
-  async getProfile(userId: string) {
-    const user = await this.userModel
-      .findById(userId)
-      .select('-password')
-      .lean();
-    if (!user) throw new UnauthorizedException('Không tìm thấy người dùng');
-    return user;
-  }
-
   async findAllUsers() {
-    const users = await this.userModel.find({}).sort({ createdAt: -1 }).lean();
-    return users;
+    return this.database.account.findMany({
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        active: true,
+        createdAt: true,
+        memberships: { select: { role: true, campusId: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
   }
 }

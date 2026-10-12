@@ -5,7 +5,6 @@ import {
   Returns,
   Transaction,
 } from "fabric-contract-api";
-import * as crypto from "crypto";
 
 @Info({
   title: "CertContract",
@@ -13,6 +12,139 @@ import * as crypto from "crypto";
     "Smart contract cho hệ thống cấp phát văn bằng TLU - Đã bổ sung MSSV",
 })
 export class CertContract extends Contract {
+  private anchorKey(ctx: Context, uuid: string, version: string) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        uuid,
+      ) ||
+      !/^[1-9]\d*$/.test(version)
+    )
+      throw new Error("Invalid diploma identifier");
+    return ctx.stub.createCompositeKey("diploma-anchor", [uuid, version]);
+  }
+
+  private authorizeAnchor(ctx: Context, issuerMspId: string) {
+    if (
+      !["Org1MSP", "Org2MSP"].includes(issuerMspId) ||
+      ctx.clientIdentity.getMSPID() !== issuerMspId
+    )
+      throw new Error("Issuer MSP mismatch");
+    if (!ctx.clientIdentity.assertAttributeValue("diploma.issuer", "true"))
+      throw new Error("Identity is not an authorized diploma issuer");
+  }
+
+  @Transaction()
+  @Returns("string")
+  public async AnchorDiploma(
+    ctx: Context,
+    uuid: string,
+    version: string,
+    schemaVersion: string,
+    payloadHash: string,
+    issuerMspId: string,
+  ): Promise<string> {
+    this.authorizeAnchor(ctx, issuerMspId);
+    if (schemaVersion !== "diploma-v1" || !/^[0-9a-f]{64}$/.test(payloadHash))
+      throw new Error("Invalid anchor hash or schema version");
+    const key = this.anchorKey(ctx, uuid, version);
+    const bytes = await ctx.stub.getState(key);
+    if (bytes?.length) {
+      const existing = JSON.parse(Buffer.from(bytes).toString());
+      if (
+        existing.payloadHash !== payloadHash ||
+        existing.issuerMspId !== issuerMspId
+      )
+        throw new Error("Anchor conflict");
+      return JSON.stringify({
+        success: true,
+        txId: existing.issueTxId,
+        hash: existing.payloadHash,
+        idempotent: true,
+      });
+    }
+    const timestamp = ctx.stub.getTxTimestamp();
+    const record = {
+      docType: "diploma-anchor",
+      uuid,
+      version: Number(version),
+      schemaVersion,
+      payloadHash,
+      issuerMspId,
+      issueTxId: ctx.stub.getTxID(),
+      issuedAt: new Date(
+        Number(timestamp.seconds.toString()) * 1000 +
+          Math.floor(timestamp.nanos / 1000000),
+      ).toISOString(),
+      isRevoked: false,
+    };
+    await ctx.stub.putState(key, Buffer.from(JSON.stringify(record)));
+    ctx.stub.setEvent(
+      "DiplomaAnchored",
+      Buffer.from(
+        JSON.stringify({ uuid, version: Number(version), payloadHash }),
+      ),
+    );
+    return JSON.stringify({
+      success: true,
+      txId: ctx.stub.getTxID(),
+      hash: payloadHash,
+    });
+  }
+
+  @Transaction()
+  @Returns("string")
+  public async RevokeDiplomaAnchor(
+    ctx: Context,
+    uuid: string,
+    version: string,
+    reasonHash: string,
+  ): Promise<string> {
+    if (!/^[0-9a-f]{64}$/.test(reasonHash))
+      throw new Error("Invalid reason hash");
+    const key = this.anchorKey(ctx, uuid, version);
+    const bytes = await ctx.stub.getState(key);
+    if (!bytes?.length) throw new Error("Anchor not found");
+    const record = JSON.parse(Buffer.from(bytes).toString());
+    this.authorizeAnchor(ctx, record.issuerMspId);
+    if (record.isRevoked) {
+      if (record.reasonHash !== reasonHash)
+        throw new Error("Revocation conflict");
+      return JSON.stringify({
+        success: true,
+        txId: record.revokeTxId,
+        idempotent: true,
+      });
+    }
+    const timestamp = ctx.stub.getTxTimestamp();
+    record.isRevoked = true;
+    record.reasonHash = reasonHash;
+    record.revokeTxId = ctx.stub.getTxID();
+    record.revokedAt = new Date(
+      Number(timestamp.seconds.toString()) * 1000 +
+        Math.floor(timestamp.nanos / 1000000),
+    ).toISOString();
+    await ctx.stub.putState(key, Buffer.from(JSON.stringify(record)));
+    ctx.stub.setEvent(
+      "DiplomaRevoked",
+      Buffer.from(
+        JSON.stringify({ uuid, version: Number(version), reasonHash }),
+      ),
+    );
+    return JSON.stringify({ success: true, txId: ctx.stub.getTxID() });
+  }
+
+  @Transaction(false)
+  @Returns("string")
+  public async QueryDiplomaAnchor(
+    ctx: Context,
+    uuid: string,
+    version: string,
+  ): Promise<string> {
+    const bytes = await ctx.stub.getState(this.anchorKey(ctx, uuid, version));
+    if (!bytes?.length) throw new Error("Anchor not found");
+    return Buffer.from(bytes).toString();
+  }
+
   @Transaction()
   @Returns("string")
   public async InitLedger(ctx: Context): Promise<string> {
@@ -39,75 +171,9 @@ export class CertContract extends Contract {
     className: string, // Tham số 10
     namTotNghiep: string, // Tham số 11
   ): Promise<string> {
-    // 1. KIỂM TRA TỒN TẠI
-    const exists = await this.CertificateExists(ctx, certUUID);
-    if (exists) {
-      throw new Error(
-        `[LỖI BLOCKCHAIN] Văn bằng với UUID ${certUUID} đã tồn tại!`,
-      );
-    }
-
-    // 2. VALIDATION NGHIỆP VỤ
-    const gpa = parseFloat(gpaStr);
-    if (isNaN(gpa) || gpa < 0 || gpa > 4.0) {
-      throw new Error(`[LỖI BLOCKCHAIN] GPA không hợp lệ: ${gpaStr}.`);
-    }
-
-    if (
-      !studentName ||
-      studentName.trim() === "" ||
-      !mssv ||
-      mssv.trim() === "" ||
-      !soHieu ||
-      soHieu.trim() === ""
-    ) {
-      throw new Error(
-        "[LỖI BLOCKCHAIN] Dữ liệu bắt buộc (Tên, MSSV, Số hiệu VB) không được để trống.",
-      );
-    }
-
-    // 3. TỰ TÍNH TOÁN MÃ BĂM (ON-CHAIN HASHING - ĐÃ BAO GỒM 11 THAM SỐ)
-    const safeGpa = gpa.toFixed(2);
-    const rawData = `${certUUID}|${mssv}|${studentName}|${major}|${safeGpa}|${classification}|${issueDate}|${soHieu}|${soVaoSo}|${className}|${namTotNghiep}`;
-    const blockchainHash = crypto
-      .createHash("sha256")
-      .update(rawData)
-      .digest("hex");
-
-    // 4. LƯU TRỮ VÀO SỔ CÁI (BỔ SUNG CÁC TRƯỜNG MỚI)
-    const certificate = {
-      docType: "certificate",
-      certUUID: certUUID,
-      mssv: mssv,
-      studentName: studentName,
-      major: major,
-      gpa: safeGpa,
-      grade: classification,
-      issueDate: issueDate,
-      soHieu: soHieu,
-      soVaoSo: soVaoSo,
-      className: className,
-      namTotNghiep: namTotNghiep,
-      certHash: blockchainHash,
-      issuerId: ctx.clientIdentity.getID(),
-      isRevoked: false,
-      revokedReason: "",
-      revokedAt: "",
-      revokedBy: "",
-    };
-
-    const certData = Buffer.from(JSON.stringify(certificate));
-    // Chuyển đổi Buffer thành Uint8Array để tương thích với yêu cầu của Fabric API mới
-    await ctx.stub.putState(
-      certUUID,
-      new Uint8Array(certData.buffer, certData.byteOffset, certData.byteLength),
+    throw new Error(
+      "Legacy issuance is disabled. Use AnchorDiploma after reviewed database approval.",
     );
-    return JSON.stringify({
-      success: true,
-      txId: ctx.stub.getTxID(),
-      hash: blockchainHash,
-      message: `Certificate recorded on-chain for MSSV: ${mssv}`,
-    });
   }
 
   @Transaction()
@@ -117,40 +183,9 @@ export class CertContract extends Contract {
     certUUID: string,
     reason: string,
   ): Promise<string> {
-    if (!certUUID || certUUID.trim() === "") {
-      throw new Error("[LỖI BLOCKCHAIN] Thiếu certUUID!");
-    }
-    if (!reason || reason.trim() === "") {
-      throw new Error("[LỖI BLOCKCHAIN] Thiếu lý do thu hồi (reason)!");
-    }
-
-    const certAsBytes = await ctx.stub.getState(certUUID);
-    if (!certAsBytes || certAsBytes.length === 0) {
-      throw new Error(`[NOT FOUND] Văn bằng với UUID ${certUUID} không tồn tại!`);
-    }
-
-    const certificate = JSON.parse(certAsBytes.toString());
-    if (certificate.isRevoked) {
-      throw new Error(`[ALREADY REVOKED] Văn bằng ${certUUID} đã bị thu hồi trước đó!`);
-    }
-
-    certificate.isRevoked = true;
-    certificate.revokedReason = reason;
-    certificate.revokedAt = new Date().toISOString();
-    certificate.revokedBy = ctx.clientIdentity.getID();
-
-    const certData = Buffer.from(JSON.stringify(certificate));
-    await ctx.stub.putState(
-      certUUID,
-      new Uint8Array(certData.buffer, certData.byteOffset, certData.byteLength),
+    throw new Error(
+      "Legacy revocation requires a separately reviewed cutover. Use RevokeDiplomaAnchor for normalized records.",
     );
-
-    return JSON.stringify({
-      success: true,
-      txId: ctx.stub.getTxID(),
-      uuid: certUUID,
-      message: `Đã thu hồi văn bằng ${certUUID} thành công trên Blockchain!`,
-    });
   }
 
   @Transaction(false)

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
@@ -19,21 +27,31 @@ export class StudentsController {
     @Query('page') page = '1',
     @Query('limit') limit = '20',
     @Query('search') search = '',
+    @Req() req?: any,
   ) {
-    return this.studentsService.findAll(+page, +limit, search);
+    return this.studentsService.findAll(+page, +limit, search, req.user);
   }
 
   @Post()
   @UseGuards(RolesGuard)
   @Roles('university')
-  create(@Body() body: CreateStudentDto) {
-    return this.studentsService.create(body.name, body.email, body.studentId);
+  create(@Body() body: CreateStudentDto, @Req() req: any) {
+    return this.studentsService.create(
+      body.name,
+      body.email,
+      body.studentId,
+      req.user,
+    );
   }
 
   @Post('import')
   @UseGuards(RolesGuard)
   @Roles('university')
-  importExcel(@Body() body: ImportStudentsDto) {
-    return this.studentsService.importFromExcel(body.fileName, body.fileData);
+  importExcel(@Body() body: ImportStudentsDto, @Req() req: any) {
+    return this.studentsService.importFromExcel(
+      body.fileName,
+      body.fileData,
+      req.user,
+    );
   }
 }

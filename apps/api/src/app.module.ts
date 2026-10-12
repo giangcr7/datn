@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
@@ -17,6 +16,9 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './config/logger.config';
 import { HealthModule } from './health/health.module';
 import { ExplorerModule } from './explorer/explorer.module';
+import { DatabaseModule } from './database/database.module';
+import { OutboxModule } from './outbox/outbox.module';
+import { RegistryImportModule } from './imports/registry-import.module';
 
 @Module({
   imports: [
@@ -24,13 +26,7 @@ import { ExplorerModule } from './explorer/explorer.module';
       isGlobal: true,
       validationSchema: envValidationSchema,
     }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        uri: config.get<string>('MONGODB_URI'),
-      }),
-      inject: [ConfigService],
-    }),
+    DatabaseModule,
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 5 },
       { name: 'medium', ttl: 60000, limit: 60 },
@@ -47,6 +43,8 @@ import { ExplorerModule } from './explorer/explorer.module';
     IntegrityModule,
     HealthModule,
     ExplorerModule,
+    OutboxModule,
+    RegistryImportModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

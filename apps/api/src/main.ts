@@ -9,12 +9,14 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { winstonConfig } from './config/logger.config';
 import helmet from 'helmet';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
 
+  app.useBodyParser('json', { limit: '8mb' });
   app.use(helmet());
   app.setGlobalPrefix('api');
   app.enableCors({

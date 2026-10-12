@@ -13,6 +13,7 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { CertService } from './cert.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { IssueCertDto } from '../common/dto/issue-cert.dto';
@@ -20,24 +21,20 @@ import { RevokeCertDto } from '../common/dto/revoke-cert.dto';
 import { RequestCertDto } from '../common/dto/request-cert.dto';
 import { ApproveCertDto } from '../common/dto/approve-cert.dto';
 import { RejectCertDto } from '../common/dto/reject-cert.dto';
+import { SubmitDiplomaDto } from '../common/dto/submit-diploma.dto';
 
 @ApiTags('cert')
 @Controller('cert')
 export class CertController {
   constructor(private readonly certService: CertService) {}
-
-  // ===== LUỒNG CŨ (issue trực tiếp) — chỉ cán bộ trường (university) =====
   @Post('issue')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('university')
   @ApiBearerAuth()
   @Throttle({ medium: { ttl: 60000, limit: 20 } })
-  issue(@Body() body: IssueCertDto, @Req() req: Request) {
-    const user = (req as any).user;
-    const ip = req.ip || (req.headers['x-forwarded-for'] as string);
-    return this.certService.issue(body, user?.id, user?.email, ip);
+  issue(@Body() body: IssueCertDto) {
+    return this.certService.issue(body);
   }
-
   @Post('revoke')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('university')
@@ -45,17 +42,8 @@ export class CertController {
   @Throttle({ medium: { ttl: 60000, limit: 10 } })
   revoke(@Body() body: RevokeCertDto, @Req() req: Request) {
     const user = (req as any).user;
-    const ip = req.ip || (req.headers['x-forwarded-for'] as string);
-    return this.certService.revoke(
-      body.certUUID,
-      body.reason,
-      user?.id,
-      user?.email,
-      ip,
-    );
+    return this.certService.revoke(body.certUUID, body.reason, user, req.ip);
   }
-
-  // ===== LUỒNG MỚI (2 bước) — chỉ cán bộ trường (university) =====
   @Post('request')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('university')
@@ -63,10 +51,8 @@ export class CertController {
   @Throttle({ medium: { ttl: 60000, limit: 20 } })
   requestCert(@Body() body: RequestCertDto, @Req() req: Request) {
     const user = (req as any).user;
-    const ip = req.ip || (req.headers['x-forwarded-for'] as string);
-    return this.certService.requestCert(body, user?.id, user?.email, ip);
+    return this.certService.requestCert(body, user, req.ip);
   }
-
   @Post('approve/:uuid')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('university')
@@ -74,14 +60,22 @@ export class CertController {
   @Throttle({ medium: { ttl: 60000, limit: 20 } })
   approveCert(
     @Param('uuid') uuid: string,
-    @Body() body: ApproveCertDto,
+    @Body() _body: ApproveCertDto,
     @Req() req: Request,
   ) {
-    const user = (req as any).user;
-    const ip = req.ip || (req.headers['x-forwarded-for'] as string);
-    return this.certService.approveCert(uuid, user?.id, user?.email, ip);
+    return this.certService.approveCert(uuid, (req as any).user, req.ip);
   }
-
+  @Post(':uuid/submit')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('university')
+  @ApiBearerAuth()
+  submit(
+    @Param('uuid') uuid: string,
+    @Body() body: SubmitDiplomaDto,
+    @Req() req: Request,
+  ) {
+    return this.certService.submitDraft(uuid, body.issuedOn, (req as any).user);
+  }
   @Post('reject/:uuid')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('university')
@@ -92,70 +86,75 @@ export class CertController {
     @Body() body: RejectCertDto,
     @Req() req: Request,
   ) {
-    const user = (req as any).user;
-    const ip = req.ip || (req.headers['x-forwarded-for'] as string);
     return this.certService.rejectCert(
       uuid,
       body.reason,
-      user?.id,
-      user?.email,
-      ip,
+      (req as any).user,
+      req.ip,
     );
   }
-
   @Get('pending')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('university')
   @ApiBearerAuth()
   @SkipThrottle()
-  findPending() {
-    return this.certService.findPending();
+  findPending(@Req() req: Request) {
+    return this.certService.findPending((req as any).user);
   }
-
-  // ===== ROUTES CŨ — công khai / xem chung, giữ nguyên không đổi =====
   @Get('search')
+  @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ medium: { ttl: 60000, limit: 30 } })
-  search(@Query('q') q: string) {
-    return this.certService.search(q);
+  search(@Query('q') q: string, @Req() req: Request) {
+    return this.certService.search(q, (req as any).user);
   }
-
   @Get('statistics')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('university', 'student')
   @ApiBearerAuth()
   @SkipThrottle()
-  statistics() {
-    return this.certService.statistics();
+  statistics(@Req() req: Request) {
+    return this.certService.statistics((req as any).user);
   }
-
   @Get('student/:mssv')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('university', 'student')
   @ApiBearerAuth()
-  findByMssv(@Param('mssv') mssv: string) {
-    return this.certService.findByMssv(mssv);
+  findByMssv(@Param('mssv') mssv: string, @Req() req: Request) {
+    return this.certService.findByMssv(mssv, (req as any).user);
   }
-
   @Get(':uuid')
-  @SkipThrottle()
-  findOne(@Param('uuid') uuid: string) {
-    return this.certService.findOne(uuid);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('university', 'student')
+  @ApiBearerAuth()
+  findOne(@Param('uuid') uuid: string, @Req() req: Request) {
+    return this.certService.findOne(uuid, (req as any).user);
   }
-
+  @Get(':uuid/history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('university')
+  @ApiBearerAuth()
+  history(@Param('uuid') uuid: string, @Req() req: Request) {
+    return this.certService.history(uuid, (req as any).user);
+  }
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('university', 'student')
   @ApiBearerAuth()
   @SkipThrottle()
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Req() req?: Request,
   ) {
-    if (page || limit || search) {
+    const actor = (req as any)?.user;
+    if (page || limit || search)
       return this.certService.findAllPaginated(
         +(page || 1),
         +(limit || 20),
         search || '',
+        actor,
       );
-    }
-    return this.certService.findAll();
+    return this.certService.findAll(actor);
   }
 }

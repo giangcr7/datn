@@ -1,13 +1,13 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export async function apiCall(
   endpoint: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
   body?: any,
   token?: string,
 ) {
-  const headers: any = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const headers: any = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_URL}${endpoint}`, {
     method,
@@ -16,6 +16,6 @@ export async function apiCall(
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Lỗi server');
+  if (!res.ok) throw new Error(data.message || "Lỗi server");
   return data;
 }

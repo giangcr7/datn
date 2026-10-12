@@ -4,39 +4,40 @@ export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
-  PORT: Joi.number().default(3001),
-
-  MONGODB_URI: Joi.string().required(),
-
-  JWT_SECRET: Joi.string().min(32).required().messages({
-    'string.min': 'JWT_SECRET phải có ít nhất 32 ký tự để đảm bảo an toàn',
+  PORT: Joi.number().integer().min(1).max(65535).default(3001),
+  DATABASE_URL: Joi.string().uri().required(),
+  JWT_SECRET: Joi.string().min(32).required(),
+  EMAIL_USER: Joi.string().allow('').optional(),
+  EMAIL_PASS: Joi.string().allow('').optional(),
+  EMAIL_FROM: Joi.string().allow('').optional(),
+  FABRIC_ENABLED: Joi.boolean().default(false),
+  FABRIC_NETWORK_BASE: Joi.string().when('FABRIC_ENABLED', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
   }),
-
-  EMAIL_USER: Joi.string().required(),
-  EMAIL_PASS: Joi.string().required(),
-  EMAIL_FROM: Joi.string().required(),
-
-  // Bắt buộc — thiếu biến này khiến FabricService fallback về path sai
-  // (đã từng gây lỗi ENOENT thực tế trong quá trình phát triển, xem báo cáo mục Health Check)
-  FABRIC_NETWORK_BASE: Joi.string().required(),
-
-  WEB_URL: Joi.string().uri().optional(),
+  FABRIC_CHANNEL: Joi.string().default('mychannel'),
+  FABRIC_CHAINCODE: Joi.string().default('educert'),
+  STORAGE_DRIVER: Joi.string().valid('local', 's3').default('local'),
+  STORAGE_LOCAL_ROOT: Joi.string().optional(),
+  STORAGE_S3_BUCKET: Joi.string().optional(),
+  WEB_URL: Joi.string().uri().default('http://localhost:3000'),
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').optional(),
-
-  // Chỉ dùng để né lỗi TLS cert lúc dev với Fabric — TUYỆT ĐỐI không được bật ở production
-  // (tắt xác thực TLS = mở đường cho man-in-the-middle attack)
+  PUBLIC_DIRECTORY_ENABLED: Joi.boolean().default(false),
+  OUTBOX_ENABLED: Joi.boolean().default(true),
   NODE_TLS_REJECT_UNAUTHORIZED: Joi.string().optional(),
 })
-  .unknown(true) // cho phép các biến khác như PEER_ENDPOINT, TLS_CERT_PATH...
+  .unknown(true)
   .custom((value, helpers) => {
     if (
       value.NODE_ENV === 'production' &&
-      value.NODE_TLS_REJECT_UNAUTHORIZED === '0'
-    ) {
+      (value.NODE_TLS_REJECT_UNAUTHORIZED === '0' ||
+        value.FABRIC_TLS_SKIP_VERIFY === 'true')
+    )
       return helpers.message({
-        custom:
-          'NODE_TLS_REJECT_UNAUTHORIZED=0 không được phép bật khi NODE_ENV=production (tắt xác thực TLS, mất an toàn kết nối Fabric)',
+        custom: 'Production không được tắt xác thực TLS',
       });
-    }
+    if (value.STORAGE_DRIVER === 's3' && !value.STORAGE_S3_BUCKET)
+      return helpers.message({ custom: 'Thiếu STORAGE_S3_BUCKET' });
     return value;
   });

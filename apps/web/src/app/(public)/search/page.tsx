@@ -1,7 +1,22 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Input, Card, Tag, Button, Spin, Empty, Typography, Row, Col } from "antd";
-import { SearchOutlined, SafetyCertificateOutlined, WarningOutlined } from "@ant-design/icons";
+import {
+  Input,
+  Card,
+  Tag,
+  Button,
+  Spin,
+  Empty,
+  Typography,
+  Row,
+  Col,
+  Alert,
+} from "antd";
+import {
+  SearchOutlined,
+  SafetyCertificateOutlined,
+  WarningOutlined,
+} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 
 const { Title, Text } = Typography;
@@ -11,6 +26,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState("");
   const debounceRef = useRef<any>(null);
   const router = useRouter();
 
@@ -26,73 +42,179 @@ export default function SearchPage() {
       try {
         const res = await fetch("/api/search?q=" + encodeURIComponent(query));
         const data = await res.json();
-        if (data.success) setResults(data.results);
-      } catch {}
-      finally { setLoading(false); setSearched(true); }
+        if (data.success) {
+          setResults(data.results);
+          setError("");
+        } else {
+          setResults([]);
+          setError(data.error || "Không thể tra cứu");
+        }
+      } catch {
+      } finally {
+        setLoading(false);
+        setSearched(true);
+      }
     }, 500);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div style={{ background: "linear-gradient(135deg, #001a38 0%, #003b93 60%, #0056b3 100%)", padding: "48px 20px", textAlign: "center" }}>
+      <div
+        style={{
+          background:
+            "linear-gradient(135deg, #001a38 0%, #003b93 60%, #0056b3 100%)",
+          padding: "48px 20px",
+          textAlign: "center",
+        }}
+      >
         <img
           src="/logo-tlu.png"
           alt="Đại học Thủy Lợi"
           style={{
             width: 76,
             height: 76,
-            objectFit: 'contain',
-            background: '#fff',
-            borderRadius: '50%',
+            objectFit: "contain",
+            background: "#fff",
+            borderRadius: "50%",
             padding: 4,
             marginBottom: 16,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
           }}
         />
-        <Title level={2} style={{ color: "white", margin: 0, fontWeight: 'bold' }}>TRA CỨU VĂN BẰNG TỐT NGHIỆP</Title>
-        <Text style={{ color: "#cce0ff", display: "block", marginTop: 8, fontSize: 15 }}>
+        <Title
+          level={2}
+          style={{ color: "white", margin: 0, fontWeight: "bold" }}
+        >
+          TRA CỨU VĂN BẰNG TỐT NGHIỆP
+        </Title>
+        <Text
+          style={{
+            color: "#cce0ff",
+            display: "block",
+            marginTop: 8,
+            fontSize: 15,
+          }}
+        >
           Trường Đại học Thủy Lợi — Hệ thống Xác thực Blockchain
         </Text>
         <div style={{ maxWidth: 650, margin: "28px auto 0" }}>
-          <Input size="large" placeholder="Nhập họ tên hoặc mã số sinh viên (MSSV)..." prefix={<SearchOutlined />}
-            value={query} onChange={e => setQuery(e.target.value)} style={{ borderRadius: 8, height: 48, fontSize: 15 }} allowClear />
+          <Input
+            size="large"
+            placeholder="Nhập họ tên hoặc mã số sinh viên (MSSV)..."
+            prefix={<SearchOutlined />}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ borderRadius: 8, height: 48, fontSize: 15 }}
+            allowClear
+          />
         </div>
       </div>
 
       <div style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
-        {loading && <div className="text-center py-12"><Spin size="large" /><div className="mt-4 text-gray-500">Đang tìm kiếm...</div></div>}
+        {loading && (
+          <div className="text-center py-12">
+            <Spin size="large" />
+            <div className="mt-4 text-gray-500">Đang tìm kiếm...</div>
+          </div>
+        )}
 
-        {!loading && searched && results.length === 0 && <Empty description="Không tìm thấy văn bằng nào phù hợp" />}
+        {error && <Alert type="info" showIcon title={error} className="mb-4" />}
+
+        {!loading && !error && searched && results.length === 0 && (
+          <Empty description="Không tìm thấy văn bằng nào phù hợp" />
+        )}
 
         {!loading && results.length > 0 && (
           <>
-            <Text type="secondary" className="block mb-4">Tìm thấy <strong>{results.length}</strong> kết quả</Text>
+            <Text type="secondary" className="block mb-4">
+              Tìm thấy <strong>{results.length}</strong> kết quả
+            </Text>
             <Row gutter={[16, 16]}>
-              {results.map(cert => (
+              {results.map((cert) => (
                 <Col span={24} key={cert.uuid}>
-                  <Card hoverable style={{ borderRadius: 12, border: cert.isRevoked ? "1px solid #ff4d4f" : "1px solid #e8e8e8" }}>
+                  <Card
+                    hoverable
+                    style={{
+                      borderRadius: 12,
+                      border: cert.isRevoked
+                        ? "1px solid #ff4d4f"
+                        : "1px solid #e8e8e8",
+                    }}
+                  >
                     <Row align="middle" justify="space-between">
                       <Col xs={24} md={16}>
                         <div className="flex items-center gap-3 mb-2">
-                          <Text strong style={{ fontSize: 18 }}>{cert.fullName}</Text>
-                          {cert.isRevoked
-                            ? <Tag color="red" icon={<WarningOutlined />}>ĐÃ THU HỒI</Tag>
-                            : <Tag color="green" icon={<SafetyCertificateOutlined />}>HỢP LỆ</Tag>}
+                          <Text strong style={{ fontSize: 18 }}>
+                            {cert.fullName}
+                          </Text>
+                          {cert.isRevoked ? (
+                            <Tag color="red" icon={<WarningOutlined />}>
+                              ĐÃ THU HỒI
+                            </Tag>
+                          ) : cert.isVerifiable ? (
+                            <Tag
+                              color="green"
+                              icon={<SafetyCertificateOutlined />}
+                            >
+                              ĐÃ NEO HASH
+                            </Tag>
+                          ) : (
+                            <Tag color="orange">CHỜ NEO HASH</Tag>
+                          )}
                         </div>
                         <Row gutter={[16, 4]}>
-                          <Col span={12}><Text type="secondary">MSSV: </Text><Text strong>{cert.mssv}</Text></Col>
-                          <Col span={12}><Text type="secondary">Ngành: </Text><Text>{cert.major}</Text></Col>
-                          <Col span={12}><Text type="secondary">Xếp loại: </Text><Text strong style={{ color: "#0056b3" }}>{cert.grade}</Text></Col>
-                          <Col span={12}><Text type="secondary">Năm TN: </Text><Text>{cert.namTotNghiep}</Text></Col>
-                          <Col span={12}><Text type="secondary">Số hiệu: </Text><Text>{cert.soHieu}</Text></Col>
-                          <Col span={12}><Text type="secondary">Ngày cấp: </Text><Text>{cert.issueDate}</Text></Col>
+                          <Col span={12}>
+                            <Text type="secondary">MSSV: </Text>
+                            <Text strong>{cert.mssv}</Text>
+                          </Col>
+                          <Col span={12}>
+                            <Text type="secondary">Ngành: </Text>
+                            <Text>{cert.major}</Text>
+                          </Col>
+                          <Col span={12}>
+                            <Text type="secondary">Xếp loại: </Text>
+                            <Text strong style={{ color: "#0056b3" }}>
+                              {cert.grade}
+                            </Text>
+                          </Col>
+                          <Col span={12}>
+                            <Text type="secondary">Năm TN: </Text>
+                            <Text>{cert.namTotNghiep}</Text>
+                          </Col>
+                          <Col span={12}>
+                            <Text type="secondary">Số hiệu: </Text>
+                            <Text>{cert.soHieu}</Text>
+                          </Col>
+                          <Col span={12}>
+                            <Text type="secondary">Ngày cấp: </Text>
+                            <Text>{cert.issueDate}</Text>
+                          </Col>
                         </Row>
                       </Col>
-                      <Col xs={24} md={8} style={{ textAlign: "right", marginTop: 8 }}>
-                        <Button type="primary" size="large" icon={<SafetyCertificateOutlined />}
-                          onClick={() => router.push("/verify?proof=" + encodeURIComponent(JSON.stringify({ uuid: cert.uuid, certUUID: cert.uuid })))}
-                          disabled={cert.isRevoked} style={{ borderRadius: 8 }}>
+                      <Col
+                        xs={24}
+                        md={8}
+                        style={{ textAlign: "right", marginTop: 8 }}
+                      >
+                        <Button
+                          type="primary"
+                          size="large"
+                          icon={<SafetyCertificateOutlined />}
+                          onClick={() =>
+                            router.push(
+                              "/verify?proof=" +
+                                encodeURIComponent(
+                                  JSON.stringify({
+                                    uuid: cert.uuid,
+                                    certUUID: cert.uuid,
+                                  }),
+                                ),
+                            )
+                          }
+                          disabled={cert.isRevoked}
+                          style={{ borderRadius: 8 }}
+                        >
                           Xác thực ngay
                         </Button>
                       </Col>
