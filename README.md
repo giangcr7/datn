@@ -25,9 +25,17 @@ Không tự tải binaries, tạo lại channel hoặc deploy/reset Fabric. URL 
 
 ## Trang chủ công khai
 
-Trang chủ theo bố cục cổng thông tin giáo dục: đầu trang nhận diện trường, thanh điều hướng xanh, tiêu đề trang gọn và hai khối chức năng cân đối. Không dùng khẩu hiệu quảng bá, nền chuyển màu, thẻ nổi hay hiệu ứng xuất hiện. Xác thực PDF/QR tách biệt với tra cứu thông tin; hướng dẫn và đăng nhập sinh viên/cán bộ đặt ở khu vực riêng. Không hiển thị menu quản trị, số liệu minh họa hay thông tin kỹ thuật xác thực. Việc tra cứu vẫn tuân theo cấu hình công bố dữ liệu hiện có, không tự mở quyền truy cập.
+Trang chủ theo bố cục cổng thông tin giáo dục: đầu trang nhận diện trường, thanh điều hướng xanh, tiêu đề trang gọn và hai khối chức năng cân đối. Không dùng khẩu hiệu quảng bá, nền chuyển màu, thẻ nổi hay hiệu ứng xuất hiện. Xác thực PDF/QR tách biệt với tra cứu thông tin; hướng dẫn và đăng nhập sinh viên/cán bộ đặt ở khu vực riêng. Không hiển thị menu quản trị, số liệu minh họa hay thông tin kỹ thuật xác thực. Tra cứu cá nhân sử dụng biểu mẫu định danh bên dưới; danh bạ tìm rộng theo tên/MSSV vẫn đóng mặc định.
 
 Kiểm thử trang chủ và CSS: `node scripts/test-homepage.mjs`. Để kiểm tra thêm HTTP/CSS trên web đang chạy local, đặt `HOMEPAGE_TEST_BASE_URL=http://localhost:3000` trước khi chạy lệnh; không có thao tác ghi database hoặc blockchain.
+
+## Tra cứu văn bằng trong kho
+
+- Trang `/search` có tiêu đề giữa, nền xanh nhạt, ô nhập và nút tra cứu xanh theo nhận diện nhà trường. Hiển thị đủ 14 trường trong ba nhóm: người được cấp (họ tên, ngày sinh, MSSV); đào tạo (lớp, ngành, trình độ, năm tốt nghiệp, xếp loại, điểm trung bình); văn bằng (số hiệu, số vào sổ, ngày cấp, số và ngày quyết định). Không thêm ô CCCD khi kho chưa có dữ liệu đối chiếu.
+- Bắt buộc họ tên, ngày sinh và ít nhất một số định danh (MSSV/số hiệu/số vào sổ). Các trường khác không bắt buộc; nếu nhập, tất cả điều kiện phải khớp. Tên người và tên ngành không phân biệt dấu tiếng Việt/chữ hoa; các số định danh và trường khác khớp chính xác, giữ số 0 đầu mã.
+- `POST /api/search` chuyển JSON sang `POST /cert/lookup`. Tra cứu cá nhân không yêu cầu đăng nhập, giới hạn 10 lần/phút theo cơ chế throttling API; không ghi họ tên/ngày sinh lên URL và không cache kết quả. `GET /cert/search?q=...` vẫn giữ chính sách `PUBLIC_DIRECTORY_ENABLED` và phạm vi tài khoản cũ, không trở thành danh bạ công khai.
+- Chỉ tìm trong phiên bản mới nhất đã duyệt và đã commit phát hành. Điều kiện và kết quả cùng dùng snapshot đã phát hành, không nhầm với thông tin gốc đã được sửa hoặc bản thay thế. Hiển thị rõ văn bằng đã thu hồi/được thay thế; không biến kết quả tra cứu thành kết luận xác thực PDF. Không trả ngày sinh, GPA, hash, giao dịch, bằng chứng ký hay thông tin tài khoản.
+- Kiểm thử form, CSS, request và proxy (đặt `LOOKUP_TEST_BASE_URL` để kiểm tra thêm HTML/CSS từ bản web local đang chạy): `node scripts/test-diploma-lookup.mjs`. Kiểm thử DTO/service/HTTP và giới hạn tần suất: từ `apps/api` chạy `npm test -- --runInBand --no-cache diploma-lookup.spec.ts`. Kiểm thử SQL PostgreSQL: `node scripts/test-diploma-lookup-db.mjs` (cần database local và bản build API hiện có); chỉ dùng bảng TEMP trên kết nối riêng, luôn rollback, không tạo hồ sơ nghiệp vụ hay giao dịch blockchain.
 
 ## Chữ ký số PDF
 

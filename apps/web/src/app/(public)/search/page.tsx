@@ -1,238 +1,424 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import {
-  Input,
-  Card,
-  Tag,
-  Button,
-  Spin,
-  Empty,
-  Typography,
-  Row,
-  Col,
-  Alert,
-} from "antd";
-import {
-  SearchOutlined,
-  SafetyCertificateOutlined,
-  WarningOutlined,
-} from "@ant-design/icons";
-import { useRouter } from "next/navigation";
 
-const { Title, Text } = Typography;
+import Image from "next/image";
+import Link from "next/link";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import {
+  degreeLabels,
+  emptyLookupFields,
+  lookupDate,
+  lookupGroups,
+  lookupStatus,
+  lookupVerificationHref,
+  requestDiplomaLookup,
+  validateLookupFields,
+  type DiplomaLookupResult,
+  type LookupErrors,
+  type LookupField,
+  type LookupFields,
+} from "@/lib/diploma-lookup";
+import styles from "./page.module.css";
 
 export default function SearchPage() {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [fields, setFields] = useState<LookupFields>(emptyLookupFields);
+  const [errors, setErrors] = useState<LookupErrors>({});
+  const [results, setResults] = useState<DiplomaLookupResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
-  const debounceRef = useRef<any>(null);
-  const router = useRouter();
+  const controller = useRef<AbortController | null>(null);
+  const sequence = useRef(0);
+  const resultsHeading = useRef<HTMLHeadingElement>(null);
 
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      setSearched(false);
+  useEffect(
+    () => () => {
+      sequence.current++;
+      controller.current?.abort();
+    },
+    [],
+  );
+
+  function clearSearch() {
+    sequence.current++;
+    controller.current?.abort();
+    setLoading(false);
+    setResults([]);
+    setSearched(false);
+    setError("");
+    setErrors({});
+  }
+
+  function changeField(key: LookupField, value: string) {
+    clearSearch();
+    setFields((current) => ({ ...current, [key]: value }));
+  }
+
+  function resetForm() {
+    clearSearch();
+    setFields(emptyLookupFields());
+    document.getElementById("lookup-fullName")?.focus();
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    clearSearch();
+    const issues = validateLookupFields(fields);
+    setErrors(issues);
+    if (Object.keys(issues).length) {
+      const first = lookupGroups
+        .flatMap((group) => group.fields)
+        .find((field) => issues[field.key]);
+      if (first) document.getElementById("lookup-" + first.key)?.focus();
       return;
     }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/search?q=" + encodeURIComponent(query));
-        const data = await res.json();
-        if (data.success) {
-          setResults(data.results);
-          setError("");
-        } else {
-          setResults([]);
-          setError(data.error || "Không thể tra cứu");
-        }
-      } catch {
-      } finally {
-        setLoading(false);
-        setSearched(true);
-      }
-    }, 500);
-    return () => clearTimeout(debounceRef.current);
-  }, [query]);
+    const requestId = sequence.current;
+    const activeController = new AbortController();
+    controller.current = activeController;
+    setLoading(true);
+    try {
+      const matches = await requestDiplomaLookup(
+        fields,
+        activeController.signal,
+      );
+      if (sequence.current !== requestId) return;
+      setResults(matches);
+      setSearched(true);
+      requestAnimationFrame(() => resultsHeading.current?.focus());
+    } catch (failure) {
+      if (sequence.current !== requestId || activeController.signal.aborted)
+        return;
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Không thể tra cứu. Vui lòng thử lại.",
+      );
+    } finally {
+      if (sequence.current === requestId) setLoading(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div
-        style={{
-          background:
-            "linear-gradient(135deg, #001a38 0%, #003b93 60%, #0056b3 100%)",
-          padding: "48px 20px",
-          textAlign: "center",
-        }}
-      >
-        <img
-          src="/logo-tlu.png"
-          alt="Đại học Thủy Lợi"
-          style={{
-            width: 76,
-            height: 76,
-            objectFit: "contain",
-            background: "#fff",
-            borderRadius: "50%",
-            padding: 4,
-            marginBottom: 16,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-          }}
-        />
-        <Title
-          level={2}
-          style={{ color: "white", margin: 0, fontWeight: "bold" }}
-        >
-          TRA CỨU VĂN BẰNG TỐT NGHIỆP
-        </Title>
-        <Text
-          style={{
-            color: "#cce0ff",
-            display: "block",
-            marginTop: 8,
-            fontSize: 15,
-          }}
-        >
-          Trường Đại học Thủy Lợi — Hệ thống Xác thực Blockchain
-        </Text>
-        <div style={{ maxWidth: 650, margin: "28px auto 0" }}>
-          <Input
-            size="large"
-            placeholder="Nhập họ tên hoặc mã số sinh viên (MSSV)..."
-            prefix={<SearchOutlined />}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{ borderRadius: 8, height: 48, fontSize: 15 }}
-            allowClear
-          />
+    <div className={styles.page}>
+      <a className={styles.skipLink} href="#noi-dung">
+        Chuyển đến nội dung chính
+      </a>
+      <header className={styles.header}>
+        <div className={styles.utility}>HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG</div>
+        <div className={styles.container + " " + styles.masthead}>
+          <Link
+            className={styles.brand}
+            href="/"
+            aria-label="Trang chủ Đại học Thủy Lợi"
+          >
+            <Image
+              src="/logo-tlu.png"
+              alt="Logo Trường Đại học Thủy Lợi"
+              width={64}
+              height={64}
+              priority
+            />
+            <span>
+              <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
+              <span>Hệ thống quản lý và xác thực văn bằng</span>
+            </span>
+          </Link>
         </div>
-      </div>
-
-      <div style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
-        {loading && (
-          <div className="text-center py-12">
-            <Spin size="large" />
-            <div className="mt-4 text-gray-500">Đang tìm kiếm...</div>
+        <nav className={styles.navigation} aria-label="Điều hướng chính">
+          <div className={styles.container}>
+            <Link href="/">Trang chủ</Link>
+            <Link href="/search" aria-current="page">
+              Tra cứu văn bằng
+            </Link>
+            <Link href="/verify">Xác thực văn bằng</Link>
+            <Link href="/login">Đăng nhập</Link>
           </div>
-        )}
+        </nav>
+      </header>
 
-        {error && <Alert type="info" showIcon title={error} className="mb-4" />}
+      <main
+        className={styles.container + " " + styles.main}
+        id="noi-dung"
+        tabIndex={-1}
+      >
+        <nav className={styles.breadcrumb} aria-label="Vị trí trang">
+          <Link href="/">Trang chủ</Link>
+          <span aria-hidden="true">/</span>
+          <span>Tra cứu văn bằng</span>
+        </nav>
+        <div className={styles.introduction}>
+          <h1>Tra cứu văn bằng tốt nghiệp</h1>
+          <p>Vui lòng nhập thông tin để tra cứu</p>
+        </div>
 
-        {!loading && !error && searched && results.length === 0 && (
-          <Empty description="Không tìm thấy văn bằng nào phù hợp" />
-        )}
-
-        {!loading && results.length > 0 && (
-          <>
-            <Text type="secondary" className="block mb-4">
-              Tìm thấy <strong>{results.length}</strong> kết quả
-            </Text>
-            <Row gutter={[16, 16]}>
-              {results.map((cert) => (
-                <Col span={24} key={cert.uuid}>
-                  <Card
-                    hoverable
-                    style={{
-                      borderRadius: 12,
-                      border: cert.isRevoked
-                        ? "1px solid #ff4d4f"
-                        : "1px solid #e8e8e8",
-                    }}
-                  >
-                    <Row align="middle" justify="space-between">
-                      <Col xs={24} md={16}>
-                        <div className="flex items-center gap-3 mb-2">
-                          <Text strong style={{ fontSize: 18 }}>
-                            {cert.fullName}
-                          </Text>
-                          {cert.isRevoked ? (
-                            <Tag color="red" icon={<WarningOutlined />}>
-                              ĐÃ THU HỒI
-                            </Tag>
-                          ) : cert.isVerifiable ? (
-                            <Tag
-                              color="green"
-                              icon={<SafetyCertificateOutlined />}
-                            >
-                              ĐÃ NEO HASH
-                            </Tag>
-                          ) : (
-                            <Tag color="orange">CHỜ NEO HASH</Tag>
-                          )}
-                        </div>
-                        <Row gutter={[16, 4]}>
-                          <Col span={12}>
-                            <Text type="secondary">MSSV: </Text>
-                            <Text strong>{cert.mssv}</Text>
-                          </Col>
-                          <Col span={12}>
-                            <Text type="secondary">Ngành: </Text>
-                            <Text>{cert.major}</Text>
-                          </Col>
-                          <Col span={12}>
-                            <Text type="secondary">Xếp loại: </Text>
-                            <Text strong style={{ color: "#0056b3" }}>
-                              {cert.grade}
-                            </Text>
-                          </Col>
-                          <Col span={12}>
-                            <Text type="secondary">Năm TN: </Text>
-                            <Text>{cert.namTotNghiep}</Text>
-                          </Col>
-                          <Col span={12}>
-                            <Text type="secondary">Số hiệu: </Text>
-                            <Text>{cert.soHieu}</Text>
-                          </Col>
-                          <Col span={12}>
-                            <Text type="secondary">Ngày cấp: </Text>
-                            <Text>{cert.issueDate}</Text>
-                          </Col>
-                        </Row>
-                      </Col>
-                      <Col
-                        xs={24}
-                        md={8}
-                        style={{ textAlign: "right", marginTop: 8 }}
-                      >
-                        <Button
-                          type="primary"
-                          size="large"
-                          icon={<SafetyCertificateOutlined />}
-                          onClick={() =>
-                            router.push(
-                              "/verify?proof=" +
-                                encodeURIComponent(
-                                  JSON.stringify({
-                                    uuid: cert.uuid,
-                                    certUUID: cert.uuid,
-                                  }),
-                                ),
-                            )
+        <form
+          className={styles.form}
+          onSubmit={submit}
+          noValidate
+          aria-labelledby="form-title"
+          aria-describedby="lookup-instructions"
+        >
+          <div className={styles.formHeading}>
+            <h2 id="form-title">Thông tin tra cứu</h2>
+            <span>
+              Dấu <b aria-hidden="true">*</b> là thông tin bắt buộc
+            </span>
+          </div>
+          <div className={styles.instructions} id="lookup-instructions">
+            <strong>
+              Nhập họ tên, ngày sinh và ít nhất một trong ba thông tin: MSSV, số
+              hiệu hoặc số vào sổ.
+            </strong>
+            <p>
+              Các ô còn lại không bắt buộc. Nếu nhập thêm, tất cả thông tin phải
+              cùng khớp với văn bằng. Họ tên và tên ngành có thể nhập không dấu,
+              không phân biệt chữ hoa/thường.
+            </p>
+          </div>
+          {lookupGroups.map((group) => (
+            <fieldset className={styles.fieldset} key={group.title}>
+              <legend>{group.title}</legend>
+              <div className={styles.fields}>
+                {group.fields.map((field) => {
+                  const id = "lookup-" + field.key;
+                  const errorId = id + "-error";
+                  const controlProps = {
+                    id,
+                    name: field.key,
+                    value: fields[field.key],
+                    required: field.required,
+                    "aria-invalid": errors[field.key]
+                      ? (true as const)
+                      : undefined,
+                    "aria-describedby": errors[field.key] ? errorId : undefined,
+                    onChange: (
+                      event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+                    ) => changeField(field.key, event.target.value),
+                  };
+                  return (
+                    <div className={styles.field} key={field.key}>
+                      <label htmlFor={id}>
+                        {field.label}
+                        {field.required && (
+                          <span className={styles.required} aria-hidden="true">
+                            {" "}
+                            *
+                          </span>
+                        )}
+                      </label>
+                      {field.kind === "select" ? (
+                        <select {...controlProps}>
+                          <option value="">Không giới hạn</option>
+                          {field.options?.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          {...controlProps}
+                          type={field.kind === "date" ? "date" : "text"}
+                          inputMode={
+                            field.kind === "year"
+                              ? "numeric"
+                              : field.kind === "decimal"
+                                ? "decimal"
+                                : undefined
                           }
-                          disabled={cert.isRevoked}
-                          style={{ borderRadius: 8 }}
-                        >
-                          Xác thực ngay
-                        </Button>
-                      </Col>
-                    </Row>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          </>
-        )}
-
-        {!searched && !loading && (
-          <div className="text-center py-16 text-gray-400">
-            <SearchOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-            <div>Nhập tên hoặc MSSV để bắt đầu tìm kiếm</div>
+                          maxLength={field.maxLength}
+                          placeholder={field.placeholder}
+                          autoComplete={
+                            field.key === "fullName"
+                              ? "name"
+                              : field.key === "dob"
+                                ? "bday"
+                                : "off"
+                          }
+                        />
+                      )}
+                      {errors[field.key] && (
+                        <p className={styles.fieldError} id={errorId}>
+                          {errors[field.key]}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ))}
+          {Object.keys(errors).length > 0 && (
+            <p className={styles.error} role="alert">
+              Thông tin chưa đầy đủ hoặc chưa hợp lệ. Vui lòng kiểm tra các ô
+              được đánh dấu.
+            </p>
+          )}
+          <div className={styles.actions}>
+            <button
+              className={styles.resetButton}
+              type="button"
+              onClick={resetForm}
+              aria-label="Nhập lại thông tin"
+              title="Nhập lại thông tin"
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 10a8 8 0 1 1 1.5 7M4 10V4m0 6h6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              className={styles.primaryButton}
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Đang tra cứu…" : "Tra cứu thông tin"}
+            </button>
+            <span>Không cần đăng nhập để tra cứu theo thông tin cá nhân.</span>
           </div>
-        )}
-      </div>
+        </form>
+
+        <section
+          className={styles.results}
+          aria-labelledby="results-title"
+          aria-busy={loading}
+        >
+          <h2 id="results-title" ref={resultsHeading} tabIndex={-1}>
+            Kết quả tra cứu
+          </h2>
+          <div aria-live="polite" role="status">
+            {loading && (
+              <p className={styles.waiting}>
+                Đang đối chiếu thông tin trong kho văn bằng…
+              </p>
+            )}
+            {!loading && !searched && !error && (
+              <p className={styles.waiting}>
+                Kết quả sẽ hiển thị sau khi bạn nhập thông tin và chọn “Tra cứu
+                thông tin”.
+              </p>
+            )}
+            {!loading && searched && results.length === 0 && (
+              <div className={styles.empty}>
+                <strong>Không tìm thấy văn bằng phù hợp</strong>
+                <p>
+                  Kiểm tra lại họ tên, ngày sinh và số định danh. Thử bỏ các ô
+                  bổ sung nếu chưa chắc chắn; văn bằng chưa phát hành sẽ không
+                  xuất hiện tại đây.
+                </p>
+              </div>
+            )}
+            {!loading && searched && results.length > 0 && (
+              <p className={styles.resultCount}>
+                Tìm thấy <strong>{results.length}</strong> văn bằng phù hợp.
+                {results.length === 20 &&
+                  " Đang hiển thị tối đa 20 kết quả; bổ sung năm hoặc số hiệu để thu hẹp."}
+              </p>
+            )}
+          </div>
+          {error && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
+          {!loading &&
+            results.map((diploma) => {
+              const status = lookupStatus(diploma.status);
+              return (
+                <article className={styles.resultCard} key={diploma.uuid}>
+                  <div className={styles.resultHeading}>
+                    <h3>{diploma.fullName}</h3>
+                    <span className={styles.badge + " " + styles[status.tone]}>
+                      {status.label}
+                    </span>
+                  </div>
+                  <dl className={styles.resultDetails}>
+                    {[
+                      ["Mã số sinh viên", diploma.mssv],
+                      ["Số hiệu văn bằng", diploma.soHieu],
+                      ["Số vào sổ", diploma.soVaoSo],
+                      ["Lớp", diploma.className],
+                      ["Ngành đào tạo", diploma.major],
+                      [
+                        "Trình độ",
+                        diploma.degreeType
+                          ? degreeLabels[diploma.degreeType] ||
+                            diploma.degreeType
+                          : null,
+                      ],
+                      ["Năm tốt nghiệp", diploma.namTotNghiep],
+                      ["Xếp loại", diploma.grade],
+                      ["Ngày cấp", lookupDate(diploma.issueDate)],
+                      ["Số quyết định tốt nghiệp", diploma.decisionNo],
+                      ["Ngày quyết định", lookupDate(diploma.decisionDate)],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{value ?? "Chưa ghi nhận"}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {diploma.status === "REVOKED" && (
+                    <p className={styles.statusNote}>
+                      Văn bằng này đã bị thu hồi. Không sử dụng kết quả tra cứu
+                      để xác nhận văn bằng còn hiệu lực.
+                    </p>
+                  )}
+                  {diploma.status === "REPLACED" && (
+                    <p className={styles.statusNote}>
+                      Văn bằng này đã được thay thế. Vui lòng kiểm tra và sử
+                      dụng thông tin văn bằng thay thế.
+                    </p>
+                  )}
+                  <Link
+                    className={styles.verifyLink}
+                    href={lookupVerificationHref(diploma.uuid)}
+                  >
+                    Kiểm tra tình trạng văn bằng{" "}
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                </article>
+              );
+            })}
+        </section>
+        <aside className={styles.notice}>
+          <strong>Lưu ý khi sử dụng kết quả</strong>
+          <p>
+            Tra cứu giúp tìm thông tin lưu trữ, không thay thế việc xác thực tệp
+            văn bằng. Nếu cần kiểm tra tệp PDF hoặc mã QR, sử dụng{" "}
+            <Link href="/verify">chức năng xác thực văn bằng</Link>.
+          </p>
+          <p>
+            Thông tin không khớp hoặc không nhớ số định danh?{" "}
+            <Link href="/login?type=student">
+              Đăng nhập tài khoản sinh viên
+            </Link>{" "}
+            hoặc liên hệ bộ phận quản lý văn bằng của nhà trường.
+          </p>
+        </aside>
+      </main>
+      <footer className={styles.footer}>
+        <div className={styles.container}>
+          <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
+          <span>Hệ thống quản lý và xác thực văn bằng</span>
+        </div>
+      </footer>
     </div>
   );
 }

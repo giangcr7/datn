@@ -39,6 +39,8 @@ import type { PrintDiplomaDataDto } from '../common/dto/print-diploma.dto';
 import { createDiplomaPdf } from '../signatures/pdf-signature-engine';
 import { RegisterQueryDto } from './register-query.dto';
 import { registerQuery } from './diploma-register';
+import { LookupDiplomaDto } from './lookup-diploma.dto';
+import { diplomaLookupProjection, diplomaLookupQuery } from './diploma-lookup';
 import {
   replacementErrors,
   replacementSource,
@@ -1112,10 +1114,34 @@ export class CertService {
         }
       : {};
   }
+  async lookup(query: LookupDiplomaDto) {
+    if (!query.mssv && !query.soHieu && !query.soVaoSo)
+      throw new BadRequestException(
+        'Cần nhập MSSV, số hiệu hoặc số vào sổ, kèm họ tên và ngày sinh',
+      );
+    const birthDate = parseDateOnly(query.dob);
+    if (!birthDate || birthDate > new Date())
+      throw new BadRequestException('Ngày sinh không hợp lệ');
+    return this.database.$transaction(
+      async (transaction) => {
+        const matches = await transaction.$queryRaw<{ id: string }[]>(
+          diplomaLookupQuery(query),
+        );
+        if (!matches.length) return [];
+        const diplomas = await transaction.diploma.findMany({
+          where: { id: { in: matches.map((item) => item.id) } },
+          include: diplomaInclude,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        });
+        return diplomas.map((item) => diplomaLookupProjection(item));
+      },
+      { isolationLevel: 'RepeatableRead' },
+    );
+  }
   async search(query: string, actor?: AuthActor) {
     if (!actor && process.env.PUBLIC_DIRECTORY_ENABLED !== 'true')
       throw new ForbiddenException(
-        'Tra cứu theo tên/MSSV chưa được mở công khai. Vui lòng đăng nhập hoặc dùng UUID/proof để xác thực.',
+        'Tra cứu danh sách theo tên/MSSV chưa được mở công khai. Vui lòng dùng biểu mẫu tra cứu văn bằng hoặc đăng nhập.',
       );
     if (!query || query.trim().length < 2)
       throw new BadRequestException('Nhập ít nhất 2 ký tự');

@@ -1,5 +1,7 @@
 import {
   Controller,
+  Header,
+  HttpCode,
   Post,
   Patch,
   Get,
@@ -16,6 +18,7 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { CertService } from './cert.service';
 import { RegisterQueryDto } from './register-query.dto';
+import { LookupDiplomaDto } from './lookup-diploma.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -237,6 +240,13 @@ export class CertController {
         (req as any).user,
       );
     return this.certService.findPending((req as any).user);
+  }
+  @Post('lookup')
+  @HttpCode(200)
+  @Header('Cache-Control', 'private, no-store')
+  @Throttle({ medium: { ttl: 60000, limit: 10 } })
+  lookup(@Body() query: LookupDiplomaDto) {
+    return this.certService.lookup(query);
   }
   @Get('search')
   @UseGuards(OptionalJwtAuthGuard)

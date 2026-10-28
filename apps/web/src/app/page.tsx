@@ -142,8 +142,8 @@ export default function HomePage() {
                 </div>
               </div>
               <p className={styles.serviceDescription}>
-                Tìm thông tin văn bằng theo họ tên, mã sinh viên hoặc số hiệu
-                văn bằng, trong phạm vi được nhà trường cho phép tra cứu.
+                Tìm văn bằng bằng họ tên, ngày sinh và số định danh, trong phạm
+                vi được nhà trường cho phép tra cứu.
               </p>
               <p className={styles.searchNote}>
                 Thông tin tra cứu không thay thế kết quả xác thực tệp văn bằng.
