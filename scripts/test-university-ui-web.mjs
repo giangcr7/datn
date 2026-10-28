@@ -160,6 +160,8 @@ try {
         API_URL: "http://127.0.0.1:" + backendPort,
         NEXT_PUBLIC_API_URL: "http://127.0.0.1:" + backendPort,
         NEXT_TELEMETRY_DISABLED: "1",
+        AI_ASSISTANT_ENABLED: "false",
+        AI_API_KEY: "",
       },
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
@@ -249,6 +251,65 @@ try {
     for (const href of css) stylesheets.add(href.replaceAll("&amp;", "&"));
     console.log("PASS " + path);
   }
+  const assistantPost = (body, session, origin = base) =>
+    fetch(base + "/api/assistant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: origin,
+        ...(session ? { cookie: session } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  let assistantResponse = await assistantPost({
+    question: "Tra cứu cần nhập những gì?",
+  });
+  const assistantAnswer = await assistantResponse.json();
+  check(
+    "public assistant uses honest guide mode without credentials",
+    assistantResponse.status === 200 &&
+      assistantAnswer.mode === "guide" &&
+      assistantAnswer.sources.some((source) => source.href === "/search"),
+  );
+  check(
+    "assistant response is not cached",
+    assistantResponse.headers.get("Cache-Control") === "private, no-store",
+  );
+  const issueQuestion = {
+    question: "Giải thích lỗi kiểm tra dữ liệu",
+    context: { type: "registry-issues", codes: ["UNMAPPED_PROGRAM"] },
+  };
+  check(
+    "public cannot request staff error explanations",
+    (await assistantPost(issueQuestion)).status === 403,
+  );
+  check(
+    "student cannot request staff error explanations",
+    (await assistantPost(issueQuestion, student)).status === 403,
+  );
+  assistantResponse = await assistantPost(issueQuestion, officer);
+  check(
+    "authorized officer gets safe program guidance",
+    assistantResponse.status === 200 &&
+      (await assistantResponse.json()).sources.some(
+        (source) => source.href === "/catalog",
+      ),
+  );
+  check(
+    "cross-origin assistant request rejected",
+    (
+      await assistantPost(
+        { question: "Tra cứu" },
+        null,
+        "https://attacker.example",
+      )
+    ).status === 403,
+  );
+  check(
+    "browser cannot override provider model",
+    (await assistantPost({ question: "Tra cứu", model: "attacker" }, admin))
+      .status === 400,
+  );
   let allCss = "";
   for (const href of stylesheets) {
     const response = await fetch(new URL(href, base));

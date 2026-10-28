@@ -5,6 +5,7 @@ import { ConfigProvider } from "antd";
 import viVN from "antd/locale/vi_VN";
 import { SessionProvider } from "next-auth/react";
 import { schoolTheme } from "@/lib/school-theme";
+import DiplomaAssistant from "@/components/DiplomaAssistant";
 
 export default function ThemeRegistry({
   children,
@@ -15,6 +16,7 @@ export default function ThemeRegistry({
     <SessionProvider>
       <ConfigProvider locale={viVN} theme={schoolTheme}>
         {children}
+        <DiplomaAssistant />
       </ConfigProvider>
     </SessionProvider>
   );

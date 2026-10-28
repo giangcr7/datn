@@ -1,6 +1,7 @@
 "use client";
 
 import PageTitle from "@/components/PageTitle";
+import { openRegistryAssistant } from "@/lib/diploma-assistant";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -477,19 +478,34 @@ export default function ImportClient({
                       )
                     : openRegistryIssues(row.issues);
                 return issues.length ? (
-                  <ul className="m-0 list-disc space-y-1 pl-4">
-                    {issues.map((issue: any) => (
-                      <li
-                        key={issue.id}
-                        style={{
-                          color:
-                            issue.severity === "ERROR" ? "#b42318" : "#595959",
-                        }}
-                      >
-                        {registryIssueText(issue)}
-                      </li>
-                    ))}
-                  </ul>
+                  <div>
+                    <ul className="m-0 list-disc space-y-1 pl-4">
+                      {issues.map((issue: any) => (
+                        <li
+                          key={issue.id}
+                          style={{
+                            color:
+                              issue.severity === "ERROR"
+                                ? "#b42318"
+                                : "#595959",
+                          }}
+                        >
+                          {registryIssueText(issue)}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() =>
+                        openRegistryAssistant(
+                          issues.map((issue: { code: string }) => issue.code),
+                        )
+                      }
+                    >
+                      Giải thích lỗi
+                    </Button>
+                  </div>
                 ) : (
                   <Typography.Text type="success">
                     Đủ thông tin cấp bằng
