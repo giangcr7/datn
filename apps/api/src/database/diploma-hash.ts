@@ -22,9 +22,25 @@ export function diplomaPayload(diploma: DiplomaWithRelations) {
     gpa: view.gpa === null ? null : view.gpa.toFixed(2),
     gpaScale: view.gpaScale,
     grade: view.grade,
-    degreeType: diploma.graduation.degreeType,
+    degreeType: view.degreeType,
+    ...(view.replacementReference
+      ? { replacement: view.replacementReference }
+      : {}),
+    ...(view.printedDiploma ? { printedDiploma: view.printedDiploma } : {}),
     specialization: diploma.graduation.specialization,
     issueDate: view.issueDate,
+    ...(view.issueDateStatus === 'NOT_IN_SOURCE'
+      ? {
+          issueDateStatus: view.issueDateStatus,
+          sourceRegistry: {
+            batchId: view.sourceBatchId,
+            fileName: view.sourceFileName,
+            sha256: diploma.graduation.sourceRow?.batch.document.sha256 || null,
+            sheet: view.sourceSheet,
+            row: view.sourceRowNumber,
+          },
+        }
+      : {}),
     soHieu: view.soHieu,
     soVaoSo: view.soVaoSo,
     className: view.className,

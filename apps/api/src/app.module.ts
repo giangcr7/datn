@@ -10,6 +10,7 @@ import { FabricModule } from './fabric/fabric.module';
 import { NotifyModule } from './notify/notify.module';
 import { StudentsModule } from './students/students.module';
 import { AuditModule } from './audit/audit.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { IntegrityModule } from './integrity/integrity.module';
 import { envValidationSchema } from './config/env.validation';
 import { WinstonModule } from 'nest-winston';
@@ -19,6 +20,8 @@ import { ExplorerModule } from './explorer/explorer.module';
 import { DatabaseModule } from './database/database.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { RegistryImportModule } from './imports/registry-import.module';
+import { PdfSignatureModule } from './signatures/pdf-signature.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -27,6 +30,7 @@ import { RegistryImportModule } from './imports/registry-import.module';
       validationSchema: envValidationSchema,
     }),
     DatabaseModule,
+    PdfSignatureModule,
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 5 },
       { name: 'medium', ttl: 60000, limit: 60 },
@@ -40,6 +44,8 @@ import { RegistryImportModule } from './imports/registry-import.module';
     NotifyModule,
     StudentsModule,
     AuditModule,
+    CatalogModule,
+    DashboardModule,
     IntegrityModule,
     HealthModule,
     ExplorerModule,

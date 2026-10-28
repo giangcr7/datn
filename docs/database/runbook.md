@@ -37,7 +37,7 @@ docker compose --env-file .env.infrastructure -f compose.database.yaml ps
 npx prisma migrate status --config apps/api/prisma.config.ts
 npm run build -w api
 npm run build -w @diploma-chain/web
-npm run build -w chaincode
+npm run build --workspace ./chaincode
 npm run test -w api -- --runInBand
 npm run test:database -w api
 node scripts/smoke-api.mjs
@@ -64,14 +64,14 @@ MongoDB cũ chưa được migrate hoặc xóa. `npm run legacy:inspect -w api` 
 4. Chạy trên clone trước, so row counts/hash và kiểm thử xác thực. Legacy revocation chưa có luồng cutover hoàn chỉnh.
 5. Chỉ đổi traffic sau nghiệm thu; giữ Mongo read-only theo thời hạn lưu trữ đã được duyệt.
 
-## Cutover Fabric — chưa thực hiện
+## Cutover Fabric — local đã kiểm thử, production vẫn cần nghiệm thu riêng
 
-Chaincode mới đã build nhưng chưa nâng cấp trên network hiện có. Startup không tự deploy hoặc tự chọn channel theo script cũ.
+Local ngày 15/10/2026 đã nâng cấp educert lên 1.1-hq, sequence 2, trên channel diploma và đã kiểm thử commit phát hành/thu hồi bằng identity Hà Nội. Với network khác, phải thực hiện checklist dưới đây; không mặc định network đó đã được nâng cấp. Startup chỉ khởi động các container Fabric hiện có khi FABRIC_ENABLED=true, không tự deploy hoặc chọn lại channel.
 
-1. Backup ledger; chốt `FABRIC_CHANNEL`/`FABRIC_CHAINCODE` khớp network thật.
+1. Backup ledger; chốt `FABRIC_CHANNEL=diploma`/`FABRIC_CHAINCODE=educert` khớp network thật.
 2. Review lifecycle, endorsement policy và identity từng MSP.
-3. Enroll identity có attribute `diploma.issuer=true` trong certificate; MSP phải khớp campus.
-4. Deploy upgrade có chủ đích, kiểm thử anchor/revoke/idempotency trên hồ sơ thử nghiệm.
+3. Enroll identity Hà Nội có attribute `diploma.issuer=true` trong certificate; không dùng tài khoản web/admin thay cho issuer wallet.
+4. Deploy upgrade có chủ đích, kiểm thử anchor/revoke/idempotency trên hồ sơ thử nghiệm. Local ngày 15/10/2026 đã commit chaincode `1.1-hq`, sequence `2`; backup nằm ngoài Git tại `.data/fabric-backup-20261015`.
 5. Sau đó mới bật Fabric/outbox; theo dõi pending/dead-letter, không sửa trạng thái thành ON_CHAIN bằng tay.
 
 Chaincode mới giữ endpoint đọc legacy nhưng chặn `IssueCertificate` và `RevokeCertificate` cũ. Muốn xử lý thu hồi hồ sơ legacy phải có phương án migration riêng trước upgrade; không được phát hành lại toàn bộ PII bằng giao dịch cũ.
@@ -87,7 +87,7 @@ Driver hiện tại lưu nguồn .xlsx trong local private storage hoặc S3. PD
 - Database: full backup + WAL/PITR, mã hóa, định nghĩa RPO/RTO và thử restore định kỳ. Compose local một node không phải HA/PITR.
 - Restore dump vào database mới; dùng `--no-owner` nếu role nguồn không còn tồn tại, review/reapply quyền trước đổi connection string.
 - App lỗi nhưng schema tương thích: rollback image, giữ dữ liệu; không sửa/xóa migration history.
-- Outbox lỗi: giữ event/anchor, sửa worker và retry theo lease. FAILED sau 10 lần là dead-letter cần thao tác có audit; chưa có màn hình replay.
+- Outbox lỗi: giữ nguyên event/anchor, xử lý cấu hình hoặc kết nối trước. Trong **Đối chiếu blockchain**, lọc **Hết lượt thử lại**, mở **Chi tiết → Khôi phục giao dịch**, nhập lý do xử lý và xác nhận. Mỗi đợt có tối đa 10 lượt; lưu lỗi/số lần thử cũ và người thao tác vào lịch sử/nhật ký. Không dùng SQL đặt COMMITTED hoặc sửa payload. Lease hết hạn ở lượt cuối chuyển FAILED, không tự gửi quá hạn mức. Xem chi tiết trong `single-campus-workflow.md`; kiểm thử rollback bằng `node scripts/test-outbox-recovery-db.mjs`, nghiệm thu lại với Fabric thật trước production.
 - Fabric lỗi: trả pending/unavailable, không VERIFIED. Ledger không thể được suy lại từ PostgreSQL.
 - File nguồn lỗi: đối chiếu checksum/object key và khôi phục file nguyên bản, không ghi đè hoặc sửa checksum.
 

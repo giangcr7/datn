@@ -24,7 +24,7 @@ Lưu PII, hồ sơ sinh viên, ngành, lớp, quyết định, hồ sơ tốt ng
 
 ### Object storage
 
-Lưu file Excel/PDF gốc theo key bất biến {institutionId}/{sha256}.xlsx. Database chỉ lưu metadata, media type, size và checksum. Production nên dùng S3/MinIO có versioning, SSE-KMS, private bucket và lifecycle.
+Lưu file Excel/PDF theo key bất biến {institutionId}/{sha256}.xlsx hoặc .pdf. Database lưu metadata, size và checksum. `signed_diploma_documents` lưu bản PDF ký cơ sở và bản đủ hai chữ ký theo phiên bản; `diploma_pdf_signatures` lưu người thao tác, cơ sở, chứng thư, thứ tự ký và `validation_evidence` TSA/OCSP/CRL. Snapshot blockchain ràng buộc SHA-256 bằng chứng cho từng chữ ký. PDF mới dùng B-T khi bật PKI; không sửa PDF B-B đã có. Cấu hình/giới hạn trong `docs/pdf-pki.md`. Production nên dùng S3/MinIO có versioning, SSE-KMS, private bucket và lifecycle.
 
 ### Hyperledger Fabric
 
@@ -32,12 +32,12 @@ Lưu {uuid, version, schemaVersion, payloadHash, issuerMspId, issueTxId, revokeT
 
 ## Luồng cấp văn bằng
 
-1. Cán bộ tạo Diploma ở REQUESTED trong cùng transaction với GraduationRecord nếu hồ sơ mới.
-2. Người khác có quyền phê duyệt kiểm tra dữ liệu và chuyển APPROVED.
-3. Transaction phê duyệt tạo DiplomaVersion, BlockchainAnchor(QUEUED) và OutboxEvent cùng transaction.
-4. Worker lấy outbox bằng FOR UPDATE SKIP LOCKED, gọi Fabric, rồi cập nhật COMMITTED/FAILED.
+1. Cơ sở nguồn (HCM/ORG2) tạo Diploma ở REQUESTED và ký xác nhận PDF bằng chứng thư cơ sở. Hồ sơ đang chờ trước khi bổ sung chức năng ký phải được người lập ký bổ sung; không tự coi PDF cũ là bản đã ký.
+2. Trụ sở Hà Nội/ORG1 có membership `can_approve_diplomas` kiểm tra dữ liệu không đổi và chữ ký cơ sở, rồi ký thứ hai bằng chứng thư khác. Admin không thay thế người duyệt; hai người ký phải khác nhau.
+3. Transaction phê duyệt giữ `campus_id` là cơ sở nguồn, ghi `issuing_campus_id` là trụ sở Hà Nội, rồi tạo DiplomaVersion chứa SHA-256 PDF hoàn chỉnh và fingerprint hai chứng thư, cùng BlockchainAnchor(QUEUED) và OutboxEvent. Trigger chặn sửa/xóa lịch sử PDF và chữ ký.
+4. Worker lấy outbox bằng FOR UPDATE SKIP LOCKED, gọi Fabric bằng issuer MSP của trụ sở (`Org1MSP`), rồi cập nhật COMMITTED/FAILED.
 5. API chỉ trả ON_CHAIN khi anchor issue đã COMMITTED; không dùng APPROVED để giả là đã lên chain.
-6. Thu hồi tạo event/anchor REVOKE, không xóa snapshot cũ.
+6. Thu hồi chỉ do trụ sở xử lý, dùng lại issuer MSP của anchor phát hành; không xóa snapshot cũ.
 
 ## Quy tắc toàn vẹn
 

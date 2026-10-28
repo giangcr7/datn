@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const data = await apiCall(`/students?page=${page}&limit=${limit}&search=${search}`, 'GET', undefined, session?.accessToken);
     return NextResponse.json(data);
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: error.status || 500 });
   }
 }
 
@@ -24,6 +24,6 @@ export async function POST(req: Request) {
     const data = await apiCall('/students', 'POST', body, session?.accessToken);
     return NextResponse.json(data);
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: error.status || 500 });
   }
 }

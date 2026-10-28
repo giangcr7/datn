@@ -1,14 +1,29 @@
-import React from "react";
 import { Metadata } from "next";
-import ImportClient from "./ImportClient"; // Đảm bảo file ImportClient.tsx nằm cùng thư mục
+import { requireWorkspaceAccess } from "@/lib/workspace-session";
+import ImportClient from "./ImportClient";
 
 export const metadata: Metadata = {
-  title: "Nhập liệu sinh viên | Hệ thống Quản lý Văn bằng",
-  description: "Tải lên danh sách sinh viên tốt nghiệp từ file Excel.",
+  title: "Kiểm tra dữ liệu | DiplomaChain",
+  description: "Kiểm tra dữ liệu và chuẩn bị hồ sơ đề nghị cấp văn bằng.",
 };
 
-export default function ImportPage() {
+export default async function ImportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ batchId?: string; status?: string; rowId?: string }>;
+}) {
+  await requireWorkspaceAccess("/import");
+  const params = await searchParams;
+  const status = ["NEEDS_REVIEW", "READY", "IMPORTED", "SKIPPED"].includes(
+    params.status || "",
+  )
+    ? params.status
+    : "NEEDS_REVIEW";
   return (
-    <ImportClient />
+    <ImportClient
+      initialBatchId={params.batchId || ""}
+      initialStatus={status}
+      initialRowId={params.rowId || ""}
+    />
   );
 }

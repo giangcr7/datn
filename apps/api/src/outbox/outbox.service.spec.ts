@@ -19,7 +19,7 @@ describe('outbox commit handling', () => {
         version: 1,
         schemaVersion: 'diploma-v1',
         payloadHash: 'a'.repeat(64),
-        issuerMspId: 'Org2MSP',
+        issuerMspId: 'Org1MSP',
       },
       version: { diplomaId: 'diploma-id', payloadHash: 'a'.repeat(64) },
     };
@@ -53,6 +53,7 @@ describe('outbox commit handling', () => {
       }),
     });
     await test.service.processOne();
+    expect(test.fabric.executeForMsp).toHaveBeenCalledWith('Org1MSP', 'submit', 'AnchorDiploma', 'diploma-id', '1', 'diploma-v1', 'a'.repeat(64), 'Org1MSP');
     expect(test.transaction.blockchainAnchor.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -103,5 +104,28 @@ describe('outbox commit handling', () => {
     test.fabric.enabled = false;
     await test.service.tick();
     expect(test.database.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('does not submit a lease-expired task after its final allowed attempt', async () => {
+    const test = fixture(null);
+    test.database.$queryRaw.mockResolvedValue([{ id: 'event-id', status: 'FAILED' }] as any);
+    await expect(test.service.processOne()).resolves.toBe(true);
+    expect(test.fabric.executeForMsp).not.toHaveBeenCalled();
+    expect(test.database.outboxEvent.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    null,
+    { success: 1, txId: 'tx', hash: 'a'.repeat(64) },
+    { success: true, txId: 123, hash: 'a'.repeat(64) },
+    { success: true, txId: '', hash: 'a'.repeat(64) },
+    { success: true, txId: 'tx', hash: 'b'.repeat(64) },
+  ])('never completes a recovered task with invalid Fabric evidence %p', async (payload) => {
+    const test = fixture({ payload: JSON.stringify(payload) });
+    await test.service.processOne();
+    expect(test.transaction.outboxEvent.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'PENDING' }) }),
+    );
+    expect(test.transaction.diplomaEvent.create).not.toHaveBeenCalled();
   });
 });

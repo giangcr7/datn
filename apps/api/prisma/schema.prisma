@@ -87,6 +87,7 @@ model Institution {
   id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code           String               @unique @db.VarChar(40)
   name           String               @db.VarChar(255)
+  nameEn         String?              @map("name_en") @db.VarChar(255)
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   campuses       Campus[]
   programs       Program[]
@@ -108,13 +109,17 @@ model Campus {
   code          String              @db.VarChar(40)
   name          String              @db.VarChar(255)
   fabricMspId   String?             @unique @map("fabric_msp_id") @db.VarChar(100)
+  active        Boolean             @default(true)
+  isHeadquarters Boolean           @default(false) @map("is_headquarters")
   createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
   institution   Institution         @relation(fields: [institutionId], references: [id], onDelete: Restrict)
   classes       AcademicClass[]
   enrollments   Enrollment[]
   memberships   AccountMembership[]
   imports       ImportBatch[]
-  diplomas      Diploma[]
+  diplomas      Diploma[]           @relation("OriginCampus")
+  issuedDiplomas Diploma[]          @relation("IssuingCampus")
+  pdfSignatures DiplomaPdfSignature[]
 
   @@unique([institutionId, code])
   @@index([institutionId])
@@ -126,6 +131,7 @@ model Program {
   institutionId String             @map("institution_id") @db.Uuid
   code          String             @db.VarChar(80)
   name          String             @db.VarChar(255)
+  nameEn        String?            @map("name_en") @db.VarChar(255)
   nationalCode  String?            @map("national_code") @db.VarChar(30)
   active        Boolean            @default(true)
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -262,10 +268,18 @@ model Diploma {
   id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   institutionId  String           @map("institution_id") @db.Uuid
   campusId       String           @map("campus_id") @db.Uuid
+  issuingCampusId String?          @map("issuing_campus_id") @db.Uuid
   graduationId   String           @map("graduation_id") @db.Uuid
   certificateNo  String           @map("certificate_no") @db.VarChar(120)
   registryNo     String           @map("registry_no") @db.VarChar(180)
   issuedOn       DateTime?        @map("issued_on") @db.Date
+  printTemplate  String?          @map("print_template") @db.VarChar(60)
+  originType     String           @default("ISSUANCE") @map("origin_type") @db.VarChar(20)
+  fullNameLatin  String?          @map("full_name_latin") @db.VarChar(255)
+  majorNameEn    String?          @map("major_name_en") @db.VarChar(255)
+  issuePlace     String?          @map("issue_place") @db.VarChar(120)
+  diplomaSignerName String?       @map("diploma_signer_name") @db.VarChar(255)
+  diplomaSignerTitle String?      @map("diploma_signer_title") @db.VarChar(120)
   status         DiplomaStatus    @default(DRAFT)
   workflowStatus WorkflowStatus   @default(DRAFT) @map("workflow_status")
   currentVersion Int              @default(1) @map("current_version")
@@ -274,12 +288,14 @@ model Diploma {
   requestedAt    DateTime?        @map("requested_at") @db.Timestamptz(3)
   approvedAt     DateTime?        @map("approved_at") @db.Timestamptz(3)
   supersedesId   String?          @unique @map("supersedes_id") @db.Uuid
+  replacementData Json?           @map("replacement_data") @db.JsonB
   revokedReason  String?          @map("revoked_reason") @db.Text
   revokedAt      DateTime?        @map("revoked_at") @db.Timestamptz(3)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
   institution    Institution      @relation(fields: [institutionId], references: [id], onDelete: Restrict)
-  campus         Campus           @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  campus         Campus           @relation("OriginCampus", fields: [campusId], references: [id], onDelete: Restrict)
+  issuingCampus  Campus?          @relation("IssuingCampus", fields: [issuingCampusId], references: [id], onDelete: Restrict)
   graduation     GraduationRecord @relation(fields: [graduationId], references: [id], onDelete: Restrict)
   requestedBy    Account?         @relation("DiplomaRequester", fields: [requestedById], references: [id], onDelete: Restrict)
   approvedBy     Account?         @relation("DiplomaApprover", fields: [approvedById], references: [id], onDelete: Restrict)
@@ -288,10 +304,13 @@ model Diploma {
   versions       DiplomaVersion[]
   events         DiplomaEvent[]
   alerts         IntegrityAlert[]
+  signedDocuments SignedDiplomaDocument[]
 
   @@unique([institutionId, certificateNo])
   @@unique([institutionId, registryNo])
   @@index([campusId, workflowStatus, createdAt])
+  @@index([institutionId, workflowStatus, createdAt])
+  @@index([issuingCampusId])
   @@index([graduationId])
   @@map("diplomas")
 }
@@ -309,9 +328,58 @@ model DiplomaVersion {
   createdBy     Account?           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   anchors       BlockchainAnchor[]
   outboxEvents  OutboxEvent[]
+  signedDocument SignedDiplomaDocument?
 
   @@unique([diplomaId, version])
   @@map("diploma_versions")
+}
+
+model SignedDiplomaDocument {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diplomaId      String   @map("diploma_id") @db.Uuid
+  version        Int
+  versionId      String?  @unique @map("version_id") @db.Uuid
+  payloadHash    String   @map("payload_hash") @db.Char(64)
+  signingMode    String   @map("signing_mode") @db.VarChar(20)
+  originPdfKey   String   @map("origin_pdf_key") @db.VarChar(500)
+  originPdfHash  String   @map("origin_pdf_hash") @db.Char(64)
+  signedPdfKey   String?  @map("signed_pdf_key") @db.VarChar(500)
+  signedPdfHash  String?  @unique @map("signed_pdf_hash") @db.Char(64)
+  byteSize       Int      @map("byte_size")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(3)
+  diploma        Diploma  @relation(fields: [diplomaId], references: [id], onDelete: Restrict)
+  diplomaVersion DiplomaVersion? @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  signatures     DiplomaPdfSignature[]
+
+  @@unique([diplomaId, version])
+  @@map("signed_diploma_documents")
+}
+
+model DiplomaPdfSignature {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentId        String   @map("document_id") @db.Uuid
+  signatureOrder    Int      @map("signature_order")
+  fieldName         String   @map("field_name") @db.VarChar(80)
+  actorId           String   @map("actor_id") @db.Uuid
+  campusId          String   @map("campus_id") @db.Uuid
+  signerName        String   @map("signer_name") @db.VarChar(255)
+  certificateSha256 String   @map("certificate_sha256") @db.Char(64)
+  certificateSerial String   @map("certificate_serial") @db.VarChar(255)
+  certificateSubject String  @map("certificate_subject") @db.Text
+  certificateIssuer String   @map("certificate_issuer") @db.Text
+  validationEvidence Json?  @map("validation_evidence")
+  validFrom         DateTime @map("valid_from") @db.Timestamptz(3)
+  validTo           DateTime @map("valid_to") @db.Timestamptz(3)
+  signedAt          DateTime @map("signed_at") @db.Timestamptz(3)
+  document          SignedDiplomaDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  actor             Account  @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  campus            Campus   @relation(fields: [campusId], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, signatureOrder])
+  @@unique([documentId, actorId])
+  @@unique([documentId, certificateSha256])
+  @@map("diploma_pdf_signatures")
 }
 
 model DiplomaEvent {
@@ -442,6 +510,7 @@ model Account {
   updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
   student            Student?            @relation(fields: [studentId], references: [id], onDelete: Restrict)
   memberships        AccountMembership[]
+  pdfSignatures      DiplomaPdfSignature[]
   sessions           RefreshSession[]
   otpChallenges      OtpChallenge[]
   requestedDiplomas  Diploma[]           @relation("DiplomaRequester")
@@ -464,6 +533,7 @@ model AccountMembership {
   campusId  String           @map("campus_id") @db.Uuid
   role      Role
   active    Boolean          @default(true)
+  canApproveDiplomas Boolean  @default(false) @map("can_approve_diplomas")
   createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   account   Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
   campus    Campus           @relation(fields: [campusId], references: [id], onDelete: Restrict)

@@ -2,7 +2,7 @@
 
 ## Đã hoàn thành tại local ngày 11/10/2026
 
-- PostgreSQL schema gồm 25 bảng, 232 cột, 61 FK vật lý, ba migration đã áp dụng.
+- PostgreSQL schema gồm 25 bảng, 235 cột, 63 FK vật lý, bốn migration đã áp dụng.
 - Tách admin/migrator/runtime, migrator không superuser, runtime không DDL/DELETE.
 - Khóa duy nhất kết quả tốt nghiệp, FK đúng scope, decimal GPA và maker-checker được kiểm thử tại database.
 - Snapshot, audit, nguồn file và outbox payload có bảo vệ bất biến.
@@ -16,14 +16,15 @@
 | ------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | Dữ liệu thật        | 1.472 dòng cần review; 483 READY cũng cần xác nhận nghiệp vụ trước commit    | Biên bản đối chiếu, audit override, row counts             |
 | Mongo cutover       | Chưa có migration thực dữ liệu Mongo cũ; tool hiện tại chỉ inventory         | Clone/dump, mapping ID, hash/count reconciliation          |
-| Fabric upgrade      | Chưa deploy chaincode mới hoặc cấp issuer certificate có attribute           | Test anchor, revoke, retry/idempotency và MSP/policy       |
+| Fabric upgrade      | Local đã deploy/test chaincode và issuer; production chưa cutover             | Backup, lifecycle, anchor/revoke/retry/idempotency, MSP/policy và restore drill |
 | Legacy write policy | Chaincode mới chặn issue/revoke cũ, giữ đọc                                  | Chốt phương án xử lý thu hồi legacy trước upgrade          |
 | Backup/PITR/HA      | Compose local chưa phải môi trường HA/WAL archive                            | Restore drill, RPO/RTO, cảnh báo giám sát                  |
 | Object storage      | Local driver đã có; cấu hình S3/KMS/IAM production chưa kiểm chứng           | Test upload/checksum/versioning/retention và quyền private |
 | Hiệu năng           | Chưa load test với dữ liệu lớn/multiple instances                            | p95 latency, query plans, pool/worker limits               |
 | Vòng đời nâng cao   | Schema có supersedes/version nhưng chưa có API/UI sửa sai/cấp lại hoàn chỉnh | State-machine tests và nghiệp vụ thay thế được duyệt       |
-| Outbox operations   | Worker retry/dead-letter có; chưa có UI replay/alerting đầy đủ               | Dashboard, SOP replay có audit, thử crash/lease recovery   |
+| Outbox operations   | Có lọc dead-letter, khôi phục tác vụ gốc có lý do/audit, chặn bấm trùng và giới hạn đợt thử; đã kiểm tra PostgreSQL/HTTP/worker bằng Fabric giả lập | Còn cần cảnh báo chủ động và nghiệm thu retry/idempotency, crash/lease với Fabric thật |
 | Bảo mật ứng dụng    | Cần review toàn bộ dependency, auth/bootstrap, proxy và log production       | Audit report và regression suite sau cập nhật              |
+| PKI / chữ ký PDF | Local có TSA RFC3161, chuỗi CA, OCSP và CRL; vẫn dùng CA/TSA demo | CA/TSA thật, quản lý khóa, chính sách trust/revocation, xác minh PDF độc lập và load test; chưa phải B-LT/B-LTA |
 
 ## Dependency audit đã quan sát
 

@@ -1,374 +1,270 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
-import { Input, Button, Typography, message, Result, Descriptions, Tabs, Upload, Spin } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, InboxOutlined } from '@ant-design/icons';
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { Alert, Button, Spin, Tabs, Typography, Upload, message } from "antd";
+import { CameraOutlined, InboxOutlined } from "@ant-design/icons";
+import type { IScannerControls } from "@zxing/browser";
+import DiplomaVerificationResult from "@/components/DiplomaVerificationResult";
+import {
+  parseDiplomaQr,
+  type DiplomaVerification,
+} from "@/lib/public-verification";
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 const { Dragger } = Upload;
 
-// ✅ Parse linh hoạt: nhận JSON proof, UUID thuần, hoặc certHash thuần
-function parseProofInput(raw: string): any | null {
-  const s = raw.trim();
-  if (!s) return null;
-  try {
-    const obj = JSON.parse(s);
-    const uuid = obj.certUUID || obj.uuid;
-    if (uuid) return { ...obj, uuid };
-    if (obj.certHash) return obj;
-  } catch {}
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
-    return { uuid: s };
-  }
-  if (/^[0-9a-f]{64}$/i.test(s)) {
-    return { certHash: s };
-  }
-  return null;
-}
-
 function VerifyContent() {
-  const [proofString, setProofString] = useState('');
-  const [scanning, setScanning] = useState(false);
-  const [activeTab, setActiveTab] = useState('proof');
   const searchParams = useSearchParams();
+  const proofFromUrl = searchParams.get("proof");
+  const [activeTab, setActiveTab] = useState("pdf");
+  const [scanning, setScanning] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [verification, setVerification] = useState<DiplomaVerification | null>(
+    null,
+  );
+  const [errorMsg, setErrorMsg] = useState("");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const executeVerification = useCallback(
+    async (payload: Record<string, unknown>) => {
+      setLoading(true);
+      setErrorMsg("");
+      setVerification(null);
+      try {
+        const response = await fetch("/api/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success)
+          throw new Error(
+            data.error || data.message || "Không xác thực được văn bằng.",
+          );
+        setVerification(data);
+      } catch (error) {
+        setErrorMsg(
+          error instanceof Error
+            ? error.message
+            : "Không thể kết nối dịch vụ xác thực. Vui lòng thử lại.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    const proofFromUrl = searchParams.get('proof');
-    if (proofFromUrl) {
-      setProofString(decodeURIComponent(proofFromUrl));
-      // Tự động verify khi có proof từ URL
-      setTimeout(() => {
-        document.getElementById('btn-verify')?.click();
-      }, 500);
+    if (!proofFromUrl) return;
+    const payload = parseDiplomaQr(proofFromUrl);
+    if (!payload) {
+      setErrorMsg(
+        "Liên kết xác thực không hợp lệ. Vui lòng quét lại mã QR trên văn bằng.",
+      );
+      return;
     }
-  }, []);
-  const [loading, setLoading] = useState(false);
-  const [certData, setCertData] = useState<any>(null);
-  const [verifyResult, setVerifyResult] = useState<{ isValid: boolean; message: string; details?: any } | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
+    void executeVerification(payload);
+  }, [proofFromUrl, executeVerification]);
 
-  const executeVerification = async (payload: any) => {
-    setLoading(true);
-    setErrorMsg('');
-    setCertData(null);
-    setVerifyResult(null);
-    try {
-      const res = await fetch('/api/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+  useEffect(() => {
+    if (!scanning || !videoRef.current) return;
+    const video = videoRef.current;
+    let disposed = false;
+    let handled = false;
+    let controls: IScannerControls | undefined;
 
-      if (data.success) {
-        setVerifyResult(data);
-        setCertData(data.details);
-      } else {
-        setErrorMsg(data.error || 'Xác thực thất bại.');
+    void (async () => {
+      try {
+        const { BrowserQRCodeReader } = await import("@zxing/browser");
+        if (disposed) return;
+        const reader = new BrowserQRCodeReader();
+        controls = await reader.decodeFromVideoDevice(
+          undefined,
+          video,
+          (result, _error, scannerControls) => {
+            if (!result || disposed || handled) return;
+            handled = true;
+            scannerControls.stop();
+            setScanning(false);
+            const payload = parseDiplomaQr(result.getText());
+            if (!payload) {
+              message.warning(
+                "Mã QR không hợp lệ. Vui lòng quét mã trên văn bằng.",
+              );
+              return;
+            }
+            void executeVerification(payload);
+          },
+        );
+        if (disposed || handled) controls.stop();
+      } catch {
+        if (!disposed) {
+          setScanning(false);
+          message.error(
+            "Không mở được camera. Vui lòng cấp quyền camera hoặc tải tệp PDF để xác thực.",
+          );
+        }
       }
-    } catch {
-      setErrorMsg('Lỗi kết nối đến mạng lưới Blockchain.');
+    })();
+
+    return () => {
+      disposed = true;
+      controls?.stop();
+      const stream = video.srcObject;
+      if (stream instanceof MediaStream)
+        stream.getTracks().forEach((track) => track.stop());
+      video.srcObject = null;
+    };
+  }, [scanning, executeVerification]);
+
+  async function handlePdfUpload(file: File) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      message.error("Vui lòng chọn tệp PDF văn bằng.");
+      return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      message.error("Tệp PDF không được quá 10 MB.");
+      return false;
+    }
+    setLoading(true);
+    setErrorMsg("");
+    setVerification(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/verify/pdf", {
+        method: "POST",
+        body: form,
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success)
+        throw new Error(
+          data.error || data.message || "Không xác thực được văn bằng.",
+        );
+      setVerification(data);
+    } catch (error) {
+      setErrorMsg(
+        error instanceof Error
+          ? error.message
+          : "Không xác thực được văn bằng.",
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  // Tab 1: xác thực qua Proof JSON / UUID / Hash
-  const handleVerifyProof = async () => {
-    const parsed = parseProofInput(proofString);
-
-    if (!parsed) {
-      message.warning('Chuỗi không hợp lệ. Vui lòng dán Proof JSON, UUID, hoặc Hash 64 ký tự.');
-      return;
-    }
-
-    // Gửi toàn bộ proof object để verify đúng hash
-    if (parsed.uuid) {
-      await executeVerification({ ...parsed, uuid: parsed.uuid });
-    } else if (parsed.certHash) {
-      await executeVerification({ certHash: parsed.certHash });
-    }
-  };
-
-  // Tab 2: upload PDF (giữ nguyên logic cũ)
-  const handlePdfUpload = async (info: any) => {
-    const file = info.file as File;
-    setLoading(true);
-    setErrorMsg('');
-    setCertData(null);
-    setVerifyResult(null);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 3.0 });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d')!;
-      await page.render({ canvasContext: ctx as any, viewport } as any).promise;
-      const jsQR = (await import('jsqr')).default;
-      // Đọc proof từ metadata PDF (subject field)
-      const metadata = await pdf.getMetadata();
-      const subject = (metadata?.info as any)?.Subject || '';
-      
-      console.log('Metadata subject:', subject);
-      let qrText = subject;
-      if (!qrText) {
-        setLoading(false);
-        setErrorMsg('PDF không chứa thông tin xác thực. Hãy dùng PDF được tạo từ hệ thống này.');
-        return false;
-      }
-      let proof = null;
-      try {
-        const url = new URL(qrText);
-        const proofParam = url.searchParams.get('proof');
-        if (proofParam) proof = JSON.parse(decodeURIComponent(proofParam));
-      } catch { try { proof = JSON.parse(qrText); } catch {} }
-      if (!proof || (!proof.certUUID && !proof.uuid)) {
-        setLoading(false);
-        setErrorMsg('QR code khong chua thong tin van bang hop le.');
-        return false;
-      }
-      message.success('Da doc QR code tu PDF thanh cong!');
-      const uuid = proof.certUUID || proof.uuid;
-      await executeVerification({ ...proof, uuid });
-    } catch (err) {
-      setLoading(false);
-      setErrorMsg('Loi doc PDF: ' + String(err));
-    }
     return false;
-  };
-
-  const tabItems = [
-    {
-      key: '1',
-      label: 'Chuỗi Minh Chứng (Proof)',
-      children: (
-        <div className="mt-4">
-          <Text className="block mb-1 text-gray-600">
-            Dán <strong>Proof JSON</strong> (từ nút Copy Proof), hoặc trực tiếp <strong>UUID</strong> / <strong>Hash</strong> của văn bằng:
-          </Text>
-          <Text type="secondary" className="block mb-3 text-xs">
-            Ví dụ JSON: <code>{`{"certUUID":"...","certHash":"..."}`}</code>
-          </Text>
-          <TextArea
-            rows={7}
-            placeholder={`Dán Proof JSON:\n{\n  "certUUID": "xxxxxxxx-xxxx-...",\n  "certHash": "abc123...",\n  ...\n}\n\nHoặc chỉ UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\nHoặc chỉ Hash: abc123def456... (64 ký tự)`}
-            value={proofString}
-            onChange={(e) => setProofString(e.target.value)}
-            className="font-mono text-sm mb-4"
-          />
-          <Button type="primary" block size="large" id="btn-verify" onClick={handleVerifyProof} loading={loading}>
-            Kiểm định
-          </Button>
-        </div>
-      ),
-    },
-  ,
-    {
-      key: "3",
-      label: "📷 Quét QR Code",
-      children: (
-        <div className="mt-4">
-          {!scanning ? (
-            <div className="text-center py-8">
-              <Button type="primary" size="large" onClick={() => { setScanning(true); setTimeout(() => { if (typeof window !== "undefined") { const { Html5QrcodeScanner } = require("html5-qrcode"); const scanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 }, false); scanner.render((t: string) => { try { const u = new URL(t); const p = u.searchParams.get("proof"); setProofString(p ? decodeURIComponent(p) : t); } catch { setProofString(t); } scanner.clear(); setScanning(false); setTimeout(() => document.getElementById("btn-verify")?.click(), 500); }, () => {}); } }, 300); }}>
-                Mở Camera Quét QR
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <div id="qr-reader" className="w-full" />
-              <Button className="mt-4 w-full" onClick={() => setScanning(false)}>Hủy quét</Button>
-            </div>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  const isValid = verifyResult?.isValid;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-10 px-4">
-      <div className="max-w-3xl w-full bg-white p-8 rounded-xl shadow-sm border border-blue-100">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, borderBottom: '2px solid #e6f0ff', paddingBottom: 16 }}>
-          <img
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4">
+      <div className="max-w-3xl w-full bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-blue-100">
+        <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-blue-50">
+          <Image
             src="/logo-tlu.png"
-            alt="Trường Đại học Thủy Lợi"
-            style={{ width: 64, height: 64, objectFit: 'contain' }}
+            alt="Trường Đại học Thủy lợi"
+            width={64}
+            height={64}
+            style={{ width: 64, height: 64, objectFit: "contain" }}
           />
           <div>
-            <Title level={3} style={{ margin: 0, color: '#002140', fontWeight: 'bold' }}>
+            <Title
+              level={3}
+              style={{ margin: 0, color: "#002140", fontWeight: "bold" }}
+            >
               TRƯỜNG ĐẠI HỌC THỦY LỢI
             </Title>
-            <Text style={{ color: '#003b93', fontWeight: 600, fontSize: 14 }}>
-              CỔNG XÁC THỰC VĂN BẰNG TỐT NGHIỆP TRÊN BLOCKCHAIN
+            <Text style={{ color: "#003b93", fontWeight: 600, fontSize: 14 }}>
+              CỔNG XÁC THỰC VĂN BẰNG TỐT NGHIỆP
             </Text>
           </div>
         </div>
 
-        <div style={{display:'flex', gap:8, marginBottom:16}}>
-          <Button 
-            type={activeTab==='proof' ? 'primary' : 'default'} 
-            onClick={() => setActiveTab('proof')}
-            style={{flex:1}}
-          >📄 Proof JSON</Button>
-          <Button 
-            type={activeTab==='qr' ? 'primary' : 'default'} 
-            onClick={() => setActiveTab('qr')}
-            style={{flex:1}}
-          >📷 Quét QR</Button>
-          <Button 
-            type={activeTab==='pdf' ? 'primary' : 'default'} 
-            onClick={() => setActiveTab('pdf')}
-            style={{flex:1}}
-          >📁 Upload PDF</Button>
-        </div>
-        {activeTab === 'proof' && (
-          <div className="mt-4">
-            <TextArea
-              rows={7}
-              placeholder="Dán Proof JSON hoặc UUID"
-              value={proofString}
-              onChange={(e) => setProofString(e.target.value)}
-              className="font-mono text-sm mb-4" style={{width:"100%"}}
-            />
-            <Button type="primary" block size="large" id="btn-verify" onClick={handleVerifyProof} loading={loading} style={{width:"100%", marginTop:8}}>
-              Kiểm định
-            </Button>
-          </div>
-        )}
-        {activeTab === 'qr' && (
-          <div className="mt-4">
-            {!scanning ? (
-              <div className="text-center py-8">
-                <Button type="primary" size="large" onClick={async () => {
-                  try {
-                    // Xin quyền camera trước
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    stream.getTracks().forEach(t => t.stop());
-                    setScanning(true);
-                    setTimeout(async () => {
-                      try {
-                        const { BrowserQRCodeReader } = await import('@zxing/browser');
-                        const codeReader = new BrowserQRCodeReader();
-                        const videoEl = document.getElementById('zxing-video') as HTMLVideoElement;
-                        if (videoEl) {
-                          await codeReader.decodeFromVideoDevice(undefined, videoEl, (result) => {
-                            if (result) {
-                              const text = result.getText();
-                              try {
-                                const u = new URL(text);
-                                const p = u.searchParams.get('proof');
-                                setProofString(p ? decodeURIComponent(p) : text);
-                              } catch { setProofString(text); }
-                              setScanning(false);
-                              setActiveTab('proof');
-                            }
-                          });
-                        }
-                      } catch(e) {
-                        setScanning(false);
-                        message.error('Lỗi khởi động camera');
-                      }
-                    }, 500);
-                  } catch(e: any) {
-                    message.error('Lỗi camera: ' + (e?.message || String(e)));
-                  }
-                }}>
-                  Mở Camera Quét QR
-                </Button>
-                <Text type="secondary" className="block mt-3 text-sm">
-                  Quét QR Code trên văn bằng để xác thực tự động
-                </Text>
-              </div>
-            ) : (
-              <div>
-                <video id="zxing-video" style={{width:'100%', borderRadius:8}} autoPlay muted playsInline />
-                <Button className="mt-4 w-full" onClick={() => setScanning(false)}>Hủy quét</Button>
-              </div>
-            )}
-          </div>
-        )}
-        {activeTab === 'pdf' && (
-          <div className="mt-4">
-            <Dragger
-              accept=".pdf"
-              beforeUpload={(file) => { handlePdfUpload({file}); return false; }}
-              showUploadList={false}
-            >
-              <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-              <p>Kéo thả hoặc nhấn để upload PDF văn bằng</p>
-              <p className="text-gray-400 text-sm">Hệ thống sẽ tự động đọc QR code trong PDF</p>
-            </Dragger>
-          </div>
-        )}
+        <Spin spinning={loading} tip="Đang xác thực văn bằng...">
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => {
+              setScanning(false);
+              setActiveTab(key);
+            }}
+            items={[
+              {
+                key: "pdf",
+                label: "Xác thực tệp PDF",
+                children: (
+                  <Dragger
+                    accept=".pdf,application/pdf"
+                    beforeUpload={handlePdfUpload}
+                    showUploadList={false}
+                    multiple={false}
+                    disabled={loading}
+                  >
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined />
+                    </p>
+                    <p>Kéo thả hoặc chọn tệp PDF văn bằng</p>
+                    <p className="text-gray-400 text-sm">
+                      Dung lượng tối đa 10 MB
+                    </p>
+                  </Dragger>
+                ),
+              },
+              {
+                key: "qr",
+                label: "Quét mã QR",
+                children: scanning ? (
+                  <div>
+                    <video
+                      ref={videoRef}
+                      className="w-full rounded-lg"
+                      autoPlay
+                      muted
+                      playsInline
+                    />
+                    <Button
+                      block
+                      className="mt-4"
+                      onClick={() => setScanning(false)}
+                    >
+                      Dừng quét
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<CameraOutlined />}
+                      disabled={loading}
+                      onClick={() => setScanning(true)}
+                    >
+                      Mở camera quét QR
+                    </Button>
+                    <Text type="secondary" className="block mt-3 text-sm">
+                      Quét mã QR trên văn bằng để xác thực tự động.
+                    </Text>
+                  </div>
+                ),
+              },
+            ]}
+          />
 
-        {/* Kết quả hợp lệ */}
-        {verifyResult && isValid && certData && (
-          <div className="mt-8 pt-8 border-t">
-            <Result
-              icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-              title="VĂN BẰNG HỢP LỆ & TOÀN VẸN"
-              subTitle={
-                <Text copyable={{ text: certData.onChainHash }} className="text-gray-500 text-xs font-mono">
-                  Hash: {certData.onChainHash?.substring(0, 32)}...
-                </Text>
-              }
-            >
-              <Descriptions bordered column={1} size="small" className="bg-gray-50">
-                <Descriptions.Item label="Họ và tên"><b>{certData.studentName}</b></Descriptions.Item>
-                <Descriptions.Item label="Mã sinh viên">{certData.mssv}</Descriptions.Item>
-                <Descriptions.Item label="Ngành học">{certData.major}</Descriptions.Item>
-                <Descriptions.Item label="GPA">{certData.gpa}</Descriptions.Item>
-                <Descriptions.Item label="Xếp loại">{certData.grade}</Descriptions.Item>
-                <Descriptions.Item label="Năm tốt nghiệp">{certData.namTotNghiep}</Descriptions.Item>
-                <Descriptions.Item label="Số hiệu bằng">{certData.soHieu}</Descriptions.Item>
-                <Descriptions.Item label="Ngày cấp">{certData.issueDate}</Descriptions.Item>
-                {certData.txId && (
-                <Descriptions.Item label="Tx ID">
-                  <Text code style={{ fontSize: 11 }}>{certData.txId}</Text>
-                </Descriptions.Item>
-                )}
-                <Descriptions.Item label="Endorsers">
-                  <span className="text-green-600 font-medium">✅ Org1MSP (ĐH Thủy Lợi HN) + Org2MSP (Phân hiệu TP.HCM)</span>
-                </Descriptions.Item>
-                <Descriptions.Item label="On-chain Hash">
-                  <Text code style={{ fontSize: 10 }}>{certData.onChainHash}</Text>
-                </Descriptions.Item>
-              </Descriptions>
-            </Result>
-          </div>
-        )}
-
-        {/* Kết quả không hợp lệ từ verify */}
-        {verifyResult && !isValid && (
-          <div className="mt-8 pt-8 border-t">
-            <Result
-              icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-              title="CẢNH BÁO: VĂN BẰNG KHÔNG HỢP LỆ"
-              subTitle={<span className="text-red-500 font-medium">{verifyResult.message}</span>}
+          {verification && (
+            <div className="mt-8 pt-8 border-t">
+              <DiplomaVerificationResult verification={verification} />
+            </div>
+          )}
+          {errorMsg && (
+            <Alert
+              showIcon
+              type="error"
+              title="Không thể xác thực văn bằng"
+              description={errorMsg}
+              className="mt-6"
             />
-          </div>
-        )}
-
-        {/* Lỗi kết nối / không tìm thấy */}
-        {errorMsg && (
-          <div className="mt-8 pt-8 border-t">
-            <Result
-              icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-              title="CẢNH BÁO TỪ HỆ THỐNG"
-              subTitle={<span className="text-red-500 font-medium">{errorMsg}</span>}
-            />
-          </div>
-        )}
+          )}
+        </Spin>
       </div>
     </div>
   );

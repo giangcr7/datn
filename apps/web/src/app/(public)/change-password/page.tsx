@@ -56,10 +56,10 @@ function ChangePasswordContent() {
         </div>
 
         {success && (
-          <Alert message="Đổi mật khẩu thành công! Đang chuyển hướng..." type="success" showIcon className="mb-4" />
+          <Alert title="Đổi mật khẩu thành công! Đang chuyển hướng..." type="success" showIcon className="mb-4" />
         )}
         {error && (
-          <Alert message={error} type="error" showIcon className="mb-4" />
+          <Alert title={error} type="error" showIcon className="mb-4" />
         )}
 
         <Form layout="vertical" onFinish={handleSubmit}>

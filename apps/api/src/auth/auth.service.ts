@@ -18,7 +18,7 @@ import { AuthActor } from './auth-actor';
 const accountInclude = {
   student: true,
   memberships: {
-    where: { active: true },
+    where: { active: true, campus: { active: true } },
     include: { campus: true },
     orderBy: { createdAt: 'asc' as const },
   },
@@ -49,7 +49,7 @@ export class AuthService {
     const membership = account.memberships.find(
       (item) => item.id === membershipId,
     );
-    if (!account.active || !membership)
+    if (!account.active || !membership || membership.campus.active === false)
       throw new UnauthorizedException(
         'Tài khoản hoặc quyền truy cập đã bị khóa',
       );
@@ -62,6 +62,12 @@ export class AuthService {
       institutionId: membership.campus.institutionId,
       campusId: membership.campusId,
       org: membership.campus.code,
+      campusName: membership.campus.name,
+      isHeadquarters: membership.campus.isHeadquarters,
+      canApproveDiplomas:
+        membership.role === Role.UNIVERSITY &&
+        membership.campus.isHeadquarters &&
+        membership.canApproveDiplomas,
       studentId: account.studentId,
       mssv: account.student?.studentCode || null,
       mustChangePassword: account.mustChangePassword,
@@ -130,12 +136,18 @@ export class AuthService {
       ip,
       userAgent,
     );
-    await this.database.refreshSession.create({ data: session.data });
-    await this.audit.log({
-      userId: account.id,
-      userEmail: account.email,
-      action: AuditAction.LOGIN,
-      ip,
+    await this.database.$transaction(async (transaction) => {
+      await transaction.refreshSession.create({ data: session.data });
+      await this.audit.log(
+        {
+          userId: account.id,
+          institutionId: user.institutionId,
+          userEmail: account.email,
+          action: AuditAction.LOGIN,
+          ip,
+        },
+        transaction,
+      );
     });
     return {
       access_token: this.jwt.sign(user),
@@ -243,6 +255,7 @@ export class AuthService {
     oldPassword: string,
     newPassword: string,
     ip?: string,
+    institutionId?: string,
   ) {
     const account = await this.database.account.findUnique({
       where: { id: accountId },
@@ -250,25 +263,29 @@ export class AuthService {
     if (!account || !(await compare(oldPassword, account.passwordHash)))
       throw new UnauthorizedException('Mật khẩu cũ không đúng');
     const passwordHash = await hash(newPassword, 12);
-    await this.database.$transaction([
-      this.database.account.update({
+    await this.database.$transaction(async (transaction) => {
+      await transaction.account.update({
         where: { id: accountId },
         data: {
           passwordHash,
           mustChangePassword: false,
           sessionVersion: { increment: 1 },
         },
-      }),
-      this.database.refreshSession.updateMany({
+      });
+      await transaction.refreshSession.updateMany({
         where: { accountId, revokedAt: null },
         data: { revokedAt: new Date() },
-      }),
-    ]);
-    await this.audit.log({
-      userId: accountId,
-      userEmail: account.email,
-      action: AuditAction.CHANGE_PASSWORD,
-      ip,
+      });
+      await this.audit.log(
+        {
+          userId: accountId,
+          institutionId,
+          userEmail: account.email,
+          action: AuditAction.CHANGE_PASSWORD,
+          ip,
+        },
+        transaction,
+      );
     });
     return {
       success: true,
@@ -377,16 +394,22 @@ export class AuthService {
         where: { accountId: account.id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await this.audit.log(
+        {
+          userId: account.id,
+          institutionId: account.memberships.find(
+            (membership) => membership.role === Role.STUDENT,
+          )?.campus.institutionId,
+          userEmail: account.email,
+          action: AuditAction.REGISTER,
+          ip,
+        },
+        transaction,
+      );
       return true;
     });
     if (!accepted)
       throw new UnauthorizedException('Mã OTP không hợp lệ hoặc đã hết hạn');
-    await this.audit.log({
-      userId: account.id,
-      userEmail: account.email,
-      action: AuditAction.REGISTER,
-      ip,
-    });
     return { success: true, message: 'Kích hoạt tài khoản thành công' };
   }
 
@@ -406,19 +429,32 @@ export class AuthService {
         id: membership.id,
         role: membership.role.toLowerCase(),
         campus: membership.campus.name,
+        isHeadquarters: membership.campus.isHeadquarters,
+        canApproveDiplomas:
+          membership.role === Role.UNIVERSITY &&
+          membership.campus.isHeadquarters &&
+          membership.canApproveDiplomas,
       })),
     };
   }
 
-  async findAllUsers() {
+  async findAllUsers(actor: AuthActor) {
     return this.database.account.findMany({
+      where: {
+        memberships: {
+          some: { campus: { institutionId: actor.institutionId } },
+        },
+      },
       select: {
         id: true,
         email: true,
         displayName: true,
         active: true,
         createdAt: true,
-        memberships: { select: { role: true, campusId: true } },
+        memberships: {
+          where: { campus: { institutionId: actor.institutionId } },
+          select: { role: true, campusId: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,

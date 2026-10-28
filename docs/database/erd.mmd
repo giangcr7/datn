@@ -2,97 +2,116 @@ erDiagram
   ACADEMIC_CLASSES {
     uuid id PK
     uuid campus_id FK
-    string code 
+    string code
     string cohort_code  "nullable"
-    date created_at 
+    date created_at
   }
   ACCOUNT_MEMBERSHIPS {
     uuid id PK
     uuid account_id FK
     uuid campus_id FK
-    string role 
-    boolean active 
-    date created_at 
+    string role
+    boolean active
+    date created_at
+    boolean can_approve_diplomas
   }
   ACCOUNTS {
     uuid id PK
     string email UK
-    string password_hash 
-    string display_name 
+    string password_hash
+    string display_name
     uuid student_id FK,UK "nullable"
-    boolean active 
-    boolean must_change_password 
-    int session_version 
-    date created_at 
-    date updated_at 
+    boolean active
+    boolean must_change_password
+    int session_version
+    date created_at
+    date updated_at
   }
   AUDIT_LOGS {
     uuid id PK
     uuid institution_id FK "nullable"
     uuid actor_id FK "nullable"
-    string actor_email 
-    string action 
+    string actor_email
+    string action
     string target  "nullable"
-    string result 
+    string result
     string ip  "nullable"
     string user_agent  "nullable"
     string error_message  "nullable"
     jsonb metadata  "nullable"
-    date created_at 
+    date created_at
   }
   BLOCKCHAIN_ANCHORS {
     uuid id PK
     uuid version_id FK
-    string event_type 
-    string status 
-    string channel 
-    string chaincode 
+    string event_type
+    string status
+    string channel
+    string chaincode
     string transaction_id UK "nullable"
     int block_number  "nullable"
     string issuer_msp_id  "nullable"
-    string payload_hash 
+    string payload_hash
     date committed_at  "nullable"
     string last_error  "nullable"
-    date created_at 
+    date created_at
   }
   CAMPUSES {
     uuid id PK
     uuid institution_id FK
-    string code 
-    string name 
+    string code
+    string name
     string fabric_msp_id UK "nullable"
-    date created_at 
+    date created_at
+    boolean is_headquarters
   }
   DIPLOMA_EVENTS {
     uuid id PK
     uuid diploma_id FK
-    string event_type 
+    string event_type
     uuid actor_id FK "nullable"
     string reason  "nullable"
     jsonb metadata  "nullable"
-    date created_at 
+    date created_at
+  }
+  DIPLOMA_PDF_SIGNATURES {
+    uuid id PK
+    uuid document_id FK
+    int signature_order
+    string field_name
+    uuid actor_id FK
+    uuid campus_id FK
+    string signer_name
+    string certificate_sha256
+    string certificate_serial
+    string certificate_subject
+    string certificate_issuer
+    date valid_from
+    date valid_to
+    date signed_at
+    jsonb validation_evidence  "nullable"
   }
   DIPLOMA_VERSIONS {
     uuid id PK
     uuid diploma_id FK
-    int version 
-    string schema_version 
-    jsonb payload 
-    string payload_hash 
+    int version
+    string schema_version
+    jsonb payload
+    string payload_hash
     uuid created_by_id FK "nullable"
-    date created_at 
+    date created_at
   }
   DIPLOMAS {
     uuid id PK
     uuid institution_id FK
     uuid campus_id FK
     uuid graduation_id FK
-    string certificate_no 
-    string registry_no 
+    string certificate_no
+    string registry_no
     date issued_on  "nullable"
-    string status 
-    string workflow_status 
-    int current_version 
+    string status
+    string workflow_status
+    int current_version
     uuid requested_by_id FK "nullable"
     uuid approved_by_id FK "nullable"
     date requested_at  "nullable"
@@ -100,8 +119,16 @@ erDiagram
     uuid supersedes_id FK,UK "nullable"
     string revoked_reason  "nullable"
     date revoked_at  "nullable"
-    date created_at 
-    date updated_at 
+    date created_at
+    date updated_at
+    uuid issuing_campus_id FK "nullable"
+    string print_template  "nullable"
+    string full_name_latin  "nullable"
+    string major_name_en  "nullable"
+    string issue_place  "nullable"
+    string diploma_signer_name  "nullable"
+    string diploma_signer_title  "nullable"
+    string origin_type
   }
   ENROLLMENTS {
     uuid id PK
@@ -112,17 +139,17 @@ erDiagram
     int start_year  "nullable"
     int end_year  "nullable"
     string cohort_code  "nullable"
-    date created_at 
+    date created_at
   }
   GRADUATION_DECISIONS {
     uuid id PK
     uuid institution_id FK
-    string document_number 
-    int decision_year 
+    string document_number
+    int decision_year
     date signed_on  "nullable"
     string signer_name  "nullable"
     uuid source_document_id FK "nullable"
-    date created_at 
+    date created_at
   }
   GRADUATION_RECORDS {
     uuid id PK
@@ -132,135 +159,152 @@ erDiagram
     uuid enrollment_id FK "nullable"
     uuid decision_id FK "nullable"
     uuid source_row_id FK,UK "nullable"
-    int graduation_year 
+    int graduation_year
     decimal gpa  "nullable"
-    int gpa_scale 
+    int gpa_scale
     string classification  "nullable"
     string degree_type  "nullable"
     string specialization  "nullable"
-    date created_at 
+    date created_at
   }
   IMPORT_BATCHES {
     uuid id PK
     uuid institution_id FK
     uuid campus_id FK
     uuid document_id FK
-    string mapping_version 
-    string status 
-    int total_rows 
-    int imported_rows 
+    string mapping_version
+    string status
+    int total_rows
+    int imported_rows
     uuid created_by_id FK
-    date created_at 
+    date created_at
     date completed_at  "nullable"
   }
   IMPORT_ROWS {
     uuid id PK
     uuid batch_id FK
-    string sheet_name 
-    int row_number 
-    jsonb raw_data 
-    jsonb normalized_data 
+    string sheet_name
+    int row_number
+    jsonb raw_data
+    jsonb normalized_data
     jsonb overrides  "nullable"
-    string status 
+    string status
     uuid reviewed_by_id FK "nullable"
     date reviewed_at  "nullable"
-    date created_at 
+    date created_at
   }
   INSTITUTIONS {
     uuid id PK
     string code UK
-    string name 
-    date created_at 
+    string name
+    date created_at
+    string name_en  "nullable"
   }
   INTEGRITY_ALERTS {
     uuid id PK
     uuid diploma_id FK
-    string type 
+    string type
     string database_hash  "nullable"
     string fabric_hash  "nullable"
     date resolved_at  "nullable"
     uuid resolved_by_id FK "nullable"
     string note  "nullable"
-    date created_at 
+    date created_at
   }
   LEGACY_ID_MAPS {
     uuid id PK
-    string source 
-    string entity 
-    string legacy_id 
-    uuid target_id 
-    date created_at 
+    string source
+    string entity
+    string legacy_id
+    uuid target_id
+    date created_at
   }
   OTP_CHALLENGES {
     uuid id PK
     uuid account_id FK
-    string code_hash 
-    date expires_at 
+    string code_hash
+    date expires_at
     date consumed_at  "nullable"
-    int attempts 
-    date created_at 
+    int attempts
+    date created_at
   }
   OUTBOX_EVENTS {
     uuid id PK
     uuid version_id FK
-    string event_type 
-    jsonb payload 
-    string status 
-    int attempts 
-    date available_at 
+    string event_type
+    jsonb payload
+    string status
+    int attempts
+    date available_at
     date locked_until  "nullable"
     uuid lock_token  "nullable"
     string last_error  "nullable"
     date completed_at  "nullable"
-    date created_at 
+    date created_at
   }
   PROGRAM_ALIASES {
     uuid id PK
     uuid institution_id FK
     uuid program_id FK
-    string normalized_name 
-    string original_name 
+    string normalized_name
+    string original_name
     uuid approved_by_id FK "nullable"
-    date created_at 
+    date created_at
   }
   PROGRAMS {
     uuid id PK
     uuid institution_id FK
-    string code 
-    string name 
+    string code
+    string name
     string national_code  "nullable"
-    boolean active 
-    date created_at 
+    boolean active
+    date created_at
+    string name_en  "nullable"
   }
   REFRESH_SESSIONS {
     uuid id PK
     uuid account_id FK
     uuid membership_id FK
-    uuid family_id 
+    uuid family_id
     string token_hash UK
-    date expires_at 
+    date expires_at
     date revoked_at  "nullable"
     uuid replaced_by_id FK,UK "nullable"
     string ip  "nullable"
     string user_agent  "nullable"
-    date created_at 
+    date created_at
+  }
+  SIGNED_DIPLOMA_DOCUMENTS {
+    uuid id PK
+    uuid diploma_id FK
+    int version
+    uuid version_id FK,UK "nullable"
+    string payload_hash
+    string signing_mode
+    string origin_pdf_key
+    string origin_pdf_hash
+    string signed_pdf_key  "nullable"
+    string signed_pdf_hash UK "nullable"
+    int byte_size
+    date created_at
+    date completed_at  "nullable"
   }
   SOURCE_DOCUMENTS {
     uuid id PK
     uuid institution_id FK
-    string file_name 
-    string sha256 
-    int byte_size 
-    string media_type 
-    string storage_key 
+    string file_name
+    string sha256
+    int byte_size
+    string media_type
+    string storage_key
     uuid uploaded_by_id FK "nullable"
-    date created_at 
+    date created_at
   }
   STUDENTS {
     uuid id PK
     uuid institution_id FK
-    string student_code 
-    string full_name 
+    string student_code
+    string full_name
     date date_of_birth  "nullable"
     string birth_place  "nullable"
     string gender  "nullable"
@@ -268,18 +312,18 @@ erDiagram
     string nationality  "nullable"
     string contact_email  "nullable"
     string phone  "nullable"
-    date created_at 
-    date updated_at 
+    date created_at
+    date updated_at
   }
   VALIDATION_ISSUES {
     uuid id PK
     uuid row_id FK
-    string field 
-    string code 
-    string severity 
-    string message 
+    string field
+    string code
+    string severity
+    string message
     date resolved_at  "nullable"
-    date created_at 
+    date created_at
   }
   CAMPUSES ||--o{ ACADEMIC_CLASSES : campus_id
   ACCOUNTS ||--o{ ACCOUNT_MEMBERSHIPS : account_id
@@ -291,12 +335,16 @@ erDiagram
   INSTITUTIONS ||--o{ CAMPUSES : institution_id
   ACCOUNTS |o--o{ DIPLOMA_EVENTS : actor_id
   DIPLOMAS ||--o{ DIPLOMA_EVENTS : diploma_id
+  ACCOUNTS ||--o{ DIPLOMA_PDF_SIGNATURES : actor_id
+  CAMPUSES ||--o{ DIPLOMA_PDF_SIGNATURES : campus_id
+  SIGNED_DIPLOMA_DOCUMENTS ||--o{ DIPLOMA_PDF_SIGNATURES : document_id
   ACCOUNTS |o--o{ DIPLOMA_VERSIONS : created_by_id
   DIPLOMAS ||--o{ DIPLOMA_VERSIONS : diploma_id
   ACCOUNTS |o--o{ DIPLOMAS : approved_by_id
   CAMPUSES ||--o{ DIPLOMAS : campus_id
   GRADUATION_RECORDS ||--o{ DIPLOMAS : graduation_id
   INSTITUTIONS ||--o{ DIPLOMAS : institution_id
+  CAMPUSES |o--o{ DIPLOMAS : issuing_campus_id
   ACCOUNTS |o--o{ DIPLOMAS : requested_by_id
   DIPLOMAS |o--o| DIPLOMAS : supersedes_id
   CAMPUSES ||--o{ ENROLLMENTS : campus_id
@@ -328,6 +376,8 @@ erDiagram
   ACCOUNTS ||--o{ REFRESH_SESSIONS : account_id
   ACCOUNT_MEMBERSHIPS ||--o{ REFRESH_SESSIONS : membership_id
   REFRESH_SESSIONS |o--o| REFRESH_SESSIONS : replaced_by_id
+  DIPLOMAS ||--o{ SIGNED_DIPLOMA_DOCUMENTS : diploma_id
+  DIPLOMA_VERSIONS |o--o| SIGNED_DIPLOMA_DOCUMENTS : version_id
   INSTITUTIONS ||--o{ SOURCE_DOCUMENTS : institution_id
   ACCOUNTS |o--o{ SOURCE_DOCUMENTS : uploaded_by_id
   INSTITUTIONS ||--o{ STUDENTS : institution_id

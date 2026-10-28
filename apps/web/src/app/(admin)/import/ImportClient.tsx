@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
-  Card,
   Input,
+  InputNumber,
   Modal,
   Popconfirm,
   Select,
@@ -15,6 +15,19 @@ import {
   Upload,
   message,
 } from "antd";
+import {
+  UploadOutlined,
+  FileSearchOutlined,
+  SaveOutlined,
+  ReloadOutlined,
+  ArrowRightOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
+import {
+  openRegistryIssues,
+  registryBatchSummaryText,
+  registryIssueText,
+} from "@/lib/registry-review";
 
 async function api(url: string, options?: RequestInit) {
   const response = await fetch(url, options);
@@ -22,17 +35,29 @@ async function api(url: string, options?: RequestInit) {
   if (!response.ok) throw new Error(result.error || "Không xử lý được yêu cầu");
   return result;
 }
-export default function ImportClient() {
+export default function ImportClient({
+  initialBatchId = "",
+  initialStatus = "NEEDS_REVIEW",
+  initialRowId = "",
+}: {
+  initialBatchId?: string;
+  initialStatus?: string;
+  initialRowId?: string;
+}) {
   const [file, setFile] = useState<File | null>(null),
     [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<any>(null),
     [batches, setBatches] = useState<any[]>([]),
-    [batchId, setBatchId] = useState("");
+    [batchId, setBatchId] = useState(initialBatchId);
   const [rows, setRows] = useState<any[]>([]),
     [total, setTotal] = useState(0),
     [page, setPage] = useState(1),
-    [status, setStatus] = useState("NEEDS_REVIEW");
+    [status, setStatus] = useState(initialStatus);
+  const [rowId, setRowId] = useState(initialRowId);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [originType, setOriginType] = useState<"DIGITIZATION" | "ISSUANCE">(
+    "ISSUANCE",
+  );
   const [reviewRow, setReviewRow] = useState<any>(null),
     [corrections, setCorrections] = useState("{}"),
     [note, setNote] = useState("");
@@ -48,7 +73,8 @@ export default function ImportClient() {
         "/rows?page=" +
         selectedPage +
         "&limit=20" +
-        (status ? "&status=" + status : ""),
+        (status ? "&status=" + status : "") +
+        (rowId ? "&rowId=" + encodeURIComponent(rowId) : ""),
     );
     setRows(result.data);
     setTotal(result.total);
@@ -61,7 +87,7 @@ export default function ImportClient() {
   }, []);
   useEffect(() => {
     refreshRows().catch((error) => message.error(error.message));
-  }, [batchId, page, status]);
+  }, [batchId, page, status, rowId]);
   async function upload(stage: boolean) {
     if (!file) return;
     setBusy(true);
@@ -73,14 +99,15 @@ export default function ImportClient() {
         { method: "POST", body: form },
       );
       if (stage) {
+        setRowId("");
         setBatchId(result.batchId);
         setPage(1);
         await refreshBatches();
         await refreshRows(result.batchId, 1);
         message.success(
           result.reused
-            ? "File đã có trong staging; không tạo bản sao"
-            : "Đã staging. Chưa tạo văn bằng hay ghi blockchain.",
+            ? "File đã có trong khu vực rà soát; không tạo bản sao"
+            : "Đã lưu file để rà soát. Chưa duyệt phát hành.",
         );
       } else setPreview(result);
     } catch (error: any) {
@@ -92,7 +119,23 @@ export default function ImportClient() {
   async function review() {
     setBusy(true);
     try {
-      const changes = JSON.parse(corrections);
+      const values = JSON.parse(corrections);
+      const changes =
+        reviewRow.status === "IMPORTED"
+          ? Object.fromEntries(
+              Object.entries(values).filter(([field]) =>
+                [
+                  "degreeType",
+                  "issuedOn",
+                  "fullNameLatin",
+                  "majorNameEn",
+                  "issuePlace",
+                  "diplomaSignerName",
+                  "diplomaSignerTitle",
+                ].includes(field),
+              ),
+            )
+          : values;
       const result = await api(
         "/api/imports/" + batchId + "/rows/" + reviewRow.id,
         {
@@ -110,10 +153,11 @@ export default function ImportClient() {
               .join("; "),
         );
       } else {
-        message.success("Đã rà soát và ghi audit");
+        message.success("Đã kiểm tra đủ thông tin cấp bằng và lưu đối soát");
         setReviewRow(null);
       }
       await refreshRows();
+      await refreshBatches();
     } catch (error: any) {
       message.error(error.message);
     } finally {
@@ -126,16 +170,23 @@ export default function ImportClient() {
       const result = await api("/api/imports/" + batchId + "/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ originType }),
       });
-      message.success(
-        "Đã nhập " +
+      const notify =
+        result.conflicts || (result.imported > 0 && result.diplomas === 0)
+          ? message.warning
+          : message.success;
+      notify(
+        "Đã lưu " +
           result.imported +
-          " hồ sơ, " +
+          " hồ sơ; tạo " +
           result.diplomas +
-          " văn bằng DRAFT; " +
+          " văn bằng nháp để duyệt phát hành; " +
           result.conflicts +
-          " xung đột.",
+          " xung đột." +
+          (result.imported > 0 && result.diplomas === 0
+            ? " Các hồ sơ vừa lưu chưa có số hiệu và số vào sổ nên chưa có văn bằng để duyệt phát hành."
+            : ""),
       );
       await refreshRows();
       await refreshBatches();
@@ -145,16 +196,46 @@ export default function ImportClient() {
       setBusy(false);
     }
   }
+  const correctionValues = JSON.parse(corrections || "{}") as Record<
+    string,
+    any
+  >;
+  async function recheck() {
+    setBusy(true);
+    try {
+      const result = await api("/api/imports/" + batchId + "/recheck", {
+        method: "POST",
+      });
+      await refreshRows();
+      await refreshBatches();
+      const notify = result.needsReviewRows ? message.warning : message.success;
+      notify(
+        "Đã khôi phục thông tin cho " +
+          (result.repairedDrafts || 0) +
+          " hồ sơ nháp; " +
+          result.readyRows +
+          " dòng đủ điều kiện lưu, " +
+          (result.needsReviewRows || 0) +
+          " dòng cần bổ sung.",
+      );
+    } catch (error: any) {
+      message.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function changeCorrection(field: string, value: unknown) {
+    setCorrections(
+      JSON.stringify({ ...correctionValues, [field]: value }, null, 2),
+    );
+  }
+  const selectedBatch = batches.find((batch) => batch.id === batchId);
+  const batchSummary = selectedBatch?.reviewSummary;
   return (
     <div className="p-6 space-y-5">
-      <Typography.Title level={3}>Nhập và đối soát sổ gốc</Typography.Title>
-      <Alert
-        type="info"
-        showIcon
-        message="File gốc → staging → rà soát → hồ sơ tốt nghiệp → bản nháp văn bằng"
-        description="Không suy MSSV/ngành/xếp loại, không gán GPA mặc định, không lấy ngày ký quyết định làm ngày cấp. Văn bằng chỉ neo blockchain sau phê duyệt độc lập."
-      />
-      <Card title="1. Đọc file .xlsx (tối đa 5 MB)">
+      <Typography.Title level={3}>Kiểm tra dữ liệu</Typography.Title>
+      <section className="border-t border-gray-200 py-4">
+        <Typography.Title level={4}>Nhập file Excel</Typography.Title>
         <Space wrap>
           <Upload
             accept=".xlsx"
@@ -166,24 +247,30 @@ export default function ImportClient() {
             }}
             onRemove={() => setFile(null)}
           >
-            <Button>Chọn file</Button>
+            <Button icon={<UploadOutlined />}>Chọn file .xlsx</Button>
           </Upload>
-          <Button disabled={!file} loading={busy} onClick={() => upload(false)}>
-            Kiểm tra không ghi dữ liệu
+          <Button
+            icon={<FileSearchOutlined />}
+            disabled={!file}
+            loading={busy}
+            onClick={() => upload(false)}
+          >
+            Xem trước
           </Button>
           <Button
             type="primary"
+            icon={<SaveOutlined />}
             disabled={!file}
             loading={busy}
             onClick={() => upload(true)}
           >
-            Lưu file và staging
+            Nhập để kiểm tra
           </Button>
         </Space>
         {preview && (
           <div className="mt-4">
             <Typography.Text strong>
-              {preview.summary.total} dòng; {preview.summary.ready} READY;{" "}
+              {preview.summary.total} dòng; {preview.summary.ready} hợp lệ;{" "}
               {preview.summary.needsReview} cần rà soát
             </Typography.Text>
             <Table
@@ -196,21 +283,23 @@ export default function ImportClient() {
               columns={[
                 { title: "Sheet", dataIndex: "sheetName" },
                 { title: "Dòng", dataIndex: "total" },
-                { title: "Lỗi (issue)", dataIndex: "errors" },
-                { title: "Cảnh báo (issue)", dataIndex: "warnings" },
+                { title: "Lỗi cần sửa", dataIndex: "errors" },
+                { title: "Lưu ý cần kiểm tra", dataIndex: "warnings" },
               ]}
             />
           </div>
         )}
-      </Card>
-      <Card title="2. Rà soát và commit hồ sơ">
+      </section>
+      <section className="border-t border-gray-200 py-4">
+        <Typography.Title level={4}>Kiểm tra và lưu hồ sơ</Typography.Title>
         <Space wrap className="mb-4">
           <Select
-            style={{ minWidth: 340 }}
-            placeholder="Chọn batch"
+            style={{ width: 400, maxWidth: "100%" }}
+            placeholder="Chọn đợt rà soát"
             value={batchId || undefined}
             onChange={(value) => {
               setBatchId(value);
+              setRowId("");
               setPage(1);
             }}
             options={batches.map((batch) => ({
@@ -218,8 +307,14 @@ export default function ImportClient() {
               label:
                 batch.document.fileName +
                 " — " +
-                batch.status +
-                " (" +
+                (
+                  {
+                    READY: "Dữ liệu hợp lệ",
+                    REVIEW_REQUIRED: "Còn dòng cần rà soát",
+                    COMPLETED: "Đã hoàn tất lưu hồ sơ",
+                  } as Record<string, string>
+                )[batch.status] +
+                " (đã lưu " +
                 batch.importedRows +
                 "/" +
                 batch.totalRows +
@@ -230,25 +325,83 @@ export default function ImportClient() {
             value={status}
             onChange={(value) => {
               setStatus(value);
+              setRowId("");
               setPage(1);
             }}
             options={[
               { value: "", label: "Tất cả dòng" },
               ...["NEEDS_REVIEW", "READY", "IMPORTED", "SKIPPED"].map(
-                (value) => ({ value, label: value }),
+                (value) => ({
+                  value,
+                  label: (
+                    {
+                      NEEDS_REVIEW: "Cần rà soát",
+                      READY: "Đủ thông tin, chờ lưu",
+                      IMPORTED: "Đã kiểm tra và lưu",
+                      SKIPPED: "Đã bỏ qua",
+                    } as Record<string, string>
+                  )[value],
+                }),
               ),
             ]}
           />
+          <Button
+            icon={<ReloadOutlined />}
+            title="Kiểm tra lại dữ liệu"
+            aria-label="Kiểm tra lại dữ liệu"
+            disabled={!batchId || busy}
+            onClick={recheck}
+          />
+        </Space>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span>Cách tạo hồ sơ:</span>
+          <Select
+            aria-label="Cách tạo hồ sơ"
+            value={originType}
+            onChange={setOriginType}
+            disabled={busy}
+            style={{ width: 190 }}
+            options={[
+              { value: "ISSUANCE", label: "Thêm mới" },
+              { value: "DIGITIZATION", label: "Số hóa dữ liệu" },
+            ]}
+          />
           <Popconfirm
-            title="Chỉ commit dòng READY?"
-            description="Sẽ tạo hồ sơ và bản nháp, không tạo tài khoản/anchor."
+            title="Lưu các dòng đã kiểm tra hợp lệ trong đợt này?"
+            description="Chỉ lưu hồ sơ đã rà soát. Chưa duyệt phát hành và chưa ghi blockchain."
             onConfirm={commit}
           >
-            <Button type="primary" disabled={!batchId} loading={busy}>
-              Commit các dòng READY
+            <Button
+              type="primary"
+              disabled={!batchId || batchSummary?.readyRows === 0}
+              loading={busy}
+            >
+              Lưu hồ sơ hợp lệ
             </Button>
           </Popconfirm>
-        </Space>
+          {!!batchSummary?.draftRows && (
+            <Button
+              icon={<ArrowRightOutlined />}
+              href={
+                batchId
+                  ? "/issue?batchId=" + encodeURIComponent(batchId)
+                  : "/issue"
+              }
+              disabled={!batchId || busy || batchSummary?.draftRows === 0}
+            >
+              {batchSummary
+                ? `Sang duyệt phát hành (${batchSummary.draftRows} hồ sơ)`
+                : "Sang duyệt phát hành văn bằng"}
+            </Button>
+          )}
+        </div>
+        {batchSummary && (
+          <Alert
+            className="mb-4"
+            type="info"
+            title={registryBatchSummaryText(batchSummary)}
+          />
+        )}
         <Table
           rowKey="id"
           scroll={{ x: 1000 }}
@@ -278,7 +431,8 @@ export default function ImportClient() {
             {
               title: "Họ tên",
               key: "name",
-              render: (_: any, row: any) => row.normalizedData.fullName,
+              render: (_: any, row: any) =>
+                row.overrides?.fullName || row.normalizedData.fullName,
             },
             {
               title: "Trạng thái",
@@ -293,36 +447,101 @@ export default function ImportClient() {
                         : "orange"
                   }
                 >
-                  {value}
+                  {(
+                    {
+                      NEEDS_REVIEW: "Cần rà soát",
+                      READY: "Đủ thông tin, chờ lưu",
+                      IMPORTED: "Đã kiểm tra và lưu",
+                      SKIPPED: "Đã bỏ qua",
+                    } as Record<string, string>
+                  )[value] || value}
                 </Tag>
               ),
             },
             {
-              title: "Issue đang mở",
+              title: "Lưu ý",
               key: "issues",
-              render: (_: any, row: any) =>
-                row.issues
-                  .filter((issue: any) => !issue.resolvedAt)
-                  .map((issue: any) => (
-                    <Tag
-                      key={issue.id}
-                      color={issue.severity === "ERROR" ? "red" : "orange"}
-                    >
-                      {issue.code}
-                    </Tag>
-                  )),
+              width: 320,
+              render: (_: any, row: any) => {
+                const issues =
+                  row.status === "IMPORTED"
+                    ? (row.submissionIssues || []).map(
+                        (message: string, index: number) => ({
+                          id: index,
+                          code: "SUBMISSION",
+                          severity: "ERROR",
+                          message,
+                        }),
+                      )
+                    : openRegistryIssues(row.issues);
+                return issues.length ? (
+                  <ul className="m-0 list-disc space-y-1 pl-4">
+                    {issues.map((issue: any) => (
+                      <li
+                        key={issue.id}
+                        style={{
+                          color:
+                            issue.severity === "ERROR" ? "#b42318" : "#595959",
+                        }}
+                      >
+                        {registryIssueText(issue)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <Typography.Text type="success">
+                    Đủ thông tin cấp bằng
+                  </Typography.Text>
+                );
+              },
             },
             {
               title: "Thao tác",
               key: "action",
               render: (_: any, row: any) => (
                 <Button
-                  disabled={["IMPORTED", "SKIPPED"].includes(row.status)}
+                  icon={<EditOutlined />}
+                  disabled={
+                    row.status === "SKIPPED" ||
+                    (row.status === "IMPORTED" &&
+                      (!row.graduation?.diplomas?.length ||
+                        row.graduation.diplomas.some(
+                          (diploma: any) =>
+                            diploma.workflowStatus !== "DRAFT" ||
+                            diploma.status !== "DRAFT" ||
+                            diploma.pdfSignatureCount > 0,
+                        )))
+                  }
                   onClick={() => {
                     setReviewRow(row);
+                    const diploma = row.graduation?.diplomas?.[0];
                     setCorrections(
                       JSON.stringify(
-                        { ...row.normalizedData, ...row.overrides },
+                        row.status === "IMPORTED"
+                          ? {
+                              ...row.normalizedData,
+                              ...row.overrides,
+                              ...Object.fromEntries(
+                                Object.entries(
+                                  diploma?.printedDiploma || {},
+                                ).filter(
+                                  ([, value]) =>
+                                    value !== null &&
+                                    value !== undefined &&
+                                    value !== "",
+                                ),
+                              ),
+                              degreeType:
+                                diploma?.degreeType ||
+                                row.overrides?.degreeType ||
+                                row.normalizedData.degreeType,
+                              issuedOn:
+                                diploma?.issueDate ||
+                                row.overrides?.issuedOn ||
+                                row.normalizedData.issuedOn ||
+                                "",
+                            }
+                          : { ...row.normalizedData, ...row.overrides },
                         null,
                         2,
                       ),
@@ -330,70 +549,244 @@ export default function ImportClient() {
                     setNote("");
                   }}
                 >
-                  Rà soát
+                  {row.status === "IMPORTED" ? "Kiểm tra thông tin" : "Bổ sung"}
                 </Button>
               ),
             },
           ]}
         />
-      </Card>
+      </section>
       <Modal
         title={
           reviewRow
-            ? "Rà soát " + reviewRow.sheetName + "!" + reviewRow.rowNumber
-            : "Rà soát"
+            ? "Kiểm tra dữ liệu " +
+              reviewRow.sheetName +
+              "!" +
+              reviewRow.rowNumber
+            : "Kiểm tra dữ liệu"
         }
         open={!!reviewRow}
         onCancel={() => setReviewRow(null)}
         onOk={review}
-        okText="Kiểm tra và lưu override"
+        okText="Kiểm tra và lưu đối soát"
         confirmLoading={busy}
         width={900}
       >
         <Alert
           type="warning"
           showIcon
-          message="Chỉ ghi correction có căn cứ hồ sơ. Raw source không bị sửa."
+          title={
+            reviewRow?.status === "IMPORTED"
+              ? "Chỉ sửa thông tin cấp bằng của hồ sơ nháp chưa ký, chưa phát hành."
+              : "Chỉ điều chỉnh khi có căn cứ hồ sơ. File nguồn luôn được giữ nguyên."
+          }
           className="mb-3"
         />
-        {reviewRow?.issues
-          .filter((issue: any) => !issue.resolvedAt)
-          .map((issue: any) => (
-            <div key={issue.id}>
-              <Tag color={issue.severity === "ERROR" ? "red" : "orange"}>
-                {issue.code}
-              </Tag>
-              {issue.message}
-            </div>
+        {(reviewRow?.status === "IMPORTED"
+          ? (reviewRow.submissionIssues || []).map(
+              (message: string, index: number) => ({
+                id: index,
+                message,
+                severity: "ERROR",
+              }),
+            )
+          : openRegistryIssues(reviewRow?.issues)
+        ).map((issue: any) => (
+          <div key={issue.id}>
+            <Tag color={issue.severity === "ERROR" ? "red" : "orange"}>
+              {issue.severity === "ERROR" ? "Cần sửa" : "Lưu ý"}
+            </Tag>
+            {registryIssueText(issue)}
+          </div>
+        ))}
+        <div className="grid md:grid-cols-2 gap-4 mt-4">
+          {reviewRow?.status !== "IMPORTED" && (
+            <>
+              {[
+                ["studentCode", "Mã sinh viên"],
+                ["fullName", "Họ và tên"],
+                ["birthPlace", "Nơi sinh"],
+                ["ethnicity", "Dân tộc"],
+                ["nationality", "Quốc tịch"],
+                ["classCode", "Lớp"],
+                ["cohortCode", "Khóa học"],
+                ["specialization", "Chuyên ngành"],
+                ["certificateNo", "Số hiệu văn bằng"],
+                ["registryNo", "Số vào sổ"],
+                ["decisionNumber", "Số quyết định"],
+                ["signerName", "Người ký quyết định"],
+              ].map(([field, label]) => (
+                <label key={field} className="flex flex-col gap-1">
+                  <span>{label}</span>
+                  <Input
+                    value={correctionValues[field] || ""}
+                    onChange={(event) =>
+                      changeCorrection(field, event.target.value)
+                    }
+                  />
+                </label>
+              ))}
+              <label className="flex flex-col gap-1">
+                <span>Giới tính</span>
+                <Select
+                  allowClear
+                  value={correctionValues.gender || undefined}
+                  options={[
+                    { value: "MALE", label: "Nam" },
+                    { value: "FEMALE", label: "Nữ" },
+                    { value: "OTHER", label: "Khác" },
+                  ]}
+                  onChange={(value) =>
+                    changeCorrection("gender", value || null)
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>Loại bằng</span>
+                <Select
+                  allowClear
+                  value={correctionValues.degreeType || undefined}
+                  placeholder="Không suy loại bằng từ tên ngành"
+                  options={[
+                    { value: "BACHELOR", label: "Bằng cử nhân" },
+                    { value: "ENGINEER", label: "Bằng kỹ sư" },
+                    { value: "MASTER", label: "Bằng thạc sĩ" },
+                    { value: "DOCTOR", label: "Bằng tiến sĩ" },
+                    { value: "OTHER", label: "Loại khác" },
+                  ]}
+                  onChange={(value) =>
+                    changeCorrection("degreeType", value || null)
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>Ngành đã xác nhận</span>
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  value={correctionValues.programId || undefined}
+                  options={programs.map((program) => ({
+                    value: program.id,
+                    label: program.name + " (" + program.code + ")",
+                  }))}
+                  onChange={(value) => {
+                    const program = programs.find((item) => item.id === value);
+                    setCorrections(
+                      JSON.stringify({
+                        ...correctionValues,
+                        programId: value,
+                        majorNameEn: program?.nameEn || null,
+                      }),
+                    );
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>Năm tốt nghiệp</span>
+                <InputNumber
+                  className="w-full"
+                  min={1900}
+                  max={new Date().getFullYear()}
+                  value={correctionValues.graduationYear}
+                  onChange={(value) =>
+                    changeCorrection("graduationYear", value)
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>Xếp loại theo hồ sơ</span>
+                <Select
+                  value={correctionValues.classification || undefined}
+                  options={[
+                    { value: "AVERAGE", label: "Trung bình" },
+                    { value: "AVERAGE_GOOD", label: "Trung bình khá" },
+                    { value: "GOOD", label: "Khá" },
+                    { value: "VERY_GOOD", label: "Giỏi" },
+                    { value: "EXCELLENT", label: "Xuất sắc" },
+                  ]}
+                  onChange={(value) =>
+                    changeCorrection("classification", value)
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>Thang điểm</span>
+                <Select
+                  value={correctionValues.gpaScale}
+                  options={[
+                    { value: 4, label: "Hệ 4" },
+                    { value: 10, label: "Hệ 10" },
+                  ]}
+                  onChange={(value) => changeCorrection("gpaScale", value)}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>GPA (để trống nếu nguồn không có)</span>
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  max={correctionValues.gpaScale || 4}
+                  value={correctionValues.gpa}
+                  onChange={(value) => changeCorrection("gpa", value)}
+                />
+              </label>
+            </>
+          )}
+          {(reviewRow?.status === "IMPORTED"
+            ? [["issuedOn", "Ngày cấp thực tế đã đối chiếu"]]
+            : [
+                ["dateOfBirth", "Ngày sinh"],
+                ["decisionDate", "Ngày ký quyết định"],
+                ["issuedOn", "Ngày cấp thực tế đã đối chiếu"],
+              ]
+          ).map(([field, label]) => (
+            <label key={field} className="flex flex-col gap-1">
+              <span>{label}</span>
+              <Input
+                type="date"
+                value={correctionValues[field] || ""}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(event) =>
+                  changeCorrection(field, event.target.value || null)
+                }
+              />
+            </label>
           ))}
-        <Typography.Paragraph className="mt-3">
-          Corrections JSON: programId là UUID ngành đã được nhà trường phê
-          duyệt. Ngày ở dạng YYYY-MM-DD; GPA để null nếu nguồn không có.
-        </Typography.Paragraph>
-        <Select
-          className="w-full mb-3"
-          showSearch
-          placeholder="Chọn ngành đã xác nhận để đặt programId"
-          options={programs.map((program) => ({
-            value: program.id,
-            label: program.name + " (" + program.code + ")",
-          }))}
-          onChange={(value) => {
-            try {
-              const data = JSON.parse(corrections);
-              data.programId = value;
-              setCorrections(JSON.stringify(data, null, 2));
-            } catch {
-              message.error("Corrections JSON chưa hợp lệ");
-            }
-          }}
-        />
-        <Input.TextArea
-          rows={16}
-          value={corrections}
-          onChange={(event) => setCorrections(event.target.value)}
-          className="font-mono"
-        />
+          {[
+            ["fullNameLatin", "Họ tên trang tiếng Anh", 255],
+            ["majorNameEn", "Tên ngành tiếng Anh", 255],
+            ["issuePlace", "Nơi cấp trên bằng", 120],
+            ["diplomaSignerName", "Người ký trên bằng", 255],
+            ["diplomaSignerTitle", "Chức danh người ký bằng", 120],
+          ].map(([field, label, maximum]) => (
+            <label key={String(field)} className="flex flex-col gap-1">
+              <span>{label}</span>
+              <Input
+                value={correctionValues[String(field)] || ""}
+                maxLength={Number(maximum)}
+                onChange={(event) =>
+                  changeCorrection(String(field), event.target.value || null)
+                }
+              />
+            </label>
+          ))}
+          {reviewRow?.status === "IMPORTED" && (
+            <label className="flex flex-col gap-1">
+              <span>Loại bằng</span>
+              <Select
+                value={correctionValues.degreeType || undefined}
+                options={[
+                  { value: "BACHELOR", label: "Bằng cử nhân" },
+                  { value: "ENGINEER", label: "Bằng kỹ sư" },
+                  { value: "MASTER", label: "Bằng thạc sĩ" },
+                  { value: "DOCTOR", label: "Bằng tiến sĩ" },
+                  { value: "OTHER", label: "Loại khác" },
+                ]}
+                onChange={(value) => changeCorrection("degreeType", value)}
+              />
+            </label>
+          )}
+        </div>
         <Input.TextArea
           rows={3}
           value={note}

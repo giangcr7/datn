@@ -44,6 +44,8 @@ export class CertContract extends Contract {
     issuerMspId: string,
   ): Promise<string> {
     this.authorizeAnchor(ctx, issuerMspId);
+    if (issuerMspId !== 'Org1MSP')
+      throw new Error('Only headquarters can issue new diploma anchors');
     if (schemaVersion !== "diploma-v1" || !/^[0-9a-f]{64}$/.test(payloadHash))
       throw new Error("Invalid anchor hash or schema version");
     const key = this.anchorKey(ctx, uuid, version);

@@ -5,7 +5,6 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import { hash } from 'bcryptjs';
 import ExcelJS from 'exceljs';
 import { DatabaseService } from '../database/database.service';
 import { pagination, normalizeText } from '../database/data-utils';
@@ -69,6 +68,7 @@ export class StudentsService {
         name: student.fullName,
         email: student.contactEmail,
         studentId: student.studentCode,
+        dob: student.dateOfBirth?.toISOString().slice(0, 10) || null,
         hasPassword: !!student.account && !student.account.mustChangePassword,
         createdAt: student.createdAt.toISOString(),
       })),
@@ -81,20 +81,36 @@ export class StudentsService {
     email: string,
     studentCode: string,
     actor: AuthActor,
+    options: { skipExisting?: boolean } = {},
   ) {
     this.staff(actor);
     email = email.trim().toLowerCase();
     name = normalizeText(name);
     if (!/^\d{10}$/.test(studentCode) || !name || !email.includes('@'))
       throw new BadRequestException('MSSV, họ tên hoặc email không hợp lệ');
-    const passwordHash = await hash(randomBytes(32).toString('hex'), 12);
+    let created: boolean;
     try {
-      await this.database.$transaction(async (transaction) => {
+      created = await this.database.$transaction(async (transaction) => {
         const existing = await transaction.student.findUnique({
           where: {
             institutionId_studentCode: {
               institutionId: actor.institutionId,
               studentCode,
+            },
+          },
+          include: {
+            account: {
+              select: {
+                email: true,
+                memberships: {
+                  where: {
+                    campusId: actor.campusId,
+                    role: 'STUDENT',
+                    active: true,
+                  },
+                  select: { id: true },
+                },
+              },
             },
           },
         });
@@ -103,6 +119,7 @@ export class StudentsService {
         if (
           existing &&
           actor.role !== 'admin' &&
+          !existing.account?.memberships.length &&
           !(await transaction.enrollment.findFirst({
             where: { studentId: existing.id, campusId: actor.campusId },
           }))
@@ -110,6 +127,19 @@ export class StudentsService {
           throw new ForbiddenException(
             'Sinh viên không thuộc cơ sở của cán bộ',
           );
+        if (
+          existing?.contactEmail &&
+          existing.contactEmail.toLowerCase() !== email
+        )
+          throw new ConflictException(
+            'Email khác hồ sơ đã có; cần xác nhận trước khi tạo tài khoản',
+          );
+        if (existing?.account) {
+          if (existing.account.email.toLowerCase() !== email)
+            throw new ConflictException('Email khác tài khoản sinh viên đã có');
+          if (options.skipExisting) return false;
+          throw new ConflictException('Tài khoản sinh viên đã tồn tại');
+        }
         const student =
           existing ||
           (await transaction.student.create({
@@ -120,26 +150,21 @@ export class StudentsService {
               contactEmail: email,
             },
           }));
-        if (
-          existing?.contactEmail &&
-          existing.contactEmail.toLowerCase() !== email
-        )
-          throw new ConflictException(
-            'Email khác hồ sơ đã có; cần xác nhận trước khi tạo tài khoản',
-          );
         const account = await transaction.account.create({
           data: {
             studentId: student.id,
             email,
             displayName: name,
-            passwordHash,
+            // OTP activation sets the real bcrypt hash; this marker cannot authenticate.
+            passwordHash: '!pending-activation!' + randomBytes(32).toString('hex'),
             mustChangePassword: true,
           },
         });
-        await transaction.student.update({
-          where: { id: student.id },
-          data: { contactEmail: email },
-        });
+        if (existing && !existing.contactEmail)
+          await transaction.student.update({
+            where: { id: student.id },
+            data: { contactEmail: email },
+          });
         await transaction.accountMembership.create({
           data: {
             accountId: account.id,
@@ -157,6 +182,7 @@ export class StudentsService {
             result: 'SUCCESS',
           },
         });
+        return true;
       });
     } catch (error) {
       if (
@@ -168,7 +194,7 @@ export class StudentsService {
         );
       throw error;
     }
-    return { success: true };
+    return { success: true, created };
   }
 
   async importFromExcel(fileName: string, fileData: string, actor: AuthActor) {
@@ -208,6 +234,7 @@ export class StudentsService {
         'Mẫu tài khoản cần MSSV, Họ và tên, Email. Sổ gốc văn bằng phải dùng /imports/registry.',
       );
     let created = 0;
+    let skipped = 0;
     const errors: { row: number; message: string }[] = [];
     for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
       const row = sheet.getRow(rowNumber);
@@ -218,13 +245,15 @@ export class StudentsService {
       )
         continue;
       try {
-        await this.create(
+        const result = await this.create(
           row.getCell(nameCol).text,
           row.getCell(emailCol).text,
           row.getCell(codeCol).text,
           actor,
+          { skipExisting: true },
         );
-        created++;
+        if (result.created) created++;
+        else skipped++;
       } catch (error) {
         errors.push({
           row: rowNumber,
@@ -235,9 +264,10 @@ export class StudentsService {
     return {
       success: true,
       created,
-      skipped: errors.length,
+      skipped,
+      failed: errors.length,
       emailFailed: 0,
-      total: created + errors.length,
+      total: created + skipped + errors.length,
       errors,
     };
   }

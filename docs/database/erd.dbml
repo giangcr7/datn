@@ -96,6 +96,7 @@ Table account_memberships {
   role Role [not null]
   active boolean [not null]
   created_at timestamptz(3) [not null]
+  can_approve_diplomas boolean [not null]
   indexes {
     (account_id, campus_id, role) [unique, name: 'account_memberships_account_id_campus_id_role_key']
     (campus_id, role) [name: 'account_memberships_campus_id_role_idx']
@@ -168,6 +169,7 @@ Table campuses {
   name varchar(255) [not null]
   fabric_msp_id varchar(100) [unique]
   created_at timestamptz(3) [not null]
+  is_headquarters boolean [not null]
   indexes {
     (fabric_msp_id) [unique, name: 'campuses_fabric_msp_id_key']
     (institution_id, code) [unique, name: 'campuses_institution_id_code_key']
@@ -186,6 +188,29 @@ Table diploma_events {
   created_at timestamptz(3) [not null]
   indexes {
     (diploma_id, created_at) [name: 'diploma_events_diploma_id_created_at_idx']
+  }
+}
+
+Table diploma_pdf_signatures {
+  id uuid [pk]
+  document_id uuid [not null]
+  signature_order integer [not null]
+  field_name varchar(80) [not null]
+  actor_id uuid [not null]
+  campus_id uuid [not null]
+  signer_name varchar(255) [not null]
+  certificate_sha256 char(64) [not null]
+  certificate_serial varchar(255) [not null]
+  certificate_subject text [not null]
+  certificate_issuer text [not null]
+  valid_from timestamptz(3) [not null]
+  valid_to timestamptz(3) [not null]
+  signed_at timestamptz(3) [not null]
+  validation_evidence jsonb
+  indexes {
+    (document_id, actor_id) [unique, name: 'diploma_pdf_signatures_document_id_actor_id_key']
+    (document_id, certificate_sha256) [unique, name: 'diploma_pdf_signatures_document_id_certificate_sha256_key']
+    (document_id, signature_order) [unique, name: 'diploma_pdf_signatures_document_id_signature_order_key']
   }
 }
 
@@ -223,11 +248,21 @@ Table diplomas {
   revoked_at timestamptz(3)
   created_at timestamptz(3) [not null]
   updated_at timestamptz(3) [not null]
+  issuing_campus_id uuid
+  print_template varchar(60)
+  full_name_latin varchar(255)
+  major_name_en varchar(255)
+  issue_place varchar(120)
+  diploma_signer_name varchar(255)
+  diploma_signer_title varchar(120)
+  origin_type varchar(20) [not null]
   indexes {
     (campus_id, workflow_status, created_at) [name: 'diplomas_campus_id_workflow_status_created_at_idx']
     (graduation_id) [name: 'diplomas_graduation_id_idx']
     (institution_id, certificate_no) [unique, name: 'diplomas_institution_id_certificate_no_key']
     (institution_id, registry_no) [unique, name: 'diplomas_institution_id_registry_no_key']
+    (institution_id, workflow_status, created_at) [name: 'diplomas_institution_id_workflow_status_created_at_idx']
+    (issuing_campus_id) [name: 'diplomas_issuing_campus_id_idx']
     (supersedes_id) [unique, name: 'diplomas_supersedes_id_key']
   }
 }
@@ -328,6 +363,7 @@ Table institutions {
   code varchar(40) [unique, not null]
   name varchar(255) [not null]
   created_at timestamptz(3) [not null]
+  name_en varchar(255)
   indexes {
     (code) [unique, name: 'institutions_code_key']
   }
@@ -414,6 +450,7 @@ Table programs {
   national_code varchar(30)
   active boolean [not null]
   created_at timestamptz(3) [not null]
+  name_en varchar(255)
   indexes {
     (institution_id, code) [unique, name: 'programs_institution_id_code_key']
     (institution_id, name) [unique, name: 'programs_institution_id_name_key']
@@ -438,6 +475,27 @@ Table refresh_sessions {
     (expires_at) [name: 'refresh_sessions_expires_at_idx']
     (replaced_by_id) [unique, name: 'refresh_sessions_replaced_by_id_key']
     (token_hash) [unique, name: 'refresh_sessions_token_hash_key']
+  }
+}
+
+Table signed_diploma_documents {
+  id uuid [pk]
+  diploma_id uuid [not null]
+  version integer [not null]
+  version_id uuid [unique]
+  payload_hash char(64) [not null]
+  signing_mode varchar(20) [not null]
+  origin_pdf_key varchar(500) [not null]
+  origin_pdf_hash char(64) [not null]
+  signed_pdf_key varchar(500)
+  signed_pdf_hash char(64) [unique]
+  byte_size integer [not null]
+  created_at timestamptz(3) [not null]
+  completed_at timestamptz(3)
+  indexes {
+    (diploma_id, version) [unique, name: 'signed_diploma_documents_diploma_id_version_key']
+    (signed_pdf_hash) [unique, name: 'signed_diploma_documents_signed_pdf_hash_key']
+    (version_id) [unique, name: 'signed_diploma_documents_version_id_key']
   }
 }
 
@@ -502,14 +560,19 @@ Ref blockchain_anchors_version_id_fkey: blockchain_anchors.version_id > diploma_
 Ref campuses_institution_id_fkey: campuses.institution_id > institutions.id
 Ref diploma_events_actor_id_fkey: diploma_events.actor_id > accounts.id
 Ref diploma_events_diploma_id_fkey: diploma_events.diploma_id > diplomas.id
+Ref diploma_pdf_signatures_actor_id_fkey: diploma_pdf_signatures.actor_id > accounts.id
+Ref diploma_pdf_signatures_campus_id_fkey: diploma_pdf_signatures.campus_id > campuses.id
+Ref diploma_pdf_signatures_document_id_fkey: diploma_pdf_signatures.document_id > signed_diploma_documents.id
 Ref diploma_versions_created_by_id_fkey: diploma_versions.created_by_id > accounts.id
 Ref diploma_versions_diploma_id_fkey: diploma_versions.diploma_id > diplomas.id
 Ref diploma_campus_scope: diplomas.(campus_id, institution_id) > campuses.(id, institution_id)
 Ref diploma_graduation_scope: diplomas.(graduation_id, institution_id) > graduation_records.(id, institution_id)
+Ref diploma_issuer_scope: diplomas.(issuing_campus_id, institution_id) > campuses.(id, institution_id)
 Ref diplomas_approved_by_id_fkey: diplomas.approved_by_id > accounts.id
 Ref diplomas_campus_id_fkey: diplomas.campus_id > campuses.id
 Ref diplomas_graduation_id_fkey: diplomas.graduation_id > graduation_records.id
 Ref diplomas_institution_id_fkey: diplomas.institution_id > institutions.id
+Ref diplomas_issuing_campus_id_fkey: diplomas.issuing_campus_id > campuses.id
 Ref diplomas_requested_by_id_fkey: diplomas.requested_by_id > accounts.id
 Ref diplomas_supersedes_id_fkey: diplomas.supersedes_id - diplomas.id
 Ref enrollments_campus_id_fkey: enrollments.campus_id > campuses.id
@@ -549,6 +612,8 @@ Ref refresh_membership_account: refresh_sessions.(membership_id, account_id) > a
 Ref refresh_sessions_account_id_fkey: refresh_sessions.account_id > accounts.id
 Ref refresh_sessions_membership_id_fkey: refresh_sessions.membership_id > account_memberships.id
 Ref refresh_sessions_replaced_by_id_fkey: refresh_sessions.replaced_by_id - refresh_sessions.id
+Ref signed_diploma_documents_diploma_id_fkey: signed_diploma_documents.diploma_id > diplomas.id
+Ref signed_diploma_documents_version_id_fkey: signed_diploma_documents.version_id - diploma_versions.id
 Ref source_documents_institution_id_fkey: source_documents.institution_id > institutions.id
 Ref source_documents_uploaded_by_id_fkey: source_documents.uploaded_by_id > accounts.id
 Ref students_institution_id_fkey: students.institution_id > institutions.id

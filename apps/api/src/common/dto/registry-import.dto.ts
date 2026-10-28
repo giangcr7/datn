@@ -1,5 +1,6 @@
 import {
   IsBase64,
+  IsIn,
   IsNotEmpty,
   IsObject,
   IsString,
@@ -9,6 +10,10 @@ import {
 export class RegistryImportDto {
   @IsString() @IsNotEmpty() @MaxLength(255) fileName!: string;
   @IsBase64() @IsNotEmpty() @MaxLength(7 * 1024 * 1024) fileData!: string;
+}
+export class CommitRegistryDto {
+  @IsIn(['DIGITIZATION', 'ISSUANCE'])
+  originType: 'DIGITIZATION' | 'ISSUANCE' = 'ISSUANCE';
 }
 export class ReviewRegistryRowDto {
   @IsObject() corrections!: Record<string, unknown>;

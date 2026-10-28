@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 },
+      { status: Number.isInteger(error.status) ? error.status : 500 },
     );
   }
 }

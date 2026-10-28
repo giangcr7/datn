@@ -14,40 +14,73 @@ async function main() {
   const institution = await database.institution.upsert({
     where: { code: 'TLU' },
     update: {},
-    create: { code: 'TLU', name: 'Trường Đại học Thủy lợi' },
+    create: {
+      code: 'TLU',
+      name: 'Trường Đại học Thủy lợi',
+      nameEn: 'Thuyloi University',
+    },
   });
   const campuses = new Map<string, string>();
   for (const [code, name, msp] of [
-    ['ORG1', 'Trụ sở Hà Nội', 'Org1MSP'],
-    ['ORG2', 'Phân hiệu tại TP. Hồ Chí Minh', 'Org2MSP'],
+    ['ORG2', 'Cơ sở chính TP. Hồ Chí Minh', 'Org1MSP'],
   ]) {
     const campus = await database.campus.upsert({
       where: { institutionId_code: { institutionId: institution.id, code } },
       update: {},
-      create: { institutionId: institution.id, code, name, fabricMspId: msp },
+      create: {
+        institutionId: institution.id,
+        code,
+        name,
+        fabricMspId: msp,
+        isHeadquarters: true,
+      },
     });
     campuses.set(code, campus.id);
   }
-  const programs: [string, string][] = [
-    ['WATER_WORKS_LEGACY', 'Kỹ thuật công trình thủy'],
-    ['CIVIL_LEGACY', 'Kỹ thuật công trình xây dựng'],
-    ['WATER_SUPPLY_LEGACY', 'Cấp thoát nước'],
-    ['WATER_WORKS', 'Kỹ thuật xây dựng công trình thủy'],
-    ['CIVIL', 'Kỹ thuật xây dựng'],
-    ['WATER_SUPPLY', 'Kỹ thuật cấp thoát nước'],
-    ['TRANSPORT', 'Kỹ thuật xây dựng công trình giao thông'],
-    ['WATER_RESOURCES', 'Kỹ thuật tài nguyên nước'],
-    ['CONSTRUCTION_TECH', 'Công nghệ kỹ thuật xây dựng'],
-    ['ACCOUNTING', 'Kế toán'],
-    ['IT', 'Công nghệ thông tin'],
-    ['BUSINESS', 'Quản trị kinh doanh'],
-    ['LOGISTICS', 'Logistics và quản lý chuỗi cung ứng'],
+  const programs: [string, string, string][] = [
+    ['WATER_WORKS_LEGACY', 'Kỹ thuật công trình thủy', 'Hydraulic Engineering'],
+    ['CIVIL_LEGACY', 'Kỹ thuật công trình xây dựng', 'Civil Engineering'],
+    ['WATER_SUPPLY_LEGACY', 'Cấp thoát nước', 'Water Supply and Drainage'],
+    [
+      'WATER_WORKS',
+      'Kỹ thuật xây dựng công trình thủy',
+      'Hydraulic Engineering',
+    ],
+    ['CIVIL', 'Kỹ thuật xây dựng', 'Civil Engineering'],
+    [
+      'WATER_SUPPLY',
+      'Kỹ thuật cấp thoát nước',
+      'Water Supply and Drainage Engineering',
+    ],
+    [
+      'TRANSPORT',
+      'Kỹ thuật xây dựng công trình giao thông',
+      'Transport Infrastructure Engineering',
+    ],
+    [
+      'WATER_RESOURCES',
+      'Kỹ thuật tài nguyên nước',
+      'Water Resources Engineering',
+    ],
+    [
+      'CONSTRUCTION_TECH',
+      'Công nghệ kỹ thuật xây dựng',
+      'Civil Engineering Technology',
+    ],
+    ['ACCOUNTING', 'Kế toán', 'Accounting'],
+    ['IT', 'Công nghệ thông tin', 'Information Technology'],
+    ['BUSINESS', 'Quản trị kinh doanh', 'Business Administration'],
+    [
+      'LOGISTICS',
+      'Logistics và quản lý chuỗi cung ứng',
+      'Logistics and Supply Chain Management',
+    ],
   ];
-  for (const [code, name] of programs) {
+  for (const [code, name, nameEn] of programs) {
     const program = await database.program.upsert({
       where: { institutionId_code: { institutionId: institution.id, code } },
       update: {},
-      create: { institutionId: institution.id, code, name },
+      create: { institutionId: institution.id, code, name, nameEn },
     });
     await database.programAlias.upsert({
       where: {
@@ -66,8 +99,7 @@ async function main() {
     });
   }
   for (const [prefix, role, campusCode] of [
-    ['ADMIN', Role.ADMIN, 'ORG1'],
-    ['ORG1', Role.UNIVERSITY, 'ORG1'],
+    ['ADMIN', Role.ADMIN, 'ORG2'],
     ['ORG2', Role.UNIVERSITY, 'ORG2'],
   ] as const) {
     const email = process.env[`BOOTSTRAP_${prefix}_EMAIL`]
@@ -93,11 +125,16 @@ async function main() {
         accountId_campusId_role: { accountId: account.id, campusId, role },
       },
       update: {},
-      create: { accountId: account.id, campusId, role },
+      create: {
+        accountId: account.id,
+        campusId,
+        role,
+        canApproveDiplomas: role === Role.UNIVERSITY,
+      },
     });
   }
   console.log(
-    'Seed completed: institution, two campuses, 13 distinct historical/current program labels. Existing passwords are unchanged.',
+    'Seed completed: institution, one main campus, one university officer role, 13 program labels. Existing passwords are unchanged.',
   );
 }
 

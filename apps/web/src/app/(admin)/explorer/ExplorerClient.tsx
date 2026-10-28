@@ -1,698 +1,779 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
+  Alert,
+  Button,
   Card,
-  Row,
   Col,
-  Typography,
+  Descriptions,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Select,
+  Space,
   Statistic,
   Table,
   Tag,
-  Button,
-  Input,
-  Modal,
-  Tabs,
-  Badge,
-  Space,
-  Tooltip,
-  Descriptions,
+  Typography,
   message,
-} from 'antd';
+} from "antd";
+import type { TableColumnsType } from "antd";
 import {
-  DeploymentUnitOutlined,
-  CopyOutlined,
-  SearchOutlined,
-  ReloadOutlined,
-  ApartmentOutlined,
-  SafetyCertificateOutlined,
-  ClockCircleOutlined,
   EyeOutlined,
-  CheckCircleFilled,
-  ClusterOutlined,
-} from '@ant-design/icons';
+  ReloadOutlined,
+  SafetyCertificateOutlined,
+} from "@ant-design/icons";
+import { getWorkspace, type WorkspaceUser } from "@/lib/workspace-access";
+import {
+  anchorParams,
+  anchorStatuses,
+  comparisonStatuses,
+  eventLabel,
+  networkStatuses,
+  type AnchorComparison,
+  type AnchorEntry,
+  type AnchorFilters,
+  type AnchorPage,
+  type ExplorerOverview,
+} from "@/lib/explorer";
 
-const { Title, Text, Paragraph } = Typography;
+const emptyFilters: AnchorFilters = { search: "", eventType: "", status: "" };
+const formatTime = (value?: string | null) =>
+  value ? new Date(value).toLocaleString("vi-VN") : "Chưa ghi nhận";
 
-interface ExplorerClientProps {
-  initialOverview: any;
-  initialBlocks: any[];
-  initialPagination: any;
-}
+export default function ExplorerClient({ user }: { user: WorkspaceUser }) {
+  const workspace = getWorkspace(user);
+  const [overview, setOverview] = useState<ExplorerOverview | null>(null);
+  const [overviewError, setOverviewError] = useState("");
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [rows, setRows] = useState<AnchorEntry[]>([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  });
+  const [filters, setFilters] = useState<AnchorFilters>(emptyFilters);
+  const [appliedFilters, setAppliedFilters] =
+    useState<AnchorFilters>(emptyFilters);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [selected, setSelected] = useState<AnchorEntry | null>(null);
+  const [checking, setChecking] = useState<string | null>(null);
+  const [retryTarget, setRetryTarget] = useState<AnchorEntry | null>(null);
+  const [retryReason, setRetryReason] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
+  const [comparisons, setComparisons] = useState<
+    Record<string, AnchorComparison>
+  >({});
+  const requestId = useRef(0);
+  const overviewRequestId = useRef(0);
 
-export default function ExplorerClient({
-  initialOverview,
-  initialBlocks,
-  initialPagination,
-}: ExplorerClientProps) {
-  const [overview, setOverview] = useState<any>(initialOverview);
-  const [blocks, setBlocks] = useState<any[]>(initialBlocks);
-  const [pagination, setPagination] = useState<any>(initialPagination);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('blocks');
-
-  // Modal states
-  const [selectedBlock, setSelectedBlock] = useState<any>(null);
-  const [selectedTx, setSelectedTx] = useState<any>(null);
-  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
-  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
-
-  // Fetch blocks
-  const fetchBlocks = async (page = 1, searchQuery = search) => {
-    setLoading(true);
+  const loadOverview = useCallback(async () => {
+    const current = ++overviewRequestId.current;
+    setOverviewLoading(true);
+    setOverviewError("");
     try {
-      const q = new URLSearchParams({
-        page: String(page),
-        limit: '10',
+      const response = await fetch("/api/explorer/overview", {
+        cache: "no-store",
       });
-      if (searchQuery) q.append('search', searchQuery);
-
-      const res = await fetch(`/api/explorer/blocks?${q.toString()}`);
-      const data = await res.json();
-      if (data.success) {
-        setBlocks(data.data);
-        setPagination(data.pagination);
-      }
-    } catch {
-      message.error('Không thể tải danh sách khối');
+      const result = await response.json();
+      if (!response.ok || !result.success)
+        throw new Error(result.error || "Không tải được tổng quan");
+      if (current === overviewRequestId.current) setOverview(result.data);
+    } catch (error) {
+      if (current !== overviewRequestId.current) return;
+      setOverview(null);
+      setOverviewError(
+        error instanceof Error ? error.message : "Không tải được tổng quan",
+      );
     } finally {
-      setLoading(false);
+      if (current === overviewRequestId.current) setOverviewLoading(false);
     }
-  };
+  }, []);
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      const resOverview = await fetch('/api/explorer/overview');
-      const dataOverview = await resOverview.json();
-      if (dataOverview.success) {
-        setOverview(dataOverview.data);
+  const loadAnchors = useCallback(
+    async (nextFilters: AnchorFilters, page = 1, limit = 20) => {
+      const current = ++requestId.current;
+      setLoading(true);
+      setLoadError("");
+      try {
+        const response = await fetch(
+          "/api/explorer/anchors?" + anchorParams(nextFilters, page, limit),
+          { cache: "no-store" },
+        );
+        const result: AnchorPage & { success: boolean; error?: string } =
+          await response.json();
+        if (!response.ok || !result.success)
+          throw new Error(result.error || "Không tải được giao dịch");
+        if (current !== requestId.current) return;
+        setRows(result.data);
+        setPagination(result.pagination);
+      } catch (error) {
+        if (current !== requestId.current) return;
+        setRows([]);
+        setPagination({ total: 0, page: 1, limit, totalPages: 0 });
+        setLoadError(
+          error instanceof Error ? error.message : "Không tải được giao dịch",
+        );
+      } finally {
+        if (current === requestId.current) setLoading(false);
       }
-      await fetchBlocks(pagination?.page || 1, search);
-      message.success('Đã làm mới dữ liệu Blockchain');
-    } catch {
-      message.error('Lỗi khi làm mới');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    message.success(`Đã sao chép ${label}!`);
-  };
-
-  // Trích xuất toàn bộ transaction từ danh sách block để hiển thị ở Tab Transactions
-  const allTransactions = blocks.flatMap((block) =>
-    (block.transactions || []).map((tx: any) => ({
-      ...tx,
-      blockNumber: block.blockNumber,
-      blockTimestamp: block.timestamp,
-    }))
+    },
+    [],
   );
 
-  // Cột bảng Khối (Blocks)
-  const blockColumns = [
-    {
-      title: 'Khối (#)',
-      dataIndex: 'blockNumber',
-      key: 'blockNumber',
-      width: 100,
-      render: (num: number) => (
-        <Tag color="#108ee9" style={{ fontSize: 13, fontWeight: 'bold' }}>
-          #{num}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Block Hash',
-      dataIndex: 'blockHash',
-      key: 'blockHash',
-      render: (hash: string) => (
-        <Space size="small">
-          <Tooltip placement="top" title={hash}>
-            <Text code copyable={false} style={{ cursor: 'pointer' }}>
-              {hash ? `${hash.slice(0, 14)}...${hash.slice(-10)}` : 'N/A'}
-            </Text>
-          </Tooltip>
-          <Button
-            type="text"
-            size="small"
-            icon={<CopyOutlined />}
-            onClick={() => handleCopy(hash, 'Block Hash')}
-          />
-        </Space>
-      ),
-    },
-    {
-      title: 'Previous Hash',
-      dataIndex: 'previousHash',
-      key: 'previousHash',
-      render: (hash: string) => (
-        <Tooltip placement="top" title={hash}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {hash ? `${hash.slice(0, 10)}...${hash.slice(-8)}` : '00000000...'}
-          </Text>
-        </Tooltip>
-      ),
-    },
-    {
-      title: 'Loại khối',
-      dataIndex: 'type',
-      key: 'type',
-      width: 180,
-      render: (type: string) => {
-        if (type === 'CONFIG_GENESIS') return <Tag color="purple">GENESIS CONFIG</Tag>;
-        if (type === 'CHAINCODE_DEPLOYMENT') return <Tag color="blue">DEPLOY CONTRACT</Tag>;
-        return <Tag color="green">TRANSACTION</Tag>;
-      },
-    },
-    {
-      title: 'Số giao dịch',
-      dataIndex: 'txCount',
-      key: 'txCount',
-      width: 120,
-      align: 'center' as const,
-      render: (count: number) => <Badge count={count} overflowCount={999} style={{ backgroundColor: '#52c41a' }} />,
-    },
-    {
-      title: 'Thời gian',
-      dataIndex: 'timestamp',
-      key: 'timestamp',
-      width: 180,
-      render: (ts: string) => (
-        <Space size={4}>
-          <ClockCircleOutlined style={{ color: '#8c8c8c' }} />
-          <Text style={{ fontSize: 12 }}>{new Date(ts).toLocaleString('vi-VN')}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Chi tiết',
-      key: 'action',
-      width: 110,
-      align: 'center' as const,
-      render: (_: any, record: any) => (
-        <Button
-          type="primary"
-          ghost
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => {
-            setSelectedBlock(record);
-            setIsBlockModalOpen(true);
-          }}
-        >
-          Xem
-        </Button>
-      ),
-    },
-  ];
+  const cancelPending = useCallback(() => {
+    requestId.current++;
+    overviewRequestId.current++;
+  }, []);
+  useEffect(() => {
+    void loadOverview();
+    void loadAnchors(emptyFilters);
+    return cancelPending;
+  }, [loadOverview, loadAnchors, cancelPending]);
 
-  // Cột bảng Giao dịch (Transactions)
-  const txColumns = [
+  const apply = (nextFilters: AnchorFilters) => {
+    setAppliedFilters({ ...nextFilters });
+    setComparisons({});
+    void loadAnchors(nextFilters, 1, pagination.limit);
+  };
+
+  const refresh = () => {
+    setComparisons({});
+    void loadOverview();
+    void loadAnchors(appliedFilters, pagination.page, pagination.limit);
+  };
+
+  const checkAnchor = async (entry: AnchorEntry) => {
+    if (checking) return;
+    setSelected(entry);
+    setChecking(entry.id);
+    setComparisons((previous) => {
+      const next = { ...previous };
+      delete next[entry.id];
+      return next;
+    });
+    try {
+      const response = await fetch(
+        "/api/explorer/anchors/" + encodeURIComponent(entry.id) + "/check",
+        { method: "POST" },
+      );
+      const result = await response.json();
+      if (!response.ok || !result.success)
+        throw new Error(result.error || "Không thực hiện được đối chiếu");
+      setComparisons((previous) => ({ ...previous, [entry.id]: result.data }));
+    } catch (error) {
+      message.error(
+        error instanceof Error
+          ? error.message
+          : "Không thực hiện được đối chiếu",
+      );
+    } finally {
+      setChecking(null);
+    }
+  };
+
+  const retryAnchor = async () => {
+    if (!retryTarget?.outbox || retrying) return;
+    if (retryReason.trim().length < 10) {
+      setRetryError("Nhập lý do xử lý từ 10 đến 2000 ký tự.");
+      return;
+    }
+    setRetrying(true);
+    setRetryError("");
+    try {
+      const response = await fetch(
+        "/api/explorer/anchors/" +
+          encodeURIComponent(retryTarget.id) +
+          "/retry",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason: retryReason.trim(),
+            expectedRetryToken: retryTarget.outbox.retryToken,
+          }),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok || !result.success)
+        throw new Error(result.error || "Không khôi phục được giao dịch");
+      setSelected(result.data.anchor);
+      setRetryTarget(null);
+      setRetryReason("");
+      message.success(result.data.message);
+      refresh();
+    } catch (error) {
+      setRetryError(
+        error instanceof Error
+          ? error.message
+          : "Không khôi phục được giao dịch",
+      );
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  const columns: TableColumnsType<AnchorEntry> = [
     {
-      title: 'Transaction ID (TxID)',
-      dataIndex: 'txId',
-      key: 'txId',
-      render: (txId: string) => (
-        <Space size="small">
-          <Tooltip placement="top" title={txId}>
-            <Text code copyable={false}>
-              {txId ? `${txId.slice(0, 14)}...${txId.slice(-10)}` : 'N/A'}
-            </Text>
-          </Tooltip>
-          <Button
-            type="text"
-            size="small"
-            icon={<CopyOutlined />}
-            onClick={() => handleCopy(txId, 'Transaction ID')}
-          />
-        </Space>
+      title: "Văn bằng",
+      key: "diploma",
+      width: 260,
+      render: (_value, entry) => (
+        <>
+          <Typography.Text strong>
+            {entry.fullName || "Chưa có họ tên"}
+          </Typography.Text>
+          <div>MSSV: {entry.mssv || "—"}</div>
+          <Typography.Text type="secondary">
+            Số hiệu: {entry.certificateNo || "—"}
+            <br />
+            Số vào sổ: {entry.registryNo || "—"}
+          </Typography.Text>
+        </>
       ),
     },
     {
-      title: 'Khối',
-      dataIndex: 'blockNumber',
-      key: 'blockNumber',
-      width: 90,
-      render: (bNum: number) => <Tag color="#108ee9">#{bNum}</Tag>,
+      title: "Nghiệp vụ",
+      key: "event",
+      width: 130,
+      render: (_value, entry) => (
+        <>
+          <Tag color={entry.eventType === "REVOKE" ? "red" : "blue"}>
+            {eventLabel(entry.eventType)}
+          </Tag>
+          <div>Phiên bản {entry.version}</div>
+        </>
+      ),
     },
     {
-      title: 'Hành động Smart Contract',
-      key: 'action',
-      render: (_: any, tx: any) => {
-        if (tx.function === 'RevokeCertificate') {
-          return <Tag color="error">RevokeCertificate (Thu hồi)</Tag>;
-        }
-        if (tx.function === 'IssueCertificate') {
-          return <Tag color="success">IssueCertificate (Cấp bằng)</Tag>;
-        }
-        if (tx.type === 'LIFECYCLE_COMMIT') {
-          return <Tag color="processing">Deploy educert v1.0</Tag>;
-        }
-        return <Tag color="default">{tx.type || 'CONFIG'}</Tag>;
-      },
-    },
-    {
-      title: 'Đối tượng / Sinh viên',
-      key: 'subject',
-      render: (_: any, tx: any) => {
-        if (tx.payload?.fullName) {
-          return (
+      title: "Đồng bộ",
+      key: "status",
+      width: 160,
+      render: (_value, entry) => (
+        <>
+          <Tag color={anchorStatuses[entry.status]?.color}>
+            {anchorStatuses[entry.status]?.label || entry.status}
+          </Tag>
+          {entry.outbox?.exhausted && <Tag color="red">Hết lượt thử lại</Tag>}
+          {entry.outbox && (
             <div>
-              <Text strong>{tx.payload.fullName}</Text>
-              <br />
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                MSSV: {tx.payload.mssv} | {tx.payload.major}
-              </Text>
+              <Typography.Text type="secondary">
+                Đợt hiện tại: {entry.outbox.attempts} lần thử
+              </Typography.Text>
             </div>
-          );
-        }
-        return <Text type="secondary">{tx.payload?.description || 'Hệ thống'}</Text>;
-      },
-    },
-    {
-      title: 'Endorsers',
-      dataIndex: 'endorsingMSPs',
-      key: 'endorsingMSPs',
-      width: 170,
-      render: (msps: string[]) => (
-        <Space size={2} wrap>
-          {(msps || ['Org1MSP', 'Org2MSP']).map((m) => (
-            <Tag key={m} color="geekblue" style={{ fontSize: 11 }}>
-              {m}
-            </Tag>
-          ))}
-        </Space>
+          )}
+        </>
       ),
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      align: 'center' as const,
-      render: () => <Tag color="success">VALID</Tag>,
+      title: "Mã giao dịch",
+      dataIndex: "transactionId",
+      width: 210,
+      render: (value: string | null) =>
+        value ? (
+          <Typography.Text
+            copyable={{ text: value }}
+            ellipsis={{ tooltip: value }}
+            style={{ width: 185 }}
+          >
+            {value}
+          </Typography.Text>
+        ) : (
+          "Chưa có mã giao dịch"
+        ),
     },
     {
-      title: 'Chi tiết',
-      key: 'action',
-      width: 100,
-      align: 'center' as const,
-      render: (_: any, record: any) => (
-        <Button
-          type="default"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => {
-            setSelectedTx(record);
-            setIsTxModalOpen(true);
-          }}
-        >
-          Xem
-        </Button>
+      title: "Ghi nhận lúc",
+      dataIndex: "committedAt",
+      width: 175,
+      render: formatTime,
+    },
+    {
+      title: "Đối chiếu trực tiếp",
+      key: "comparison",
+      width: 180,
+      render: (_value, entry) => {
+        const result = comparisons[entry.id];
+        return result ? (
+          <Tag color={comparisonStatuses[result.status]?.color}>
+            {comparisonStatuses[result.status]?.label || result.status}
+          </Tag>
+        ) : (
+          <Typography.Text type="secondary">
+            Chưa đối chiếu trong phiên này
+          </Typography.Text>
+        );
+      },
+    },
+    {
+      title: "Thao tác",
+      key: "actions",
+      width: 215,
+      render: (_value, entry) => (
+        <Space>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setSelected(entry)}
+          >
+            Chi tiết
+          </Button>
+          <Button
+            size="small"
+            type="primary"
+            icon={<SafetyCertificateOutlined />}
+            loading={checking === entry.id}
+            disabled={!!checking && checking !== entry.id}
+            onClick={() => void checkAnchor(entry)}
+          >
+            Đối chiếu
+          </Button>
+        </Space>
       ),
     },
   ];
+  const comparison = selected ? comparisons[selected.id] : undefined;
+  const network = networkStatuses[overview?.networkStatus || ""] || {
+    label: "Chưa xác định kết nối Fabric",
+    color: "default",
+  };
+  const activeFilter = !!(
+    appliedFilters.search.trim() ||
+    appliedFilters.eventType ||
+    appliedFilters.status
+  );
 
   return (
-    <div style={{ padding: '24px 32px' }}>
-      {/* HEADER SECTION */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
+    <div className="p-6 md:p-8 bg-white min-h-screen">
+      <div className="flex flex-wrap justify-between gap-4 mb-6">
         <div>
-          <Title level={2} style={{ margin: 0, color: '#002140', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <DeploymentUnitOutlined style={{ color: '#1890ff' }} />
-            TRÌNH KHÁM PHÁ KHỐI BLOCKCHAIN
-          </Title>
-          <Text type="secondary">
-            Minh bạch hóa sổ cái phân tán Hyperledger Fabric (Ledger Explorer & Audit Trail)
-          </Text>
+          <Typography.Title level={2}>
+            {workspace.kind === "admin"
+              ? "Giám sát blockchain"
+              : "Đối chiếu blockchain"}
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            Theo dõi giao dịch phát hành, thu hồi và đối chiếu dữ liệu văn bằng
+            với Hyperledger Fabric.
+          </Typography.Text>
         </div>
-
-        <Space size="middle">
-          <Tag color="success" style={{ padding: '6px 12px', fontSize: 13, borderRadius: 16 }}>
-            <CheckCircleFilled style={{ marginRight: 6 }} />
-            Mạng phân tán đồng bộ (Synchronized)
-          </Tag>
+        <Space wrap>
+          <Tag color={network.color}>{network.label}</Tag>
           <Button
-            type="primary"
             icon={<ReloadOutlined />}
-            loading={loading}
-            onClick={handleRefresh}
+            loading={loading || overviewLoading}
+            disabled={!!checking}
+            onClick={refresh}
           >
             Làm mới
           </Button>
         </Space>
       </div>
-
-      {/* OVERVIEW STATS CARDS */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={6}>
-          <Card
-            variant="borderless"
-            style={{
-              background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-              color: '#fff',
-              borderRadius: 10,
-              boxShadow: '0 4px 12px rgba(24,144,255,0.2)',
-            }}
-          >
-            <Statistic
-              title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>ĐỘ CAO KHỐI (BLOCK HEIGHT)</span>}
-              value={overview?.blockHeight || 0}
-              valueStyle={{ color: '#fff', fontWeight: 'bold' }}
-              prefix={<ApartmentOutlined />}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
-              Từ Genesis #0 đến Block #{Math.max(0, (overview?.blockHeight || 1) - 1)}
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} md={6}>
-          <Card
-            variant="borderless"
-            style={{
-              background: 'linear-gradient(135deg, #52c41a 0%, #389e0d 100%)',
-              color: '#fff',
-              borderRadius: 10,
-              boxShadow: '0 4px 12px rgba(82,196,26,0.2)',
-            }}
-          >
-            <Statistic
-              title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>TỔNG GIAO DỊCH ON-CHAIN</span>}
-              value={overview?.totalTransactions || 0}
-              valueStyle={{ color: '#fff', fontWeight: 'bold' }}
-              prefix={<SafetyCertificateOutlined />}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
-              100% Cam kết trên Sổ cái Ledger
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} md={6}>
-          <Card
-            variant="borderless"
-            style={{
-              background: '#fff',
-              borderRadius: 10,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-            }}
-          >
-            <Statistic
-              title="KÊNH MẠNG (CHANNEL)"
-              value={overview?.channel || 'mychannel'}
-              valueStyle={{ color: '#002140', fontSize: 20, fontWeight: 'bold' }}
-              prefix={<ClusterOutlined style={{ color: '#722ed1' }} />}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
-              Smart Contract: <Tag color="blue">{overview?.chaincode || 'educert'} v{overview?.version || '1.0'}</Tag>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} md={6}>
-          <Card
-            variant="borderless"
-            style={{
-              background: '#fff',
-              borderRadius: 10,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-            }}
-          >
-            <Statistic
-              title="SỐ TỔ CHỨC ĐỒNG THUẬN (MSPs)"
-              value={overview?.nodes?.length || 3}
-              suffix="Nodes"
-              valueStyle={{ color: '#002140', fontWeight: 'bold' }}
-              prefix={<ClusterOutlined style={{ color: '#fa8c16' }} />}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
-              Org1MSP (Hà Nội) & Org2MSP (TP.HCM)
-            </div>
-          </Card>
-        </Col>
+      {overviewError && (
+        <Alert type="warning" showIcon title={overviewError} className="mb-4" />
+      )}
+      <Row gutter={[16, 16]} className="mb-6">
+        {[
+          ["Đã ghi nhận", overview?.totalTransactions],
+          ["Chờ / đang đồng bộ", overview?.pendingAnchors],
+          ["Lỗi đồng bộ", overview?.failedAnchors],
+        ].map(([title, value]) => (
+          <Col xs={24} md={8} key={String(title)}>
+            <Card loading={overviewLoading}>
+              <Statistic title={title} value={value ?? "—"} />
+            </Card>
+          </Col>
+        ))}
       </Row>
-
-      {/* SEARCH AND EXPLORER TABS */}
-      <Card
-        variant="borderless"
-        style={{
-          borderRadius: 10,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          background: '#fff',
-        }}
-      >
-        <div style={{ marginBottom: 20 }}>
-          <Input.Search
-            placeholder="Tìm kiếm theo Số khối (#0, #1), Hash khối, Transaction ID hoặc MSSV..."
-            allowClear
-            enterButton={
-              <Button type="primary" icon={<SearchOutlined />}>
-                Tìm kiếm trên Ledger
-              </Button>
-            }
-            size="large"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={(val) => fetchBlocks(1, val)}
-            style={{ maxWidth: 700 }}
-          />
+      <Alert
+        type="info"
+        showIcon
+        title="Trạng thái đồng bộ lấy từ chỉ mục giao dịch. Nhấn Đối chiếu để đọc trực tiếp blockchain; kết quả không thay thế việc xác thực file PDF và chữ ký số."
+        className="mb-6"
+      />
+      <Form layout="vertical" onFinish={() => apply(filters)}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+          <Form.Item label="Tra cứu giao dịch" htmlFor="anchor-search">
+            <Input
+              id="anchor-search"
+              allowClear
+              maxLength={255}
+              placeholder="Họ tên, MSSV, số hiệu, số vào sổ, mã giao dịch"
+              value={filters.search}
+              onChange={(event) =>
+                setFilters((previous) => ({
+                  ...previous,
+                  search: event.target.value,
+                }))
+              }
+            />
+          </Form.Item>
+          <Form.Item label="Nghiệp vụ" htmlFor="anchor-event">
+            <Select
+              id="anchor-event"
+              allowClear
+              placeholder="Tất cả nghiệp vụ"
+              value={filters.eventType || undefined}
+              options={["ISSUE", "REVOKE"].map((value) => ({
+                value,
+                label: eventLabel(value),
+              }))}
+              onChange={(value) =>
+                setFilters((previous) => ({
+                  ...previous,
+                  eventType: value || "",
+                }))
+              }
+            />
+          </Form.Item>
+          <Form.Item label="Trạng thái đồng bộ" htmlFor="anchor-status">
+            <Select
+              id="anchor-status"
+              allowClear
+              placeholder="Tất cả trạng thái"
+              value={filters.status || undefined}
+              options={Object.entries(anchorStatuses).map(
+                ([value, status]) => ({ value, label: status.label }),
+              )}
+              onChange={(value) =>
+                setFilters((previous) => ({ ...previous, status: value || "" }))
+              }
+            />
+          </Form.Item>
         </div>
-
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            {
-              key: 'blocks',
-              label: (
-                <span>
-                  <ApartmentOutlined /> Danh sách Khối Ledger ({overview?.blockHeight || blocks.length})
-                </span>
-              ),
-              children: (
-                <Table
-                  columns={blockColumns}
-                  dataSource={blocks}
-                  rowKey="blockNumber"
-                  loading={loading}
-                  pagination={{
-                    current: pagination?.page || 1,
-                    pageSize: pagination?.limit || 10,
-                    total: pagination?.total || blocks.length,
-                    onChange: (page) => fetchBlocks(page),
-                    showTotal: (total) => `Tổng cộng ${total} khối`,
-                  }}
-                />
-              ),
-            },
-            {
-              key: 'transactions',
-              label: (
-                <span>
-                  <SafetyCertificateOutlined /> Giao dịch On-Chain ({allTransactions.length})
-                </span>
-              ),
-              children: (
-                <Table
-                  columns={txColumns}
-                  dataSource={allTransactions}
-                  rowKey="txId"
-                  loading={loading}
-                  pagination={{ pageSize: 10 }}
-                />
-              ),
-            },
-            {
-              key: 'topology',
-              label: (
-                <span>
-                  <ClusterOutlined /> Cấu trúc Nút mạng (Network Topology)
-                </span>
-              ),
-              children: (
-                <Row gutter={[16, 16]}>
-                  {(overview?.nodes || []).map((node: any, idx: number) => (
-                    <Col xs={24} md={8} key={idx}>
-                      <Card
-                        title={
-                          <Space>
-                            <Badge status="processing" />
-                            <Text strong>{node.name}</Text>
-                          </Space>
-                        }
-                        extra={<Tag color="green">{node.status}</Tag>}
-                        style={{ borderRadius: 8, background: '#fafafa' }}
-                      >
-                        <p><strong>Tổ chức (MSP):</strong> <Tag color="blue">{node.org}</Tag></p>
-                        <p><strong>Vị trí:</strong> {node.location}</p>
-                        <p><strong>Vai trò:</strong> {node.role}</p>
-                        <p><strong>gRPC Endpoint:</strong> <Text code>{node.endpoint}</Text></p>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              ),
-            },
-          ]}
-        />
-      </Card>
-
-      {/* MODAL CHI TIẾT KHỐI */}
+        <Space wrap className="mb-4">
+          <Button htmlType="submit" type="primary" loading={loading}>
+            Tra cứu
+          </Button>
+          <Button
+            onClick={() => {
+              setFilters(emptyFilters);
+              apply(emptyFilters);
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+          <Typography.Text type="secondary">
+            {activeFilter
+              ? "Kết quả theo bộ lọc đã áp dụng"
+              : "Tất cả giao dịch của nhà trường"}{" "}
+            · {pagination.total} giao dịch
+          </Typography.Text>
+        </Space>
+      </Form>
+      {loadError && (
+        <Alert type="error" showIcon title={loadError} className="mb-4" />
+      )}
+      <Table<AnchorEntry>
+        rowKey="id"
+        dataSource={rows}
+        columns={columns}
+        loading={loading}
+        size="small"
+        bordered
+        scroll={{ x: 1450 }}
+        locale={{
+          emptyText: loadError
+            ? "Chưa tải được giao dịch"
+            : "Không có giao dịch phù hợp. Hồ sơ chưa duyệt được xử lý tại Hồ sơ cấp văn bằng.",
+        }}
+        pagination={{
+          current: pagination.page,
+          pageSize: pagination.limit,
+          total: pagination.total,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 20, 50, 100],
+          showTotal: (total) => `Tổng ${total} giao dịch`,
+          onChange: (page, limit) =>
+            void loadAnchors(appliedFilters, page, limit),
+        }}
+      />
+      {overview && (
+        <Typography.Paragraph type="secondary" className="mt-4">
+          Cập nhật chỉ mục: {formatTime(overview.lastUpdated)}
+        </Typography.Paragraph>
+      )}
       <Modal
-        title={
-          <Space>
-            <ApartmentOutlined style={{ color: '#1890ff' }} />
-            <span>CHI TIẾT KHỐI LEDGER #{selectedBlock?.blockNumber}</span>
-          </Space>
+        open={!!selected}
+        onCancel={() => setSelected(null)}
+        title="Chi tiết và đối chiếu giao dịch"
+        width={820}
+        footer={
+          selected ? (
+            <Space>
+              {selected.outbox?.exhausted && selected.status === "FAILED" && (
+                <Button
+                  icon={<ReloadOutlined />}
+                  disabled={!!checking || retrying}
+                  onClick={() => {
+                    setRetryTarget(selected);
+                    setRetryReason("");
+                    setRetryError("");
+                  }}
+                >
+                  Khôi phục giao dịch
+                </Button>
+              )}
+              <Button
+                loading={checking === selected.id}
+                disabled={!!checking && checking !== selected.id}
+                type="primary"
+                onClick={() => void checkAnchor(selected)}
+              >
+                Đối chiếu lại
+              </Button>
+              <Button onClick={() => setSelected(null)}>Đóng</Button>
+            </Space>
+          ) : null
         }
-        open={isBlockModalOpen}
-        onCancel={() => setIsBlockModalOpen(false)}
-        width={780}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setIsBlockModalOpen(false)}>
-            Đóng
-          </Button>,
-        ]}
       >
-        {selectedBlock && (
-          <div>
-            <Descriptions bordered size="small" column={1} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Độ cao khối (Block Number)">
-                <Tag color="#108ee9" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                  #{selectedBlock.blockNumber}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Loại khối">
-                <Tag color="purple">{selectedBlock.type}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Số lượng giao dịch">
-                <Text strong>{selectedBlock.txCount} giao dịch</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Thời điểm ghi sổ (Timestamp)">
-                {new Date(selectedBlock.timestamp).toLocaleString('vi-VN')}
-              </Descriptions.Item>
-              <Descriptions.Item label="Mã băm khối (Block Hash)">
-                <Paragraph code copyable style={{ margin: 0 }}>
-                  {selectedBlock.blockHash}
-                </Paragraph>
-              </Descriptions.Item>
-              <Descriptions.Item label="Khối liền trước (Previous Hash)">
-                <Paragraph code copyable style={{ margin: 0 }}>
-                  {selectedBlock.previousHash}
-                </Paragraph>
-              </Descriptions.Item>
-              <Descriptions.Item label="Mã băm dữ liệu (Data Merkle Hash)">
-                <Paragraph code copyable style={{ margin: 0 }}>
-                  {selectedBlock.dataHash}
-                </Paragraph>
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Title level={5}>Dữ liệu Giao dịch trong khối ({selectedBlock.transactions?.length || 0}):</Title>
-            <div
-              style={{
-                background: '#1e1e1e',
-                color: '#d4d4d4',
-                padding: 12,
-                borderRadius: 6,
-                maxHeight: 220,
-                overflowY: 'auto',
-                fontSize: 12,
-                fontFamily: 'monospace',
-              }}
-            >
-              <pre style={{ margin: 0 }}>
-                {JSON.stringify(selectedBlock.transactions, null, 2)}
-              </pre>
-            </div>
-          </div>
+        {selected && (
+          <>
+            <Descriptions
+              column={1}
+              bordered
+              size="small"
+              items={[
+                {
+                  key: "name",
+                  label: "Văn bằng",
+                  children: selected.fullName || "—",
+                },
+                {
+                  key: "number",
+                  label: "Số hiệu / số vào sổ",
+                  children: `${selected.certificateNo || "—"} / ${selected.registryNo || "—"}`,
+                },
+                {
+                  key: "event",
+                  label: "Nghiệp vụ",
+                  children: `${eventLabel(selected.eventType)} · Phiên bản ${selected.version}`,
+                },
+                {
+                  key: "status",
+                  label: "Trạng thái đồng bộ",
+                  children:
+                    anchorStatuses[selected.status]?.label || selected.status,
+                },
+                {
+                  key: "tx",
+                  label: "Mã giao dịch",
+                  children: selected.transactionId ? (
+                    <Typography.Text
+                      copyable
+                      style={{ wordBreak: "break-all" }}
+                    >
+                      {selected.transactionId}
+                    </Typography.Text>
+                  ) : (
+                    "Chưa ghi nhận"
+                  ),
+                },
+                {
+                  key: "block",
+                  label: "Số khối",
+                  children:
+                    selected.blockNumber ?? "Chưa được chỉ mục ghi nhận",
+                },
+                {
+                  key: "time",
+                  label: "Ghi nhận lúc",
+                  children: formatTime(selected.committedAt),
+                },
+                {
+                  key: "outbox",
+                  label: "Đồng bộ tự động",
+                  children: selected.outbox
+                    ? `${selected.outbox.status === "FAILED" ? "Đã dừng thử lại; kiểm tra lỗi trước khi khôi phục" : selected.outbox.status === "COMPLETED" ? "Đã hoàn tất" : selected.outbox.status === "PROCESSING" ? "Đang xử lý" : "Đang chờ xử lý"} · ${selected.outbox.attempts} lần thử trong đợt hiện tại`
+                    : "Không có tác vụ đồng bộ trong chỉ mục",
+                },
+                ...(selected.outbox?.status === "PENDING"
+                  ? [
+                      {
+                        key: "next",
+                        label: "Lịch thử lại",
+                        children: formatTime(selected.outbox.availableAt),
+                      },
+                    ]
+                  : []),
+                {
+                  key: "error",
+                  label: "Lỗi gần nhất",
+                  children: selected.lastError ? (
+                    <Typography.Text
+                      type="danger"
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {selected.lastError}
+                    </Typography.Text>
+                  ) : (
+                    "Không có"
+                  ),
+                },
+              ]}
+            />
+            {!!selected.retryHistory?.length && (
+              <div className="mt-4">
+                <Typography.Title level={5}>
+                  Lịch sử khôi phục gần đây
+                </Typography.Title>
+                {selected.retryHistory.map((item) => (
+                  <Card
+                    key={item.id}
+                    size="small"
+                    className="mb-2"
+                    style={{ overflowWrap: "anywhere" }}
+                  >
+                    <Typography.Text strong>
+                      {formatTime(item.createdAt)} · {item.actorEmail}
+                    </Typography.Text>
+                    <div>Lý do: {item.reason}</div>
+                    <div>Đợt trước: {item.previousAttempts} lần thử.</div>
+                    {item.previousError && (
+                      <Typography.Paragraph
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          overflowWrap: "anywhere",
+                        }}
+                        type="secondary"
+                      >
+                        Lỗi đã lưu: {item.previousError}
+                      </Typography.Paragraph>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+            {selected.status === "COMMITTED" && (
+              <Typography.Paragraph className="mt-4">
+                <Link
+                  href={
+                    "/certificates?search=" +
+                    encodeURIComponent(
+                      selected.certificateNo || selected.mssv || "",
+                    )
+                  }
+                >
+                  Tra trong Sổ văn bằng
+                </Link>
+              </Typography.Paragraph>
+            )}
+            {checking === selected.id && (
+              <Alert
+                type="info"
+                showIcon
+                title="Đang đọc trực tiếp blockchain để đối chiếu..."
+                className="mt-4"
+              />
+            )}
+            {comparison && (
+              <div className="mt-4">
+                <Alert
+                  showIcon
+                  type={
+                    comparison.status === "MATCH"
+                      ? "success"
+                      : comparison.status === "MISMATCH"
+                        ? "error"
+                        : "warning"
+                  }
+                  title={
+                    comparisonStatuses[comparison.status]?.label ||
+                    comparison.status
+                  }
+                  description={comparison.message}
+                />
+                <Typography.Paragraph type="secondary" className="mt-2">
+                  Thời điểm đối chiếu: {formatTime(comparison.checkedAt)}. Không
+                  tự sửa dữ liệu hoặc gửi giao dịch mới.
+                </Typography.Paragraph>
+                <Descriptions
+                  bordered
+                  column={1}
+                  size="small"
+                  items={comparison.checks.map((check) => ({
+                    key: check.key,
+                    label: check.label,
+                    children: (
+                      <Tag
+                        color={
+                          check.matched === true
+                            ? "green"
+                            : check.matched === false
+                              ? "red"
+                              : "default"
+                        }
+                      >
+                        {check.matched === true
+                          ? "Khớp"
+                          : check.matched === false
+                            ? "Chưa khớp"
+                            : "Chưa đủ dữ liệu"}
+                      </Tag>
+                    ),
+                  }))}
+                />
+              </div>
+            )}
+          </>
         )}
       </Modal>
-
-      {/* MODAL CHI TIẾT GIAO DỊCH */}
       <Modal
-        title={
-          <Space>
-            <SafetyCertificateOutlined style={{ color: '#52c41a' }} />
-            <span>CHI TIẾT GIAO DỊCH BLOCKCHAIN (TRANSACTION)</span>
-          </Space>
-        }
-        open={isTxModalOpen}
-        onCancel={() => setIsTxModalOpen(false)}
-        width={780}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setIsTxModalOpen(false)}>
-            Đóng
-          </Button>,
-        ]}
+        title="Khôi phục giao dịch hết lượt thử lại"
+        open={!!retryTarget}
+        confirmLoading={retrying}
+        okText="Xác nhận đưa vào hàng đợi"
+        cancelText="Hủy"
+        closable={!retrying}
+        maskClosable={!retrying}
+        keyboard={!retrying}
+        cancelButtonProps={{ disabled: retrying }}
+        onCancel={() => {
+          if (!retrying) setRetryTarget(null);
+        }}
+        onOk={() => void retryAnchor()}
       >
-        {selectedTx && (
-          <div>
-            <Descriptions bordered size="small" column={1} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Transaction ID (TxID)">
-                <Paragraph code copyable style={{ margin: 0, fontWeight: 'bold' }}>
-                  {selectedTx.txId}
-                </Paragraph>
-              </Descriptions.Item>
-              <Descriptions.Item label="Khối xác nhận (Block #)">
-                <Tag color="#108ee9">#{selectedTx.blockNumber}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Kênh (Channel)">
-                <Text strong>{selectedTx.channel || 'mychannel'}</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Hợp đồng thông minh (Smart Contract)">
-                <Tag color="blue">{selectedTx.chaincode || 'educert'}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Hàm thực thi (Function)">
-                <Tag color="cyan">{selectedTx.function || selectedTx.type}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Tổ chức đề xuất (Creator MSP)">
-                <Tag color="geekblue">{selectedTx.creatorMSP}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Xác thực ký duyệt (Endorsing MSPs)">
-                {(selectedTx.endorsingMSPs || ['Org1MSP', 'Org2MSP']).map((m: string) => (
-                  <Tag key={m} color="green">
-                    ✓ {m} Endorsed
-                  </Tag>
-                ))}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái xác thực Ledger">
-                <Tag color="success">✓ {selectedTx.status || 'VALID (Đã cam kết)'}</Tag>
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Title level={5}>Dữ liệu Payload Giao dịch:</Title>
-            <div
-              style={{
-                background: '#1e1e1e',
-                color: '#d4d4d4',
-                padding: 12,
-                borderRadius: 6,
-                maxHeight: 220,
-                overflowY: 'auto',
-                fontSize: 12,
-                fontFamily: 'monospace',
-              }}
-            >
-              <pre style={{ margin: 0 }}>
-                {JSON.stringify(selectedTx.payload, null, 2)}
-              </pre>
-            </div>
-          </div>
+        <Alert
+          showIcon
+          type="warning"
+          title="Kiểm tra và khắc phục nguyên nhân lỗi trước khi tiếp tục."
+          description="Tác vụ gốc được thử lại tối đa 10 lần. Không tạo văn bằng mới, không sửa PDF hoặc dữ liệu đã ký và không tự xác nhận blockchain thành công. Nếu giao dịch đã ghi nhận nhưng mất phản hồi, hệ thống sử dụng lại kết quả gốc khi Fabric xác nhận."
+        />
+        <Typography.Paragraph className="mt-4">
+          {retryTarget?.fullName} ·{" "}
+          {retryTarget ? eventLabel(retryTarget.eventType) : ""} ·{" "}
+          {retryTarget?.certificateNo}
+        </Typography.Paragraph>
+        {retryTarget?.lastError && (
+          <Typography.Paragraph
+            type="danger"
+            style={{ overflowWrap: "anywhere" }}
+          >
+            {retryTarget.lastError}
+          </Typography.Paragraph>
+        )}
+        <label htmlFor="anchor-retry-reason">Lý do và biện pháp đã xử lý</label>
+        <Input.TextArea
+          id="anchor-retry-reason"
+          value={retryReason}
+          disabled={retrying}
+          maxLength={2000}
+          showCount
+          rows={4}
+          onChange={(event) => setRetryReason(event.target.value)}
+          placeholder="Ví dụ: Đã khôi phục kết nối peer và kiểm tra lại cấu hình MSP."
+        />
+        {retryError && (
+          <Alert className="mt-4" showIcon type="error" title={retryError} />
         )}
       </Modal>
     </div>

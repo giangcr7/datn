@@ -18,7 +18,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @ApiTags('integrity')
 @Controller('integrity')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('university')
+@Roles('admin', 'university')
 @ApiBearerAuth()
 @SkipThrottle()
 export class IntegrityController {

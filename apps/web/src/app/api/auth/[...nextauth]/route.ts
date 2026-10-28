@@ -1,7 +1,12 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import type { NextRequest } from "next/server";
+import {
+  applySessionCookiePolicy,
+  SESSION_MAX_AGE_SECONDS,
+} from "@/lib/auth-session-cookie";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 // Access token backend cấp có hạn 15 phút — trừ hao 30s để tránh trường hợp
 // vừa hết hạn ngay lúc dùng do lệch giờ nhẹ giữa client/server.
@@ -21,6 +26,12 @@ async function refreshAccessToken(token: any) {
       ...token,
       accessToken: data.access_token,
       refreshToken: data.refresh_token, // rotation — backend luôn cấp refresh token mới
+      role: data.user.role,
+      org: data.user.org,
+      campusId: data.user.campusId,
+      campusName: data.user.campusName,
+      isHeadquarters: data.user.isHeadquarters,
+      canApproveDiplomas: data.user.canApproveDiplomas,
       accessTokenExpires: Date.now() + ACCESS_TOKEN_TTL_MS,
       error: undefined,
     };
@@ -39,6 +50,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
         role: { label: "Role", type: "text" },
+        remember: { label: "Remember me", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password || !credentials?.role) {
@@ -63,10 +75,16 @@ export const authOptions: NextAuthOptions = {
           name: data.user.name,
           email: data.user.email,
           role: data.user.role,
+          org: data.user.org,
+          campusId: data.user.campusId,
+          campusName: data.user.campusName,
+          isHeadquarters: data.user.isHeadquarters,
+          canApproveDiplomas: data.user.canApproveDiplomas,
           mssv: data.user.mssv,
           mustChangePassword: data.user.mustChangePassword,
           accessToken: data.access_token,
           refreshToken: data.refresh_token,
+          remember: credentials.remember === "true",
         };
       },
     }),
@@ -77,8 +95,14 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = (user as any).id;
         token.role = (user as any).role;
+        token.org = (user as any).org;
+        token.campusId = (user as any).campusId;
+        token.campusName = (user as any).campusName;
+        token.isHeadquarters = (user as any).isHeadquarters;
+        token.canApproveDiplomas = (user as any).canApproveDiplomas;
         token.mssv = (user as any).mssv;
         token.mustChangePassword = (user as any).mustChangePassword;
+        token.remember = "remember" in user && user.remember === true;
         (token as any).accessToken = (user as any).accessToken;
         (token as any).refreshToken = (user as any).refreshToken;
         (token as any).accessTokenExpires = Date.now() + ACCESS_TOKEN_TTL_MS;
@@ -97,6 +121,11 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
+        (session.user as any).org = token.org;
+        (session.user as any).campusId = token.campusId;
+        (session.user as any).campusName = token.campusName;
+        (session.user as any).isHeadquarters = token.isHeadquarters;
+        (session.user as any).canApproveDiplomas = token.canApproveDiplomas;
         (session.user as any).mssv = token.mssv;
         (session.user as any).mustChangePassword = token.mustChangePassword;
         (session as any).accessToken = (token as any).accessToken;
@@ -126,9 +155,30 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: { signIn: "/login" },
-  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
+  jwt: { maxAge: SESSION_MAX_AGE_SECONDS },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuth(authOptions);
+async function handler(
+  request: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> },
+) {
+  let remember = true;
+  const authHandler = NextAuth({
+    ...authOptions,
+    callbacks: {
+      ...authOptions.callbacks,
+      async jwt(parameters) {
+        const token = await authOptions.callbacks!.jwt!(parameters);
+        remember = token.remember !== false;
+        return token;
+      },
+    },
+  });
+  const response: Response = await authHandler(request, context);
+
+  return applySessionCookiePolicy(response, remember);
+}
+
 export { handler as GET, handler as POST };

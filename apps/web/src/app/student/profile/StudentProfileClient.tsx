@@ -66,7 +66,7 @@ export default function StudentProfileClient({ user }: Props) {
         <Row gutter={[24, 24]}>
           {/* Thông tin cá nhân */}
           <Col span={24}>
-            <Card bordered={false} className="shadow-sm rounded-xl">
+            <Card variant="borderless" className="shadow-sm rounded-xl">
               <div className="flex items-center gap-4 mb-6">
                 <Avatar size={72} icon={<UserOutlined />} style={{ background: "#0056b3" }} />
                 <div>
@@ -111,8 +111,8 @@ export default function StudentProfileClient({ user }: Props) {
           {/* Đổi mật khẩu */}
           <Col span={24}>
             <Card title={<span><LockOutlined /> Đổi mật khẩu</span>} bordered={false} className="shadow-sm rounded-xl">
-              {error && <Alert message={error} type="error" showIcon className="mb-4" />}
-              {success && <Alert message={success} type="success" showIcon className="mb-4" />}
+              {error && <Alert title={error} type="error" showIcon className="mb-4" />}
+              {success && <Alert title={success} type="success" showIcon className="mb-4" />}
               <Form layout="vertical" onFinish={handleChangePassword}>
                 <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: "Vui lòng nhập mật khẩu hiện tại!" }]}>
                   <Input.Password size="large" placeholder="Nhập mật khẩu hiện tại" />

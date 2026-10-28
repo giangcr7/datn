@@ -3,12 +3,14 @@
 import React from 'react';
 import { ConfigProvider } from 'antd';
 import viVN from 'antd/locale/vi_VN';
+import { SessionProvider } from 'next-auth/react';
 
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
   return (
-    <ConfigProvider
-      locale={viVN}
-      theme={{
+    <SessionProvider>
+      <ConfigProvider
+        locale={viVN}
+        theme={{
         token: {
           colorPrimary: '#003b93', // Màu xanh thương hiệu Đại học Thủy Lợi (TLU Royal Blue)
           colorLink: '#003b93',
@@ -40,9 +42,10 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
             inkBarColor: '#003b93',
           },
         },
-      }}
-    >
-      {children}
-    </ConfigProvider>
+        }}
+      >
+        {children}
+      </ConfigProvider>
+    </SessionProvider>
   );
 }

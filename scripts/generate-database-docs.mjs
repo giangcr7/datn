@@ -32,6 +32,8 @@ const academic = [
 ];
 const anchors = [
   "diploma_versions",
+  "signed_diploma_documents",
+  "diploma_pdf_signatures",
   "diploma_events",
   "blockchain_anchors",
   "outbox_events",
@@ -55,6 +57,8 @@ const purposes = {
   graduation_records: "Kết quả tốt nghiệp, kể cả chưa có bằng",
   diplomas: "Văn bằng và vòng đời pháp lý",
   diploma_versions: "Snapshot bất biến đã phê duyệt",
+  signed_diploma_documents: "PDF ký số theo phiên bản; khóa lưu trữ và SHA-256",
+  diploma_pdf_signatures: "Hai chữ ký cơ sở/trụ sở và chứng thư đã dùng",
   diploma_events: "Lịch sử nghiệp vụ append-only",
   blockchain_anchors: "Index xác nhận commit từ Fabric",
   outbox_events: "Hàng đợi giao dịch nhất quán và retry",
@@ -179,16 +183,17 @@ try {
                   ? "boolean"
                   : "string";
       mermaid +=
-        "    " +
-        mtype +
-        " " +
-        column.name +
-        " " +
-        [pk ? "PK" : "", fk ? "FK" : "", unique ? "UK" : ""]
-          .filter(Boolean)
-          .join(",") +
-        (column.not_null ? "" : ' "nullable"') +
-        "\n";
+        (
+          "    " +
+          mtype +
+          " " +
+          column.name +
+          " " +
+          [pk ? "PK" : "", fk ? "FK" : "", unique ? "UK" : ""]
+            .filter(Boolean)
+            .join(",") +
+          (column.not_null ? "" : ' "nullable"')
+        ).trimEnd() + "\n";
     }
     const represented = indexes.filter(
       (index) =>

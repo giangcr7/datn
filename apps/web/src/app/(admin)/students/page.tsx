@@ -1,23 +1,16 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { apiCall } from "@/lib/api";
+import { requireWorkspaceAccess } from "@/lib/workspace-session";
 import StudentsClient from "./StudentsClient";
 
-// Đảm bảo Next.js không cache trang này để luôn thấy sinh viên mới thêm
 export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
-  const session = (await getServerSession(authOptions)) as any;
-  const token = session?.accessToken;
-
+  const { accessToken } = await requireWorkspaceAccess("/students");
   const studentsResult = await apiCall(
     "/students?page=1&limit=20",
     "GET",
     undefined,
-    token,
+    accessToken,
   );
-  const students = studentsResult.data;
-
-  // Backend đã trả đúng field: id, name, email, studentId — không cần format lại
-  return <StudentsClient initialData={students} />;
+  return <StudentsClient initialData={studentsResult.data} />;
 }

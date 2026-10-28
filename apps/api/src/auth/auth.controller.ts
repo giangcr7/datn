@@ -80,6 +80,7 @@ export class AuthController {
       body.oldPassword,
       body.newPassword,
       ip,
+      (req as any).user.institutionId,
     );
   }
 
@@ -113,7 +114,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
-  listUsers() {
-    return this.authService.findAllUsers();
+  listUsers(@Req() req: any) {
+    return this.authService.findAllUsers(req.user);
   }
 }

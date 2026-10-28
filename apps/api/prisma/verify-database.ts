@@ -63,6 +63,8 @@ async function main() {
       batchId = randomUUID(),
       rowId = randomUUID(),
       outboxId = randomUUID();
+    const headquartersId = campusId;
+    const approverId = randomUUID();
     const suffix = randomUUID().slice(0, 8);
     await database.query(
       'INSERT INTO institutions(id,code,name) VALUES ($1,$2,$3),($4,$5,$6)',
@@ -113,6 +115,41 @@ async function main() {
         'test-only-rollback',
         'Test account',
       ],
+    );
+    await database.query(
+      'UPDATE campuses SET is_headquarters=true,fabric_msp_id=$2 WHERE id=$1',
+      [headquartersId, 'TestIssuerMSP_' + suffix],
+    );
+    await reject(
+      'only one headquarters per institution',
+      'INSERT INTO campuses(institution_id,code,name,is_headquarters) VALUES ($1,$2,$3,true)',
+      [institutionId, 'OTHER_HQ', 'Duplicate headquarters'],
+      ['23505'],
+    );
+    await reject(
+      'branch cannot receive approval capability',
+      "INSERT INTO account_memberships(account_id,campus_id,role,can_approve_diplomas) VALUES ($1,$2,'UNIVERSITY',true)",
+      [accountId, otherCampusId],
+      ['23514'],
+    );
+    await reject(
+      'admin cannot receive business approval capability',
+      "INSERT INTO account_memberships(account_id,campus_id,role,can_approve_diplomas) VALUES ($1,$2,'ADMIN',true)",
+      [accountId, headquartersId],
+      ['23514'],
+    );
+    await database.query(
+      'INSERT INTO accounts(id,email,password_hash,display_name,updated_at) VALUES ($1,$2,$3,$4,now())',
+      [
+        approverId,
+        suffix + '-approver@example.invalid',
+        'rollback-only',
+        'Headquarters approver',
+      ],
+    );
+    await database.query(
+      "INSERT INTO account_memberships(account_id,campus_id,role) VALUES ($1,$2,'UNIVERSITY')",
+      [approverId, headquartersId],
     );
     await reject(
       'cross-institution enrollment',
@@ -177,8 +214,8 @@ async function main() {
       ['23514', '23503'],
     );
     await reject(
-      'maker checker separation',
-      'INSERT INTO diplomas(institution_id,campus_id,graduation_id,certificate_no,registry_no,requested_by_id,approved_by_id,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$6,now())',
+      'active issuance requires an authorized officer',
+      "INSERT INTO diplomas(institution_id,campus_id,graduation_id,certificate_no,registry_no,requested_by_id,approved_by_id,workflow_status,status,requested_at,approved_at,issued_on,issuing_campus_id,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$6,'APPROVED','ACTIVE',now(),now(),'2025-07-15',$2,now())",
       [
         institutionId,
         campusId,
@@ -217,6 +254,52 @@ async function main() {
       'INSERT INTO diplomas(institution_id,campus_id,graduation_id,certificate_no,registry_no,updated_at) VALUES ($1,$2,$3,$4,$5,now())',
       [institutionId, campusId, graduationId, 'CERT_OTHER', 'REG_OTHER'],
       ['23505'],
+    );
+    await reject(
+      'issuing campus must belong to the same institution',
+      'UPDATE diplomas SET issuing_campus_id=$1 WHERE id=$2',
+      [otherCampusId, diplomaId],
+      ['23503'],
+    );
+    const approveSql =
+      "UPDATE diplomas SET workflow_status='APPROVED',status='ACTIVE',requested_by_id=$1,requested_at=now(),approved_by_id=$2,approved_at=now(),issued_on='2025-07-15',issuing_campus_id=$3 WHERE id=$4";
+    await reject(
+      'headquarters membership without capability cannot approve',
+      approveSql,
+      [accountId, approverId, headquartersId, diplomaId],
+      ['23514'],
+    );
+    await database.query(
+      'UPDATE account_memberships SET can_approve_diplomas=true WHERE account_id=$1 AND campus_id=$2',
+      [approverId, headquartersId],
+    );
+    await reject(
+      'approval cannot use the branch as issuing authority',
+      approveSql,
+      [accountId, approverId, otherCampusId, diplomaId],
+      ['23514'],
+    );
+    await database.query(approveSql, [
+      approverId,
+      approverId,
+      headquartersId,
+      diplomaId,
+    ]);
+    assert.equal(
+      (
+        await database.query(
+          'SELECT requested_by_id=approved_by_id same_officer FROM diplomas WHERE id=$1',
+          [diplomaId],
+        )
+      ).rows[0].same_officer,
+      true,
+    );
+    checks++;
+    await reject(
+      'approved issuing authority is immutable',
+      'UPDATE diplomas SET issuing_campus_id=$1 WHERE id=$2',
+      [otherCampusId, diplomaId],
+      ['23514'],
     );
     await database.query(
       'INSERT INTO diploma_versions(id,diploma_id,version,schema_version,payload,payload_hash) VALUES ($1,$2,1,$3,$4,$5)',

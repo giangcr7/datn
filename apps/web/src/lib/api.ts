@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export async function apiCall(
   endpoint: string,
@@ -16,6 +16,13 @@ export async function apiCall(
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Lỗi server");
+  if (!res.ok) {
+    const message = Array.isArray(data.message)
+      ? data.message.join('; ')
+      : data.message || data.error || "Lỗi server";
+    const error = new Error(message) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
+  }
   return data;
 }

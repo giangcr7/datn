@@ -9,6 +9,13 @@ import { signIn } from 'next-auth/react';
 
 const { Title, Text } = Typography;
 
+type LoginValues = {
+  email: string;
+  password: string;
+  role: string;
+  remember: boolean;
+};
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,7 +26,7 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(defaultTab);
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: LoginValues) => {
     setLoading(true);
     try {
       const res = await signIn('credentials', {
@@ -27,6 +34,7 @@ function LoginContent() {
         email: values.email,
         password: values.password,
         role: values.role.toUpperCase(), // Map 'STUDENT' hoặc 'UNIVERSITY'
+        remember: values.remember ? 'true' : 'false',
       });
 
       if (res?.error) {
@@ -50,7 +58,7 @@ function LoginContent() {
   const renderLoginForm = (role: string) => (
     <Form
       layout="vertical"
-      initialValues={{ role, remember: true }}
+      initialValues={{ role, remember: false }}
       onFinish={onFinish}
       style={{ marginTop: '20px' }}
     >
@@ -81,8 +89,10 @@ function LoginContent() {
       </Form.Item>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <Checkbox>Ghi nhớ</Checkbox>
-        <Link href="/forgot-password" style={{ color: '#1890ff' }}>Quên mật khẩu?</Link>
+        <Form.Item name="remember" valuePropName="checked" noStyle>
+          <Checkbox title="Giữ đăng nhập trong 7 ngày trên trình duyệt này">Ghi nhớ đăng nhập</Checkbox>
+        </Form.Item>
+        <Text type="secondary">Liên hệ quản trị viên nếu quên mật khẩu</Text>
       </div>
 
       <Form.Item>

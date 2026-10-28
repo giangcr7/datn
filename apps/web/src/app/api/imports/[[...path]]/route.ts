@@ -43,7 +43,10 @@ async function proxy(req: Request, context: Context) {
     );
     return NextResponse.json(result);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json(
+      { error: error.message },
+      { status: Number.isInteger(error.status) ? error.status : 500 },
+    );
   }
 }
 export const GET = proxy;

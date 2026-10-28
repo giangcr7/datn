@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsEnum,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -12,6 +13,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { DegreeType } from '../../generated/prisma/client';
 
 export class RequestCertDto {
   @IsString() @Matches(/^\d{10}$/) mssv!: string;
@@ -28,4 +30,10 @@ export class RequestCertDto {
   @IsOptional() @IsIn(['ORG1', 'ORG2']) org?: string;
   @IsOptional() @IsDateString() dob?: string;
   @IsDateString() @IsNotEmpty() issueDate!: string;
+  @IsEnum(DegreeType) degreeType!: DegreeType;
+  @IsOptional() @IsString() @MaxLength(255) fullNameLatin?: string;
+  @IsOptional() @IsString() @MaxLength(255) majorNameEn?: string;
+  @IsString() @IsNotEmpty() @MaxLength(120) issuePlace!: string;
+  @IsString() @IsNotEmpty() @MaxLength(255) diplomaSignerName!: string;
+  @IsString() @IsNotEmpty() @MaxLength(120) diplomaSignerTitle!: string;
 }

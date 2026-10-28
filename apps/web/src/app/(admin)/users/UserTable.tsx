@@ -2,9 +2,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Table, Typography, Input, Button, Tag, Row, Col } from "antd";
-import { EditOutlined, SearchOutlined, PlusOutlined } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
+import { Table, Typography, Input, Tag, Row, Col } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
 
@@ -22,7 +21,6 @@ interface UserTableProps {
 }
 
 export default function UserTable({ data }: UserTableProps) {
-  const router = useRouter();
   const [searchText, setSearchText] = useState("");
 
   // Xử lý bộ lọc tìm kiếm tại Client
@@ -78,17 +76,6 @@ export default function UserTable({ data }: UserTableProps) {
         </Tag>
       ),
     },
-    {
-      title: "Thao tác",
-      key: "action",
-      align: "center" as const,
-      render: () => (
-        <Button
-          type="text"
-          icon={<EditOutlined className="text-yellow-500 text-lg" />}
-        />
-      ),
-    },
   ];
 
   return (
@@ -113,16 +100,6 @@ export default function UserTable({ data }: UserTableProps) {
             onChange={(e) => setSearchText(e.target.value)}
             allowClear
           />
-        </Col>
-        <Col>
-          <Button
-            type="primary"
-            size="large"
-            className="bg-blue-600"
-            onClick={() => router.push("/users/create")} // Điều hướng tới trang tạo user mới
-          >
-            <PlusOutlined /> Thêm tài khoản
-          </Button>
         </Col>
       </Row>
 

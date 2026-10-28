@@ -1,13 +1,11 @@
 // src/app/(admin)/users/page.tsx
 import React from "react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../api/auth/[...nextauth]/route";
+import { requireWorkspaceAccess } from "@/lib/workspace-session";
 import { apiCall } from "@/lib/api";
 import UserTable from "./UserTable";
 
 export default async function ListUserPage() {
-  const session = (await getServerSession(authOptions)) as any;
-  const token = session?.accessToken;
+  const { accessToken: token } = await requireWorkspaceAccess("/users");
 
   const rawUsers = await apiCall("/auth/users", "GET", undefined, token);
 

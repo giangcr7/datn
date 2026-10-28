@@ -10,25 +10,16 @@ import {
   Typography,
   Button,
   Modal,
-  Checkbox,
   Space,
   message,
-  Input,
   Empty,
   Tag,
 } from "antd";
 import { SafetyCertificateOutlined, ShareAltOutlined } from "@ant-design/icons";
-
-const { Text, Title, Paragraph } = Typography;
-const { TextArea } = Input;
+import QRCode from "react-qr-code";
 import { generateCertPDF } from "@/lib/generateCertPDF";
 
-const shareOptions = [
-  {
-    label: "Chia sẻ snapshot đầy đủ (bao gồm thông tin cá nhân đã ký)",
-    value: "fullSnapshot",
-  },
-];
+const { Text, Title, Paragraph } = Typography;
 
 interface CertificateData {
   uuid: string;
@@ -46,7 +37,8 @@ interface CertificateData {
   className?: string;
   namTotNghiep?: number;
   certHash?: string;
-  proof?: Record<string, unknown>;
+  signedPdfAvailable?: boolean;
+  pdfSigningMode?: string;
 }
 
 interface Props {
@@ -55,31 +47,24 @@ interface Props {
 
 export default function StudentDashboardClient({ initialCertificates }: Props) {
   const router = useRouter();
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isProofModalOpen, setIsProofModalOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState<CertificateData | null>(
     null,
   );
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [proofData, setProofData] = useState("");
-  const [generatingProof, setGeneratingProof] = useState(false);
+  const verificationUrl = selectedCert
+    ? window.location.origin +
+      "/verify?proof=" +
+      encodeURIComponent(JSON.stringify({ uuid: selectedCert.uuid }))
+    : "";
 
-  const openShareModal = (cert: CertificateData) => {
-    setSelectedCert(cert);
-    setSelectedFields([]);
-    setIsShareModalOpen(true);
-  };
-
-  const handleCreateProof = () => {
-    if (!selectedCert) return;
-    const generatedProof =
-      selectedFields.includes("fullSnapshot") && selectedCert.proof
-        ? selectedCert.proof
-        : { uuid: selectedCert.uuid };
-    setProofData(JSON.stringify(generatedProof, null, 2));
-    setIsShareModalOpen(false);
-    setIsProofModalOpen(true);
-  };
+  async function handleCopyVerificationLink() {
+    if (!verificationUrl) return;
+    try {
+      await navigator.clipboard.writeText(verificationUrl);
+      message.success("Đã sao chép liên kết xác thực.");
+    } catch {
+      message.error("Không sao chép được liên kết. Vui lòng quét mã QR.");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -105,7 +90,7 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
               key={cert.uuid}
               hoverable
               className="mb-6 rounded-xl border border-gray-200 shadow-sm"
-              bodyStyle={{ padding: "24px" }}
+              styles={{ body: { padding: "24px" } }}
             >
               <Row gutter={[24, 24]}>
                 <Col span={24}>
@@ -228,38 +213,29 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
                   <Space>
                     <Button
                       size="large"
+                      disabled={!cert.signedPdfAvailable}
                       onClick={async () => {
-                        const verifyUrl = `${window.location.origin}/verify?proof=${encodeURIComponent(
-                          JSON.stringify(
-                            cert.proof || {
-                              certUUID: cert.uuid,
-                              certHash: cert.certHash,
-                              fullName: cert.fullName,
-                              mssv: cert.mssv,
-                              major: cert.major,
-                              gpa: cert.gpa,
-                              grade: cert.grade,
-                              issueDate: cert.issueDate,
-                              soHieu: cert.soHieu,
-                              soVaoSo: cert.soVaoSo,
-                              className: cert.className,
-                              namTotNghiep: cert.namTotNghiep,
-                            },
-                          ),
-                        )}`;
-                        await generateCertPDF(cert, verifyUrl);
+                        try {
+                          await generateCertPDF(cert);
+                        } catch (error) {
+                          message.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Không tải được PDF",
+                          );
+                        }
                       }}
                     >
-                      📄 Tải PDF
+                      📄 Tải PDF ký số
                     </Button>
                     <Button
                       type="primary"
                       size="large"
                       icon={<ShareAltOutlined />}
-                      onClick={() => openShareModal(cert)}
+                      onClick={() => setSelectedCert(cert)}
                       className="rounded-md bg-blue-600 font-medium"
                     >
-                      Chia sẻ minh chứng
+                      Chia sẻ văn bằng
                     </Button>
                   </Space>
                 </Col>
@@ -269,75 +245,36 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
         )}
       </div>
 
-      {/* Modal lựa chọn thông tin chia sẻ */}
       <Modal
-        title="Chia sẻ minh chứng xác thực"
-        open={isShareModalOpen}
-        onCancel={() => setIsShareModalOpen(false)}
+        title="Chia sẻ văn bằng"
+        open={!!selectedCert}
+        onCancel={() => setSelectedCert(null)}
         footer={[
-          <Button key="cancel" onClick={() => setIsShareModalOpen(false)}>
-            Hủy
+          <Button key="close" onClick={() => setSelectedCert(null)}>
+            Đóng
           </Button>,
-          <Button
-            key="ok"
-            type="primary"
-            loading={generatingProof}
-            onClick={handleCreateProof}
-            className="bg-blue-600"
-          >
-            Tạo minh chứng xác thực
-          </Button>,
-        ]}
-      >
-        <Paragraph className="text-gray-600 mb-4">
-          Mặc định chỉ chia sẻ UUID để tra cứu. Chọn snapshot đầy đủ sẽ chia sẻ
-          toàn bộ thông tin đã ký; hệ thống chưa triển khai chứng minh không
-          tiết lộ (ZKP).
-        </Paragraph>
-        <Checkbox.Group
-          className="w-full"
-          onChange={(values) => setSelectedFields(values as string[])}
-        >
-          <Space direction="vertical" className="w-full">
-            {shareOptions.map((opt) => (
-              <Checkbox key={opt.value} value={opt.value} className="text-base">
-                {opt.label}
-              </Checkbox>
-            ))}
-          </Space>
-        </Checkbox.Group>
-      </Modal>
-
-      {/* Modal kết quả minh chứng */}
-      <Modal
-        title="Chuỗi JSON Minh Chứng (Proof)"
-        open={isProofModalOpen}
-        onCancel={() => setIsProofModalOpen(false)}
-        footer={[
           <Button
             key="copy"
             type="primary"
+            onClick={handleCopyVerificationLink}
             className="bg-blue-600"
-            onClick={() => {
-              navigator.clipboard.writeText(proofData);
-              message.success("Đã sao chép chuỗi minh chứng!");
-            }}
           >
-            Sao chép mã chia sẻ
+            Sao chép liên kết xác thực
           </Button>,
         ]}
-        width={600}
       >
-        <Paragraph type="secondary" className="mb-4">
-          Người tuyển dụng có thể dán đoạn mã này vào cổng Verify của nhà trường
-          để xác thực tính hợp lệ của văn bằng.
-        </Paragraph>
-        <TextArea
-          value={proofData}
-          readOnly
-          autoSize={{ minRows: 10, maxRows: 15 }}
-          className="font-mono bg-gray-100 p-4 rounded-md border-gray-300"
-        />
+        {selectedCert && (
+          <div className="flex flex-col items-center gap-4 py-4">
+            <QRCode
+              value={verificationUrl}
+              size={240}
+              style={{ height: "auto", maxWidth: "100%", width: 240 }}
+            />
+            <Paragraph type="secondary" className="text-center mb-0">
+              Quét mã QR hoặc mở liên kết chia sẻ để xác thực văn bằng.
+            </Paragraph>
+          </div>
+        )}
       </Modal>
     </div>
   );

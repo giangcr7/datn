@@ -9,6 +9,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import type { AuthActor } from '../auth/auth-actor';
 import {
+  dateOnly,
   jsonData,
   lookupText,
   normalizeText,
@@ -25,9 +26,27 @@ import {
   RegistryInput,
   RowIssue,
   validateRegistryInput,
+  registryIssuesRequireReview,
+  ISSUE_DATE_NOT_IN_SOURCE,
 } from './registry-parser';
 import { DocumentStorageService } from '../storage/document-storage.service';
 import { Prisma } from '../generated/prisma/client';
+import { DIPLOMA_PRINT_TEMPLATE } from '../database/diploma-print-data';
+import {
+  diplomaInclude,
+  diplomaProjection,
+} from '../database/diploma-projection';
+import { reviewedDiplomaErrors } from '../cert/reviewed-diploma';
+
+const printFields = [
+  'degreeType',
+  'issuedOn',
+  'fullNameLatin',
+  'majorNameEn',
+  'issuePlace',
+  'diplomaSignerName',
+  'diplomaSignerTitle',
+] as const;
 
 const correctionFields = new Set([
   'studentCode',
@@ -53,6 +72,11 @@ const correctionFields = new Set([
   'certificateNo',
   'registryNo',
   'issuedOn',
+  'fullNameLatin',
+  'majorNameEn',
+  'issuePlace',
+  'diplomaSignerName',
+  'diplomaSignerTitle',
 ]);
 
 @Injectable()
@@ -62,14 +86,30 @@ export class RegistryImportService {
     private readonly storage: DocumentStorageService,
   ) {}
   private staff(actor: AuthActor) {
-    if (!['admin', 'university'].includes(actor.role))
-      throw new ForbiddenException('Chỉ cán bộ được nhập sổ gốc');
+    if (
+      actor.role !== 'university' ||
+      !actor.canApproveDiplomas ||
+      !actor.isHeadquarters
+    )
+      throw new ForbiddenException(
+        'Chỉ cán bộ được cấp quyền tại cơ sở chính được rà soát sổ gốc',
+      );
   }
   private scope(actor: AuthActor): Prisma.ImportBatchWhereInput {
     return {
       institutionId: actor.institutionId,
       ...(actor.role === 'admin' ? {} : { campusId: actor.campusId }),
     };
+  }
+  private async assertPrintCatalog(actor: AuthActor) {
+    const institution = await this.database.institution.findUnique({
+      where: { id: actor.institutionId },
+      select: { nameEn: true },
+    });
+    if (!institution?.nameEn?.trim())
+      throw new BadRequestException(
+        'Danh mục trường chưa có tên tiếng Anh; cần hoàn thiện trước khi kiểm tra và lưu hồ sơ cấp bằng',
+      );
   }
   private async parse(fileName: string, fileData: string, actor: AuthActor) {
     this.staff(actor);
@@ -88,6 +128,7 @@ export class RegistryImportService {
         .replace(/\.\./g, '')
         .trim()
         .slice(0, 255) || 'register.xlsx';
+    await this.assertPrintCatalog(actor);
     const aliases = await this.database.programAlias.findMany({
       where: { institutionId: actor.institutionId },
       select: { normalizedName: true, programId: true },
@@ -95,6 +136,14 @@ export class RegistryImportService {
     const rows = await parseRegistryWorkbook(
       buffer,
       new Map(aliases.map((alias) => [alias.normalizedName, alias.programId])),
+      new Map(
+        (
+          await this.database.program.findMany({
+            where: { institutionId: actor.institutionId },
+            select: { id: true, nameEn: true },
+          })
+        ).map((program) => [program.id, program.nameEn]),
+      ),
     );
     const existing = await this.database.diploma.findMany({
       where: { institutionId: actor.institutionId },
@@ -163,12 +212,10 @@ export class RegistryImportService {
     }
     return {
       total: rows.length,
-      ready: rows.filter(
-        (row) => !row.issues.some((issue) => issue.code !== 'NOT_YET_ISSUED'),
-      ).length,
-      needsReview: rows.filter((row) =>
-        row.issues.some((issue) => issue.code !== 'NOT_YET_ISSUED'),
-      ).length,
+      ready: rows.filter((row) => !registryIssuesRequireReview(row.issues))
+        .length,
+      needsReview: rows.filter((row) => registryIssuesRequireReview(row.issues))
+        .length,
       bySheet,
       byCode,
     };
@@ -238,9 +285,7 @@ export class RegistryImportService {
               rowNumber: row.rowNumber,
               rawData: jsonData(row.rawData),
               normalizedData: jsonData(row.normalizedData),
-              status: row.issues.some(
-                (issue) => issue.code !== 'NOT_YET_ISSUED',
-              )
+              status: registryIssuesRequireReview(row.issues)
                 ? ('NEEDS_REVIEW' as const)
                 : ('READY' as const),
             })),
@@ -297,13 +342,74 @@ export class RegistryImportService {
       }),
       this.database.importBatch.count({ where }),
     ]);
-    return { data, total, page, limit };
+    if (!data.length) return { data: [], total, page, limit };
+    const batchScope = { batchId: { in: data.map((batch) => batch.id) } };
+    const [rowCounts, graduationOnlyCounts, draftCounts] = await Promise.all([
+      this.database.importRow.groupBy({
+        by: ['batchId', 'status'],
+        where: batchScope,
+        _count: { _all: true },
+      }),
+      this.database.importRow.groupBy({
+        by: ['batchId'],
+        where: {
+          ...batchScope,
+          status: 'IMPORTED',
+          graduation: { is: { diplomas: { none: {} } } },
+        },
+        _count: { _all: true },
+      }),
+      this.database.importRow.groupBy({
+        by: ['batchId'],
+        where: {
+          ...batchScope,
+          status: 'IMPORTED',
+          graduation: {
+            is: {
+              diplomas: { some: { status: 'DRAFT', workflowStatus: 'DRAFT' } },
+            },
+          },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+    return {
+      data: data.map((batch) => {
+        const countRows = (status: string) =>
+          rowCounts.find(
+            (row) => row.batchId === batch.id && row.status === status,
+          )?._count._all || 0;
+        return {
+          ...batch,
+          reviewSummary: {
+            readyRows: countRows('READY'),
+            needsReviewRows: countRows('NEEDS_REVIEW'),
+            importedRows: countRows('IMPORTED'),
+            graduationOnlyRows:
+              graduationOnlyCounts.find((row) => row.batchId === batch.id)
+                ?._count._all || 0,
+            draftRows:
+              draftCounts.find((row) => row.batchId === batch.id)?._count
+                ._all || 0,
+          },
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
   }
   async programs(actor: AuthActor) {
     this.staff(actor);
     return this.database.program.findMany({
       where: { institutionId: actor.institutionId },
-      select: { id: true, code: true, name: true, nationalCode: true },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        nameEn: true,
+        nationalCode: true,
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -313,6 +419,7 @@ export class RegistryImportService {
     page = 1,
     limit = 20,
     status?: string,
+    rowId?: string,
   ) {
     this.staff(actor);
     const batch = await this.database.importBatch.findFirst({
@@ -326,18 +433,44 @@ export class RegistryImportService {
       throw new BadRequestException('Trạng thái dòng không hợp lệ');
     const where: Prisma.ImportRowWhereInput = {
       batchId,
+      ...(rowId ? { id: rowId } : {}),
       ...(status ? { status: status as any } : {}),
     };
     const [data, total] = await Promise.all([
       this.database.importRow.findMany({
         where,
-        include: { issues: true },
+        include: {
+          issues: true,
+          graduation: {
+            select: {
+              diplomas: { include: diplomaInclude },
+            },
+          },
+        },
         orderBy: [{ sheetName: 'asc' }, { rowNumber: 'asc' }],
         ...pagination(page, limit),
       }),
       this.database.importRow.count({ where }),
     ]);
-    return { data, total, page, limit };
+    return {
+      data: data.map((row) => ({
+        ...row,
+        submissionIssues:
+          row.graduation?.diplomas.flatMap(reviewedDiplomaErrors) || [],
+        graduation: row.graduation
+          ? {
+              diplomas: row.graduation.diplomas.map((diploma) => ({
+                ...diplomaProjection(diploma),
+                workflowStatus: diploma.workflowStatus,
+                status: diploma.status,
+              })),
+            }
+          : null,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
   async review(
     batchId: string,
@@ -363,13 +496,137 @@ export class RegistryImportService {
           'Trường văn bản phải là string hoặc null',
         );
     }
+    await this.assertPrintCatalog(actor);
     return this.database.$transaction(async (transaction) => {
       await transaction.$queryRaw`SELECT id FROM import_rows WHERE id = ${rowId}::uuid FOR UPDATE`;
       const row = await transaction.importRow.findFirst({
         where: { id: rowId, batchId, batch: this.scope(actor) },
       });
       if (!row) throw new NotFoundException();
-      if (['IMPORTED', 'SKIPPED'].includes(row.status))
+      if (row.status === 'IMPORTED') {
+        if (
+          !Object.keys(corrections).length ||
+          Object.keys(corrections).some(
+            (field) => !(printFields as readonly string[]).includes(field),
+          )
+        )
+          throw new ConflictException(
+            'Hồ sơ đã lưu chỉ được bổ sung thông tin in bằng khi chưa gửi yêu cầu',
+          );
+        await transaction.$queryRaw`SELECT d.id FROM diplomas d JOIN graduation_records g ON g.id = d.graduation_id WHERE g.source_row_id = ${row.id}::uuid FOR UPDATE OF d`;
+        const diplomas = await transaction.diploma.findMany({
+          where: { graduation: { sourceRowId: row.id } },
+          include: diplomaInclude,
+        });
+        if (
+          !diplomas.length ||
+          diplomas.some(
+            (diploma) =>
+              diploma.status !== 'DRAFT' ||
+              diploma.workflowStatus !== 'DRAFT' ||
+              diploma.signedDocuments.length > 0,
+          )
+        )
+          throw new ConflictException(
+            'Chỉ sửa thông tin in bằng của hồ sơ nháp chưa ký, chưa gửi yêu cầu',
+          );
+        const issuedOn =
+          corrections.issuedOn === undefined
+            ? undefined
+            : parseDateOnly(corrections.issuedOn);
+        if (
+          corrections.issuedOn !== undefined &&
+          (!issuedOn ||
+            issuedOn > new Date() ||
+            diplomas.some(
+              (diploma) =>
+                !diploma.graduation.student.dateOfBirth ||
+                issuedOn < diploma.graduation.student.dateOfBirth ||
+                issuedOn.getUTCFullYear() < diploma.graduation.graduationYear,
+            ))
+        )
+          throw new BadRequestException(
+            'Ngày cấp phải đúng hồ sơ gốc, không ở tương lai và không trước ngày sinh hoặc năm tốt nghiệp',
+          );
+        const overrides = {
+          ...((row.overrides as object) || {}),
+          ...corrections,
+        };
+        for (const diploma of diplomas) {
+          const input = {
+            ...(row.normalizedData as object),
+            ...((row.overrides as object) || {}),
+          } as RegistryInput;
+          input.degreeType = diploma.graduation.degreeType || input.degreeType;
+          input.issuedOn = dateOnly(diploma.issuedOn) || input.issuedOn;
+          for (const field of printFields.filter(
+            (field) => field !== 'degreeType' && field !== 'issuedOn',
+          ))
+            input[field] = diploma[field] || input[field];
+          Object.assign(input, corrections);
+          const issues = validateRegistryInput(input);
+          if (issues.some((issue) => issue.severity === 'ERROR'))
+            throw new BadRequestException(
+              issues.map((issue) => issue.message).join('; '),
+            );
+          if (diploma.graduation.degreeType !== input.degreeType)
+            await transaction.graduationRecord.update({
+              where: { id: diploma.graduationId },
+              data: { degreeType: input.degreeType },
+            });
+          await transaction.diploma.update({
+            where: { id: diploma.id },
+            data: {
+              issuedOn: parseDateOnly(input.issuedOn),
+              ...Object.fromEntries(
+                printFields
+                  .filter(
+                    (field) => field !== 'degreeType' && field !== 'issuedOn',
+                  )
+                  .map((field) => [field, normalizeText(input[field]) || null]),
+              ),
+            },
+          });
+        }
+        await transaction.importRow.update({
+          where: { id: row.id },
+          data: {
+            overrides: jsonData(overrides),
+            reviewedById: actor.id,
+            reviewedAt: new Date(),
+          },
+        });
+        await transaction.validationIssue.updateMany({
+          where: { rowId, field: { in: [...printFields] }, resolvedAt: null },
+          data: { resolvedAt: new Date() },
+        });
+        await transaction.diplomaEvent.createMany({
+          data: diplomas.map((diploma) => ({
+            diplomaId: diploma.id,
+            actorId: actor.id,
+            eventType: 'REVIEWED_PRINT_DATA',
+            metadata: jsonData({
+              note,
+              corrections,
+              previousIssuedOn: dateOnly(diploma.issuedOn),
+              sourceRowId: row.id,
+            }),
+          })),
+        });
+        await transaction.auditLog.create({
+          data: {
+            institutionId: actor.institutionId,
+            actorId: actor.id,
+            actorEmail: actor.email,
+            action: 'REVIEW_IMPORTED_PRINT_DATA',
+            target: row.id,
+            result: 'SUCCESS',
+            metadata: jsonData({ note, corrections }),
+          },
+        });
+        return { success: true, ready: true, issues: [] };
+      }
+      if (row.status === 'SKIPPED')
         throw new ConflictException(
           'Dòng đã xử lý; không sửa ngược nguồn đã import',
         );
@@ -459,12 +716,267 @@ export class RegistryImportService {
       return { success: true, ready, issues };
     });
   }
-  async commit(batchId: string, actor: AuthActor) {
+  async recheck(batchId: string, actor: AuthActor) {
     this.staff(actor);
+    const batch = await this.database.importBatch.findFirst({
+      where: { id: batchId, ...this.scope(actor) },
+      include: { document: true },
+    });
+    if (!batch) throw new NotFoundException();
+    await this.assertPrintCatalog(actor);
+    const buffer = await this.storage.getWorkbook(
+      batch.document.storageKey,
+      batch.document.sha256,
+    );
+    const [aliases, programs] = await Promise.all([
+      this.database.programAlias.findMany({
+        where: { institutionId: actor.institutionId },
+      }),
+      this.database.program.findMany({
+        where: { institutionId: actor.institutionId },
+        select: { id: true, nameEn: true },
+      }),
+    ]);
+    const parsed = await parseRegistryWorkbook(
+      buffer,
+      new Map(aliases.map((alias) => [alias.normalizedName, alias.programId])),
+      new Map(programs.map((program) => [program.id, program.nameEn])),
+    );
+    const sources = new Map(
+      parsed.map((row) => [row.sheetName + ':' + row.rowNumber, row]),
+    );
+    const rows = await this.database.importRow.findMany({
+      where: { batchId, status: { not: 'SKIPPED' } },
+      select: { id: true },
+    });
+    let repairedDrafts = 0,
+      updatedIssues = 0,
+      protectedRows = 0;
+    for (const candidate of rows) {
+      await this.database.$transaction(async (transaction) => {
+        await transaction.$queryRaw`SELECT id FROM import_rows WHERE id = ${candidate.id}::uuid FOR UPDATE`;
+        const row = await transaction.importRow.findUniqueOrThrow({
+          where: { id: candidate.id },
+          include: { issues: { where: { resolvedAt: null } } },
+        });
+        const fresh = sources.get(row.sheetName + ':' + row.rowNumber);
+        if (!fresh || row.status === 'SKIPPED') return;
+        await transaction.$queryRaw`SELECT d.id FROM diplomas d JOIN graduation_records g ON g.id = d.graduation_id WHERE g.source_row_id = ${row.id}::uuid FOR UPDATE OF d`;
+        const diplomas = await transaction.diploma.findMany({
+          where: { graduation: { sourceRowId: row.id } },
+          include: diplomaInclude,
+        });
+        if (
+          diplomas.some(
+            (diploma) =>
+              diploma.status !== 'DRAFT' ||
+              diploma.workflowStatus !== 'DRAFT' ||
+              diploma.signedDocuments.length,
+          )
+        ) {
+          protectedRows++;
+          return;
+        }
+        const normalized = row.normalizedData as unknown as RegistryInput;
+        const existingOverrides = (row.overrides || {}) as Record<
+          string,
+          unknown
+        >;
+        const recovered: Record<string, unknown> = {};
+        for (const field of ['programId', ...printFields] as const)
+          if (
+            !Object.hasOwn(existingOverrides, field) &&
+            !normalized[field] &&
+            fresh.normalizedData[field]
+          )
+            recovered[field] = fresh.normalizedData[field];
+        const overrides = { ...recovered, ...existingOverrides };
+        const input = { ...normalized, ...overrides } as RegistryInput;
+        // Previously confirmed draft values take precedence over the source during repair.
+        const first = diplomas[0];
+        if (first) {
+          input.degreeType = first.graduation.degreeType || input.degreeType;
+          input.issuedOn = dateOnly(first.issuedOn) || input.issuedOn;
+          for (const field of printFields.filter(
+            (field) => field !== 'degreeType' && field !== 'issuedOn',
+          ))
+            input[field] = first[field] || input[field];
+        }
+        const issues = validateRegistryInput(input);
+        if (row.status !== 'IMPORTED') {
+          const validationCodes = new Set(
+            validateRegistryInput(fresh.normalizedData).map(
+              (issue) => issue.code,
+            ),
+          );
+          if (!row.reviewedAt)
+            issues.push(
+              ...fresh.issues.filter(
+                (issue) => !validationCodes.has(issue.code),
+              ),
+            );
+          issues.push(
+            ...row.issues
+              .filter((issue) => issue.code === 'COMMIT_CONFLICT')
+              .map(({ field, code, severity, message }) => ({
+                field,
+                code,
+                severity,
+                message,
+              })),
+          );
+        }
+        const ready =
+          !issues.some((issue) => issue.severity === 'ERROR') &&
+          (row.status === 'IMPORTED' ||
+            !!row.reviewedAt ||
+            !registryIssuesRequireReview(issues));
+        if (row.status === 'IMPORTED' && ready) {
+          for (const diploma of diplomas) {
+            const changes: Prisma.DiplomaUpdateInput = {};
+            if (!diploma.issuedOn && input.issuedOn)
+              changes.issuedOn = parseDateOnly(input.issuedOn);
+            for (const field of printFields.filter(
+              (field) => field !== 'degreeType' && field !== 'issuedOn',
+            ))
+              if (!diploma[field] && input[field])
+                changes[field] = input[field];
+            const degreeChanged =
+              !diploma.graduation.degreeType && !!input.degreeType;
+            if (degreeChanged)
+              await transaction.graduationRecord.update({
+                where: { id: diploma.graduationId },
+                data: { degreeType: input.degreeType },
+              });
+            if (Object.keys(changes).length)
+              await transaction.diploma.update({
+                where: { id: diploma.id },
+                data: changes,
+              });
+            if (degreeChanged || Object.keys(changes).length) {
+              repairedDrafts++;
+              await transaction.diplomaEvent.create({
+                data: {
+                  diplomaId: diploma.id,
+                  actorId: actor.id,
+                  eventType: 'RESTORED_IMPORT_PRINT_DATA',
+                  metadata: jsonData({
+                    sourceRowId: row.id,
+                    sourceSha256: batch.document.sha256,
+                    changes,
+                    degreeType: input.degreeType,
+                  }),
+                },
+              });
+            }
+          }
+        }
+        if (Object.keys(recovered).length || row.status !== 'IMPORTED')
+          await transaction.importRow.update({
+            where: { id: row.id },
+            data: {
+              ...(Object.keys(recovered).length
+                ? { overrides: jsonData(overrides) }
+                : {}),
+              ...(row.status === 'IMPORTED'
+                ? {}
+                : { status: ready ? 'READY' : 'NEEDS_REVIEW' }),
+            },
+          });
+        const relevant =
+          row.status === 'IMPORTED'
+            ? row.issues.filter(
+                (issue) =>
+                  (printFields as readonly string[]).includes(issue.field) ||
+                  issue.code === 'MISSING_ISSUE_DATE',
+              )
+            : row.issues;
+        const issueKey = (issue: RowIssue) =>
+          JSON.stringify([
+            issue.field,
+            issue.code,
+            issue.severity,
+            issue.message,
+          ]);
+        const currentKeys = new Set(row.issues.map(issueKey));
+        const nextKeys = new Set(issues.map(issueKey));
+        const resolved = relevant.filter(
+          (issue) => !nextKeys.has(issueKey(issue)),
+        );
+        if (resolved.length) {
+          await transaction.validationIssue.updateMany({
+            where: { id: { in: resolved.map((issue) => issue.id) } },
+            data: { resolvedAt: new Date() },
+          });
+          updatedIssues += resolved.length;
+        }
+        const additions = issues.filter(
+          (issue, index) =>
+            !currentKeys.has(issueKey(issue)) &&
+            issues.findIndex((other) => issueKey(other) === issueKey(issue)) ===
+              index,
+        );
+        if (additions.length)
+          await transaction.validationIssue.createMany({
+            data: additions.map((issue) => ({ ...issue, rowId: row.id })),
+          });
+      });
+    }
+    const [readyRows, needsReviewRows] = await Promise.all([
+      this.database.importRow.count({ where: { batchId, status: 'READY' } }),
+      this.database.importRow.count({
+        where: { batchId, status: 'NEEDS_REVIEW' },
+      }),
+    ]);
+    await this.database.importBatch.update({
+      where: { id: batchId },
+      data: {
+        status: needsReviewRows
+          ? 'REVIEW_REQUIRED'
+          : readyRows
+            ? 'READY'
+            : 'COMPLETED',
+        completedAt: readyRows || needsReviewRows ? null : new Date(),
+      },
+    });
+    await this.database.auditLog.create({
+      data: {
+        institutionId: actor.institutionId,
+        actorId: actor.id,
+        actorEmail: actor.email,
+        action: 'RECHECK_REGISTRY_PRINT_DATA',
+        target: batchId,
+        result: 'SUCCESS',
+        metadata: {
+          repairedDrafts,
+          updatedIssues,
+          protectedRows,
+          sourceSha256: batch.document.sha256,
+        },
+      },
+    });
+    return {
+      success: true,
+      readyRows,
+      needsReviewRows,
+      repairedDrafts,
+      updatedIssues,
+      protectedRows,
+    };
+  }
+  async commit(
+    batchId: string,
+    actor: AuthActor,
+    originType: 'DIGITIZATION' | 'ISSUANCE' = 'ISSUANCE',
+  ) {
+    this.staff(actor);
+    if (!['DIGITIZATION', 'ISSUANCE'].includes(originType))
+      throw new BadRequestException('Cách tạo hồ sơ không hợp lệ');
     const batch = await this.database.importBatch.findFirst({
       where: { id: batchId, ...this.scope(actor) },
     });
     if (!batch) throw new NotFoundException();
+    await this.assertPrintCatalog(actor);
     const rows = await this.database.importRow.findMany({
       where: { batchId, status: 'READY' },
       take: 6000,
@@ -484,13 +996,13 @@ export class RegistryImportService {
             ...(row.normalizedData as object),
             ...((row.overrides as object) || {}),
           } as RegistryInput;
-          if (
-            !input.programId ||
-            validateRegistryInput(input).some(
-              (issue) => issue.severity === 'ERROR',
-            )
-          )
-            throw new BadRequestException('Dữ liệu chưa hợp lệ');
+          const errors = validateRegistryInput(input).filter(
+            (issue) => issue.severity === 'ERROR',
+          );
+          if (errors.length)
+            throw new BadRequestException(
+              errors.map((issue) => issue.message).join('; '),
+            );
           const graduation = await writeAcademicRecord(
             transaction,
             { institutionId: batch.institutionId, campusId: batch.campusId },
@@ -508,9 +1020,15 @@ export class RegistryImportService {
                 certificateNo: input.certificateNo,
                 registryNo: input.registryNo,
                 issuedOn: parseDateOnly(input.issuedOn),
+                fullNameLatin: input.fullNameLatin,
+                majorNameEn: input.majorNameEn,
+                issuePlace: input.issuePlace,
+                diplomaSignerName: input.diplomaSignerName,
+                diplomaSignerTitle: input.diplomaSignerTitle,
+                printTemplate: DIPLOMA_PRINT_TEMPLATE,
+                originType,
                 workflowStatus: 'DRAFT',
                 status: 'DRAFT',
-                requestedById: row.reviewedById || batch.createdById,
               },
             });
             diplomaId = diploma.id;
@@ -519,7 +1037,7 @@ export class RegistryImportService {
                 diplomaId,
                 actorId: actor.id,
                 eventType: 'IMPORTED_DRAFT',
-                metadata: { sourceRowId: row.id },
+                metadata: { sourceRowId: row.id, originType },
               },
             });
           }
@@ -535,7 +1053,7 @@ export class RegistryImportService {
               action: 'COMMIT_IMPORT_ROW',
               target: row.id,
               result: 'SUCCESS',
-              metadata: { graduationId: graduation.id, diplomaId },
+              metadata: { graduationId: graduation.id, diplomaId, originType },
             },
           });
           return { diplomaId };
@@ -592,7 +1110,7 @@ export class RegistryImportService {
       diplomas,
       conflicts,
       counts,
-      note: 'Các văn bằng mới vẫn là DRAFT; không tạo tài khoản/email và không tự ghi blockchain',
+      note: 'Đã lưu hồ sơ rà soát. Cán bộ cơ sở chính có thể duyệt và phát hành từng hồ sơ hoặc hàng loạt; dữ liệu chưa được ghi blockchain ở bước này',
     };
   }
   async addProgramAlias(
@@ -612,6 +1130,16 @@ export class RegistryImportService {
       where: { id: programId, institutionId: actor.institutionId },
     });
     if (!program) throw new NotFoundException();
+    const existingAlias = await this.database.programAlias.findUnique({
+      where: {
+        institutionId_normalizedName: {
+          institutionId: actor.institutionId,
+          normalizedName: lookupText(originalName),
+        },
+      },
+    });
+    if (existingAlias)
+      throw new ConflictException('Tên này đã có ánh xạ; không được ghi đè');
     return this.database.$transaction(async (transaction) => {
       const alias = await transaction.programAlias.create({
         data: {
@@ -630,10 +1158,17 @@ export class RegistryImportService {
           action: 'APPROVE_PROGRAM_ALIAS',
           target: alias.id,
           result: 'SUCCESS',
-          metadata: { note },
+          metadata: { note, programId, originalName: normalizeText(originalName) },
         },
       });
       return alias;
+    }).catch((error: unknown) => {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      )
+        throw new ConflictException('Tên này đã có ánh xạ; không được ghi đè');
+      throw error;
     });
   }
 }

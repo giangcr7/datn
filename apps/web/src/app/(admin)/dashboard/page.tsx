@@ -1,30 +1,29 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../api/auth/[...nextauth]/route';
-import { apiCall } from '@/lib/api';
-import DashboardClient from './DashboardClient';
+import { apiCall } from "@/lib/api";
+import type { DashboardOverview } from "@/lib/dashboard";
+import { requireWorkspaceAccess } from "@/lib/workspace-session";
+import DashboardClient from "./DashboardClient";
+
+export const dynamic = "force-dynamic";
 
 export default async function UniversityDashboard() {
-  const session = await getServerSession(authOptions) as any;
-  const token = session?.accessToken;
-
-  let stats = { totalStudents: 0, totalOffChain: 0, totalOnChain: 0 };
-  let initialChartData: any = null;
-
+  const { user, accessToken } = await requireWorkspaceAccess("/dashboard");
+  let initialOverview: DashboardOverview | null = null;
+  let loadError = false;
   try {
-    const [certStats, studentsResult] = await Promise.all([
-      apiCall('/cert/statistics', 'GET', undefined, token),
-      apiCall('/students?page=1&limit=1', 'GET', undefined, token),
-    ]);
-    initialChartData = certStats;
-    stats = {
-      totalStudents: studentsResult?.total || 0,
-      totalOffChain: certStats?.totalAll || 0,
-      totalOnChain: certStats?.total || 0,
-    };
+    initialOverview = await apiCall(
+      "/dashboard/overview",
+      "GET",
+      undefined,
+      accessToken,
+    );
   } catch {
-    // Fallback nếu chưa có dữ liệu ban đầu
+    loadError = true;
   }
-
-  return <DashboardClient stats={stats} initialChartData={initialChartData} />;
+  return (
+    <DashboardClient
+      user={user}
+      initialOverview={initialOverview}
+      loadError={loadError}
+    />
+  );
 }
-

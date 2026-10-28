@@ -42,7 +42,7 @@ export class FabricService implements OnModuleDestroy {
     const base = resolve(this.config.getOrThrow<string>('FABRIC_NETWORK_BASE'));
     const walletPath =
       this.config.get<string>(prefix + '_WALLET_PATH') ||
-      join(base, 'wallet', org2 ? 'admin-org2.json' : 'admin.json');
+      join(base, 'wallet', org2 ? 'admin-org2.json' : 'issuer-org1.json');
     const tlsPath =
       this.config.get<string>(prefix + '_TLS_CERT_PATH') ||
       join(
@@ -146,7 +146,7 @@ export class FabricService implements OnModuleDestroy {
     if (!this.enabled) return { connected: false, disabled: true };
     const started = Date.now();
     try {
-      await this.getGateway('Org1MSP');
+      await this.execute('evaluate', 'QueryAllCertificates');
       return { connected: true, latencyMs: Date.now() - started };
     } catch {
       return { connected: false, error: 'Fabric gateway không sẵn sàng' };

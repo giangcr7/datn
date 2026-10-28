@@ -11,6 +11,9 @@ export async function POST(req: Request) {
     const result = await apiCall('/cert/revoke', 'POST', body, token);
     return NextResponse.json(result);
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: Number.isInteger(error.status) ? error.status : 500 },
+    );
   }
 }

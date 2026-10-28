@@ -1,7 +1,18 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Layout, Menu, Typography, Dropdown, Avatar, Tag, Button, Space, Modal } from 'antd';
+import React, { useState } from "react";
+import {
+  Layout,
+  Menu,
+  Typography,
+  Dropdown,
+  Avatar,
+  Tag,
+  Button,
+  Space,
+  Modal,
+  Result,
+} from "antd";
 import {
   DashboardOutlined,
   SafetyCertificateOutlined,
@@ -10,189 +21,127 @@ import {
   CheckCircleOutlined,
   TeamOutlined,
   UserAddOutlined,
-  SettingOutlined,
   SearchOutlined,
   LogoutOutlined,
   LockOutlined,
   UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  BankOutlined,
   DeploymentUnitOutlined,
-} from '@ant-design/icons';
-import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
-import Link from 'next/link';
+  FolderOpenOutlined,
+  AppstoreOutlined,
+  HistoryOutlined,
+} from "@ant-design/icons";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
+import Link from "next/link";
+import {
+  canAccessWorkspacePath,
+  getWorkspace,
+  type WorkspaceUser,
+} from "@/lib/workspace-access";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
+const navigationIcons: Record<string, React.ReactNode> = {
+  "/diploma-records": <FolderOpenOutlined />,
+  "/catalog": <AppstoreOutlined />,
+  "/activity": <HistoryOutlined />,
+  "/users": <UserOutlined />,
+  "/explorer": <DeploymentUnitOutlined />,
+  "/certificates": <SafetyCertificateOutlined />,
+  "/pending": <CheckCircleOutlined />,
+  "/students": <TeamOutlined />,
+  "/students/import": <UserAddOutlined />,
+  "/import": <FileExcelOutlined />,
+  "/issue": <FileAddOutlined />,
+};
 
-interface AdminShellProps {
-  user: {
-    name?: string;
-    email?: string;
-    role?: string;
-  };
+export default function AdminShell({
+  user,
+  children,
+}: {
+  user: WorkspaceUser;
   children: React.ReactNode;
-}
-
-export default function AdminShell({ user, children }: AdminShellProps) {
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-
-  const handleLogout = () => {
-    Modal.confirm({
-      title: 'Xác nhận đăng xuất',
-      content: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản trị?',
-      okText: 'Đăng xuất',
-      cancelText: 'Hủy',
-      okButtonProps: { danger: true },
-      onOk: () => {
-        signOut({ callbackUrl: '/login' });
-      },
-    });
-  };
-
-  const userMenuItems = [
-    {
-      key: 'change-password',
-      icon: <LockOutlined />,
-      label: 'Đổi mật khẩu',
-      onClick: () => router.push('/change-password'),
-    },
-    {
-      type: 'divider' as const,
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Đăng xuất',
-      danger: true,
-      onClick: handleLogout,
-    },
-  ];
-
+  const workspace = getWorkspace(user);
   const menuItems = [
     {
-      key: '/dashboard',
+      key: "/dashboard",
       icon: <DashboardOutlined />,
-      label: 'Tổng quan (Dashboard)',
+      label: "Tổng quan",
+    },
+    ...workspace.links.map((link) => ({
+      key: link.path,
+      icon: navigationIcons[link.path],
+      label: link.label,
+      ...(link.children
+        ? {
+            children: [
+              { key: link.path, label: "Tổng hợp hồ sơ" },
+              ...link.children.map((child) => ({
+                key: child.path,
+                icon: navigationIcons[child.path],
+                label: child.label,
+              })),
+            ],
+            key: "group:" + link.path,
+          }
+        : {}),
+    })),
+  ];
+  const userMenuItems = [
+    {
+      key: "password",
+      icon: <LockOutlined />,
+      label: "Đổi mật khẩu",
+      onClick: () => router.push("/change-password"),
     },
     {
-      key: '/explorer',
-      icon: <DeploymentUnitOutlined />,
-      label: 'Khám phá Blockchain (Explorer)',
-    },
-    {
-      key: 'sub-certs',
-      icon: <SafetyCertificateOutlined />,
-      label: 'Quản lý văn bằng',
-      children: [
-        {
-          key: '/certificates',
-          icon: <SafetyCertificateOutlined />,
-          label: 'Danh sách văn bằng',
-        },
-        {
-          key: '/issue',
-          icon: <FileAddOutlined />,
-          label: 'Cấp văn bằng mới',
-        },
-        {
-          key: '/import',
-          icon: <FileExcelOutlined />,
-          label: 'Import văn bằng (Excel)',
-        },
-        {
-          key: '/pending',
-          icon: <CheckCircleOutlined />,
-          label: 'Duyệt văn bằng (2 cơ sở)',
-        },
-      ],
-    },
-    {
-      key: 'sub-students',
-      icon: <TeamOutlined />,
-      label: 'Quản lý sinh viên',
-      children: [
-        {
-          key: '/students',
-          icon: <TeamOutlined />,
-          label: 'Danh sách sinh viên',
-        },
-        {
-          key: '/students/import',
-          icon: <UserAddOutlined />,
-          label: 'Import sinh viên (Excel)',
-        },
-      ],
-    },
-    {
-      key: 'sub-system',
-      icon: <SettingOutlined />,
-      label: 'Quản trị hệ thống',
-      children: [
-        {
-          key: '/users',
-          icon: <UserOutlined />,
-          label: 'Tài khoản & Phân quyền',
-        },
-      ],
-    },
-    {
-      key: '/verify',
-      icon: <SearchOutlined />,
-      label: 'Tra cứu công khai',
+      key: "logout",
+      icon: <LogoutOutlined />,
+      label: "Đăng xuất",
+      danger: true,
+      onClick: () =>
+        Modal.confirm({
+          title: "Xác nhận đăng xuất",
+          content: "Bạn muốn đăng xuất khỏi không gian làm việc?",
+          okText: "Đăng xuất",
+          cancelText: "Hủy",
+          onOk: () => signOut({ callbackUrl: "/login" }),
+        }),
     },
   ];
 
-  // Xác định submenu mở mặc định dựa trên pathname
-  const getOpenKeys = () => {
-    if (['/certificates', '/issue', '/import', '/pending'].includes(pathname)) {
-      return ['sub-certs'];
-    }
-    if (['/students', '/students/import'].includes(pathname)) {
-      return ['sub-students'];
-    }
-    if (['/users'].includes(pathname)) {
-      return ['sub-system'];
-    }
-    return [];
-  };
-
-  const roleName = user.role?.toUpperCase() === 'ADMIN' ? 'QUẢN TRỊ VIÊN' : 'CÁN BỘ NHÀ TRƯỜNG';
-  const roleColor = user.role?.toUpperCase() === 'ADMIN' ? 'blue' : 'green';
-
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      {/* SIDEBAR NAVIGATION */}
+    <Layout style={{ minHeight: "100vh" }}>
       <Sider
-        collapsible
         collapsed={collapsed}
-        onCollapse={(val) => setCollapsed(val)}
-        width={260}
-        theme="dark"
+        onCollapse={setCollapsed}
+        breakpoint="lg"
+        collapsedWidth={72}
+        width={272}
         style={{
-          background: '#001a38',
-          boxShadow: '2px 0 8px 0 rgba(0, 33, 64, 0.15)',
-          position: 'sticky',
+          background: "#001a38",
+          position: "sticky",
           top: 0,
-          left: 0,
-          height: '100vh',
+          height: "100vh",
+          overflowY: "auto",
           zIndex: 100,
         }}
       >
-        {/* LOGO & BRAND */}
-        <div
+        <Link
+          href="/dashboard"
           style={{
-            height: 68,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            padding: collapsed ? '0' : '0 16px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
-            overflow: 'hidden',
+            height: 80,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: collapsed ? 16 : 20,
+            borderBottom: "1px solid #ffffff1f",
           }}
         >
           <img
@@ -201,111 +150,124 @@ export default function AdminShell({ user, children }: AdminShellProps) {
             style={{
               width: 40,
               height: 40,
-              objectFit: 'contain',
-              marginRight: collapsed ? 0 : 12,
-              background: '#fff',
-              borderRadius: '50%',
-              padding: 2,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+              padding: 3,
+              background: "#fff",
+              borderRadius: "50%",
             }}
           />
           {!collapsed && (
-            <div style={{ lineHeight: 1.25 }}>
-              <div style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, letterSpacing: 0.5 }}>
+            <div style={{ lineHeight: 1.5 }}>
+              <Text strong style={{ color: "#fff", fontSize: 15 }}>
+                DIPLOMACHAIN
+              </Text>
+              <div style={{ color: "#91caff", fontSize: 11 }}>
                 ĐẠI HỌC THỦY LỢI
               </div>
-              <div style={{ color: '#91caff', fontSize: 11, fontWeight: 500 }}>HỆ THỐNG VĂN BẰNG SỐ</div>
             </div>
           )}
-        </div>
-
-        {/* MENU ITEMS */}
+        </Link>
+        {!collapsed && (
+          <div
+            style={{
+              margin: "20px 16px 12px",
+              padding: 14,
+              borderRadius: 10,
+              background: "#ffffff0d",
+              border: "1px solid #ffffff1a",
+            }}
+          >
+            <Tag color={workspace.color} style={{ marginBottom: 8 }}>
+              {workspace.roleLabel}
+            </Tag>
+            <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>
+              {user.campusName || "Toàn hệ thống"}
+            </div>
+          </div>
+        )}
         <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[pathname]}
-          defaultOpenKeys={getOpenKeys()}
+          defaultOpenKeys={["group:/diploma-records"]}
           items={menuItems}
-          onClick={({ key }) => {
-            if (key.startsWith('/')) {
-              router.push(key);
-            }
+          onClick={({ key }) => router.push(key)}
+          style={{
+            background: "transparent",
+            marginTop: 12,
+            borderInlineEnd: 0,
           }}
-          style={{ marginTop: 12, borderRight: 0, background: '#001a38' }}
         />
       </Sider>
-
-      {/* MAIN CONTAINER */}
-      <Layout>
-        {/* TOP HEADER */}
+      <Layout style={{ minWidth: 0 }}>
         <Header
           style={{
-            background: '#fff',
-            padding: '0 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px rgba(0,33,64,0.06)',
-            position: 'sticky',
+            background: "#fff",
+            padding: "0 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            position: "sticky",
             top: 0,
-            zIndex: 99,
-            borderBottom: '2px solid #e6f0ff',
+            zIndex: 90,
+            borderBottom: "1px solid #e5eaf0",
           }}
         >
-          {/* Toggle Sider Button */}
           <Space>
             <Button
+              aria-label={collapsed ? "Mở menu" : "Thu gọn menu"}
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: 18, width: 40, height: 40, color: '#003b93' }}
             />
-            <Text strong style={{ fontSize: 16, color: '#002140' }}>
-              Trường Đại học Thủy Lợi — Hệ thống Xác thực Văn bằng Blockchain
-            </Text>
           </Space>
-
-          {/* Right actions: Verify link & User Dropdown */}
-          <Space size="large">
-            <Link href="/verify" target="_blank">
-              <Button type="default" icon={<SearchOutlined />} size="middle">
-                Cổng Tra cứu Công khai
+          <Space size="middle">
+            <Link href="/verify" target="_blank" className="hidden md:inline">
+              <Button
+                aria-label="Xác thực công khai"
+                title="Xác thực công khai"
+                icon={<SearchOutlined />}
+              >
+                Xác thực
               </Button>
             </Link>
-
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  transition: 'background 0.2s',
-                }}
+            <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>
+              <Button
+                aria-label={user.name || user.email || "Người dùng"}
+                title={user.name || user.email || "Người dùng"}
+                type="text"
+                style={{ height: "auto", padding: "6px 8px" }}
               >
                 <Avatar
-                  style={{ backgroundColor: user.role === 'admin' ? '#1890ff' : '#52c41a', marginRight: 10 }}
+                  size="small"
+                  style={{ background: workspace.color }}
                   icon={<UserOutlined />}
                 />
-                <div style={{ textAlign: 'left', lineHeight: 1.3 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: '#333' }}>
-                    {user.name || 'Người dùng'}
-                  </div>
-                  <div>
-                    <Tag color={roleColor} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
-                      {roleName}
-                    </Tag>
-                  </div>
-                </div>
-              </div>
+                <span>Tài khoản</span>
+              </Button>
             </Dropdown>
           </Space>
         </Header>
-
-        {/* CONTENT AREA */}
-        <Content style={{ background: '#f5f7fa', minHeight: 'calc(100vh - 64px)' }}>
-          {children}
+        <Content
+          style={{ background: "#f3f6fa", minHeight: "calc(100vh - 64px)" }}
+        >
+          {canAccessWorkspacePath(user, pathname) ? (
+            children
+          ) : (
+            <Result
+              status="403"
+              title="Màn hình không thuộc vai trò của bạn"
+              subTitle="Hãy chọn chức năng trong menu công việc của tài khoản."
+              extra={
+                <Button
+                  type="primary"
+                  onClick={() => router.push("/dashboard")}
+                >
+                  Về tổng quan
+                </Button>
+              }
+            />
+          )}
         </Content>
       </Layout>
     </Layout>

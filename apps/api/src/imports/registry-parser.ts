@@ -17,6 +17,11 @@ export interface RegistryInput extends Omit<AcademicInput, 'programId'> {
   certificateNo: string | null;
   registryNo: string | null;
   issuedOn: string | null;
+  fullNameLatin?: string | null;
+  majorNameEn?: string | null;
+  issuePlace?: string | null;
+  diplomaSignerName?: string | null;
+  diplomaSignerTitle?: string | null;
 }
 export interface RowIssue {
   field: string;
@@ -24,6 +29,15 @@ export interface RowIssue {
   severity: 'ERROR' | 'WARNING';
   message: string;
 }
+export function registryIssuesRequireReview(issues: RowIssue[]): boolean {
+  return issues.length > 0;
+}
+export const ISSUE_DATE_NOT_IN_SOURCE: RowIssue = {
+  field: 'issuedOn',
+  code: 'ISSUE_DATE_NOT_IN_SOURCE',
+  severity: 'ERROR',
+  message: 'Thiếu ngày cấp trên bằng; bổ sung trước khi lưu hồ sơ gửi duyệt',
+};
 export interface ParsedRow {
   sheetName: string;
   rowNumber: number;
@@ -158,13 +172,36 @@ export function validateRegistryInput(
           'INVALID_DOCUMENT_DATE',
           'Ngày ký/cấp không hợp lệ hoặc ở tương lai',
         );
+      else if (
+        (dob && date < dob) ||
+        (field === 'issuedOn' && date.getUTCFullYear() < input.graduationYear)
+      )
+        add(
+          field,
+          'INVALID_DOCUMENT_DATE',
+          'Ngày ký/cấp không được trước ngày sinh; ngày cấp không trước năm tốt nghiệp',
+        );
     }
+  if (!input.issuedOn) issues.push({ ...ISSUE_DATE_NOT_IN_SOURCE });
+  for (const [field, label, maximum] of [
+    ['degreeType', 'loại bằng', 40],
+    ['majorNameEn', 'tên ngành tiếng Anh', 255],
+    ['issuePlace', 'nơi cấp trên bằng', 120],
+    ['diplomaSignerName', 'người ký trên bằng', 255],
+    ['diplomaSignerTitle', 'chức danh người ký bằng', 120],
+  ] as const) {
+    if (!normalizeText(input[field]))
+      add(field, 'MISSING_PRINT_FIELD', 'Thiếu ' + label);
+    else if (normalizeText(input[field]).length > maximum)
+      add(field, 'VALUE_TOO_LONG', label + ' tối đa ' + maximum + ' ký tự');
+  }
+  if (input.fullNameLatin && input.fullNameLatin.length > 255)
+    add('fullNameLatin', 'VALUE_TOO_LONG', 'Họ tên không dấu tối đa 255 ký tự');
   if (!input.certificateNo && !input.registryNo)
     add(
       'certificateNo',
       'NOT_YET_ISSUED',
-      'Chưa có số hiệu và số vào sổ: chỉ lưu hồ sơ tốt nghiệp, không tạo văn bằng',
-      'WARNING',
+      'Thiếu số hiệu và số vào sổ; bổ sung trước khi lưu hồ sơ gửi duyệt',
     );
   else if (!input.certificateNo || !input.registryNo)
     add(
@@ -176,14 +213,25 @@ export function validateRegistryInput(
     add('certificateNo', 'VALUE_TOO_LONG', 'Số hiệu tối đa 120 ký tự');
   if (input.registryNo && input.registryNo.length > 180)
     add('registryNo', 'VALUE_TOO_LONG', 'Số vào sổ tối đa 180 ký tự');
-  if (input.classCode && input.classCode.length > 100)
-    add('classCode', 'VALUE_TOO_LONG', 'Mã lớp tối đa 100 ký tự');
+  for (const [field, label, maximum] of [
+    ['classCode', 'Mã lớp', 100],
+    ['cohortCode', 'Khóa học', 40],
+    ['birthPlace', 'Nơi sinh', 255],
+    ['ethnicity', 'Dân tộc', 80],
+    ['nationality', 'Quốc tịch', 100],
+    ['specialization', 'Chuyên ngành', 255],
+    ['decisionNumber', 'Số quyết định', 120],
+    ['signerName', 'Người ký quyết định', 255],
+  ] as const)
+    if (input[field] && input[field].length > maximum)
+      add(field, 'VALUE_TOO_LONG', label + ' tối đa ' + maximum + ' ký tự');
   return issues;
 }
 
 export async function parseRegistryWorkbook(
   buffer: Buffer,
   programs: ProgramLookup,
+  programNamesEn: Map<string, string | null> = new Map(),
 ): Promise<ParsedRow[]> {
   assertWorkbookSize(buffer);
   const workbook = new ExcelJS.Workbook();
@@ -202,6 +250,33 @@ export async function parseRegistryWorkbook(
     if (sheet.rowCount > 6000)
       throw new BadRequestException('Sheet vượt quá 6000 dòng');
     const start = sheet.name === '2021' ? 3 : sheet.name === '2022' ? 4 : 2;
+    const columns = new Map<string, number>();
+    const headers: Record<string, string[]> = {
+      degreeType: ['loại bằng', 'loại văn bằng'],
+      issuedOn: ['ngày cấp trên bằng', 'ngày cấp bằng', 'ngày cấp'],
+      issuePlace: ['nơi cấp trên bằng', 'nơi cấp bằng'],
+      diplomaSignerName: ['người ký trên bằng', 'họ tên người ký bằng'],
+      diplomaSignerTitle: [
+        'chức danh người ký bằng',
+        'chức danh người ký trên bằng',
+      ],
+      fullNameLatin: ['họ tên không dấu', 'họ tên trang tiếng anh'],
+      majorNameEn: ['ngành tiếng anh', 'tên ngành tiếng anh'],
+      specialization: ['chuyên ngành'],
+      signerName: ['người ký quyết định tn', 'người ký quyết định tốt nghiệp'],
+      gpa: ['gpa hệ 4'],
+    };
+    for (
+      let headerRow = 1;
+      headerRow <= Math.min(10, sheet.rowCount);
+      headerRow++
+    )
+      sheet.getRow(headerRow).eachCell((cell, column) => {
+        const text = lookupText(cell.text);
+        for (const [name, labels] of Object.entries(headers))
+          if (labels.includes(text) && !columns.has(name))
+            columns.set(name, column);
+      });
     for (let rowNumber = start; rowNumber <= sheet.rowCount; rowNumber++) {
       const row = sheet.getRow(rowNumber);
       const ordinal = row.getCell(1).text.trim();
@@ -291,6 +366,11 @@ export async function parseRegistryWorkbook(
         certificateNo: null,
         registryNo: null,
         issuedOn: null,
+        fullNameLatin: null,
+        majorNameEn: null,
+        issuePlace: null,
+        diplomaSignerName: null,
+        diplomaSignerTitle: null,
       };
       let gender = '',
         grade = '',
@@ -456,6 +536,43 @@ export async function parseRegistryWorkbook(
               : null;
         }
       }
+      for (const name of [
+        'fullNameLatin',
+        'majorNameEn',
+        'issuePlace',
+        'diplomaSignerName',
+        'diplomaSignerTitle',
+        'specialization',
+        'signerName',
+      ] as const) {
+        const column = columns.get(name);
+        if (column) data[name] = field(column, name) || null;
+      }
+      const degreeColumn = columns.get('degreeType');
+      if (degreeColumn) {
+        const value = field(degreeColumn, 'degreeType');
+        const degree = lookupText(value).replace(/^bằng\s+/, '');
+        const aliases: Record<string, DegreeType> = {
+          'kỹ sư': DegreeType.ENGINEER,
+          'cử nhân': DegreeType.BACHELOR,
+          'thạc sĩ': DegreeType.MASTER,
+          'tiến sĩ': DegreeType.DOCTOR,
+          'loại khác': DegreeType.OTHER,
+        };
+        data.degreeType = !value
+          ? null
+          : aliases[degree] || (value.toUpperCase() as DegreeType);
+      }
+      const dateColumn = columns.get('issuedOn');
+      if (dateColumn) {
+        const value = field(dateColumn, 'issuedOn');
+        data.issuedOn = value ? dateOnly(parseDateOnly(value)) || value : null;
+      }
+      const gpaColumn = columns.get('gpa');
+      if (gpaColumn) {
+        const value = field(gpaColumn, 'gpa');
+        data.gpa = value ? Number(value.replace(',', '.')) : null;
+      }
       data.dateOfBirth = dob ? dateOnly(parseDateOnly(dob)) || dob : null;
       data.decisionDate = decisionDate
         ? dateOnly(parseDateOnly(decisionDate)) || decisionDate
@@ -469,6 +586,9 @@ export async function parseRegistryWorkbook(
       data.classification = classificationFrom(grade);
       data.programId = data.programOriginal
         ? programs.get(lookupText(data.programOriginal)) || null
+        : null;
+      data.majorNameEn ||= data.programId
+        ? programNamesEn.get(data.programId) || null
         : null;
       issues.push(...validateRegistryInput(data));
       rows.push({

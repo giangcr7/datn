@@ -130,7 +130,7 @@ export default function StudentRegister() {
 
         {otpSent && (
           <Alert
-            message="Mã OTP 6 số đã được gửi tới email sinh viên của bạn. Mã có hiệu lực trong 5 phút."
+            title="Mã OTP 6 số đã được gửi tới email sinh viên của bạn. Mã có hiệu lực trong 5 phút."
             type="info"
             showIcon
             style={{ marginBottom: '20px' }}

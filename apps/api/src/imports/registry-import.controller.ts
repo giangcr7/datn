@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -18,6 +19,7 @@ import {
   RegistryImportDto,
   ReviewRegistryRowDto,
   ProgramAliasDto,
+  CommitRegistryDto,
 } from '../common/dto/registry-import.dto';
 
 @ApiTags('imports')
@@ -47,17 +49,18 @@ export class RegistryImportController {
     return this.service.list(req.user, +page, +limit);
   }
   @Get(':batchId/rows') rows(
-    @Param('batchId') batchId: string,
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
     @Req() req: any,
     @Query('page') page = '1',
     @Query('limit') limit = '20',
     @Query('status') status?: string,
+    @Query('rowId', new ParseUUIDPipe({ optional: true })) rowId?: string,
   ) {
-    return this.service.rows(batchId, req.user, +page, +limit, status);
+    return this.service.rows(batchId, req.user, +page, +limit, status, rowId);
   }
   @Patch(':batchId/rows/:rowId') review(
-    @Param('batchId') batchId: string,
-    @Param('rowId') rowId: string,
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @Param('rowId', new ParseUUIDPipe()) rowId: string,
     @Body() body: ReviewRegistryRowDto,
     @Req() req: any,
   ) {
@@ -70,10 +73,17 @@ export class RegistryImportController {
     );
   }
   @Post(':batchId/commit') commit(
-    @Param('batchId') batchId: string,
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @Body() body: CommitRegistryDto,
     @Req() req: any,
   ) {
-    return this.service.commit(batchId, req.user);
+    return this.service.commit(batchId, req.user, body.originType);
+  }
+  @Post(':batchId/recheck') recheck(
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @Req() req: any,
+  ) {
+    return this.service.recheck(batchId, req.user);
   }
   @Post('program-aliases') alias(
     @Body() body: ProgramAliasDto,

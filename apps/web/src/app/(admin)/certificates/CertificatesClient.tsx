@@ -1,6 +1,22 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  getDiplomaActions,
+  getWorkspace,
+  type WorkspaceUser,
+} from "@/lib/workspace-access";
 import { generateCertPDF } from "@/lib/generateCertPDF";
+import {
+  describeRegisterFilters,
+  emptyRegisterFilters,
+  registerDate,
+  registerHeaders,
+  registerParams,
+  registerSheetRows,
+  registerStatuses,
+  type RegisterEntry,
+  type RegisterFilters,
+} from "@/lib/diploma-register";
 import {
   Table,
   Button,
@@ -13,6 +29,12 @@ import {
   Timeline,
   Spin,
   Input,
+  Descriptions,
+  Dropdown,
+  Alert,
+  Form,
+  InputNumber,
+  Select,
 } from "antd";
 import {
   CopyOutlined,
@@ -20,21 +42,50 @@ import {
   CheckCircleFilled,
   CloseCircleFilled,
   QrcodeOutlined,
-  SearchOutlined,
+  ReloadOutlined,
+  DownloadOutlined,
+  MoreOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  FileExcelOutlined,
 } from "@ant-design/icons";
 import QRCode from "react-qr-code";
+import Link from "next/link";
+import ReplacementCreateModal from "@/components/ReplacementCreateModal";
+import { replacementEventLabels } from "@/lib/diploma-replacements";
 
 const { Text } = Typography;
+const eventLabels: Record<string, string> = {
+  ...replacementEventLabels,
+  IMPORTED_DRAFT: "Hoàn tất rà soát và lưu hồ sơ",
+  REVIEWED_ISSUE_DATE: "Đối soát ngày cấp theo hồ sơ gốc",
+  REQUESTED: "Lưu hồ sơ chờ xử lý",
+  APPROVED: "Cán bộ đã duyệt phát hành",
+  CAMPUS_PDF_SIGNED: "Cơ sở đã ký số PDF",
+  REJECTED: "Cán bộ từ chối",
+  REOPENED: "Mở lại để bổ sung",
+  CORRECTED: "Bổ sung hồ sơ sau từ chối",
+  RESUBMITTED: "Trình duyệt lại hồ sơ",
+  ANCHOR_COMMITTED: "Blockchain đã xác nhận giao dịch",
+  ANCHOR_RETRY_REQUESTED: "Yêu cầu khôi phục giao dịch blockchain",
+  REVOKED: "Thu hồi văn bằng",
+};
 
-export default function CertificatesClient({ data }: { data: any[] }) {
+export default function CertificatesClient({
+  user,
+  initialSearch = "",
+}: {
+  user: WorkspaceUser;
+  initialSearch?: string;
+}) {
+  const workspace = getWorkspace(user);
+  const [detailRecord, setDetailRecord] = useState<any>(null);
+  const [replacementRecord, setReplacementRecord] = useState<any>(null);
   const [loadingVerify, setLoadingVerify] = useState<Record<string, boolean>>(
     {},
   );
   const [qrRecord, setQrRecord] = useState<any>(null);
   const [auditRecord, setAuditRecord] = useState<any>(null);
-  const [draftRecord, setDraftRecord] = useState<any>(null);
-  const [draftIssuedOn, setDraftIssuedOn] = useState("");
-  const [submittingDraft, setSubmittingDraft] = useState(false);
   const [revokeRecord, setRevokeRecord] = useState<any>(null);
   const [revokeReason, setRevokeReason] = useState("");
   const [revoking, setRevoking] = useState(false);
@@ -42,7 +93,15 @@ export default function CertificatesClient({ data }: { data: any[] }) {
   const [auditLoading, setAuditLoading] = useState(false);
   const [certData, setCertData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(() =>
+    emptyRegisterFilters(initialSearch),
+  );
+  const [appliedFilters, setAppliedFilters] = useState(() =>
+    emptyRegisterFilters(initialSearch),
+  );
+  const [loadError, setLoadError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const requestId = useRef(0);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
@@ -50,83 +109,131 @@ export default function CertificatesClient({ data }: { data: any[] }) {
   });
 
   const exportExcel = async () => {
+    if (exporting || loading || !pagination.total) return;
+    setExporting(true);
     try {
       message.loading({ content: "Đang xuất Excel...", key: "export" });
-      const allRows: any[] = [];
+      const allRows: RegisterEntry[] = [];
       let currentPage = 1,
         totalPages = 1;
       do {
         const response = await fetch(
-          `/api/certificates?page=${currentPage}&limit=100&search=${encodeURIComponent(search)}`,
+          `/api/certificates?${registerParams(appliedFilters, currentPage, 100)}`,
+          { cache: "no-store" },
         );
         const result = await response.json();
-        if (!result.success) throw new Error(result.error);
+        if (!response.ok || !result.success)
+          throw new Error(result.error || "Không tải được dữ liệu xuất sổ");
+        if (result.pagination.total !== pagination.total)
+          throw new Error(
+            "Dữ liệu sổ vừa thay đổi. Anh làm mới danh sách rồi xuất lại.",
+          );
         allRows.push(...result.data);
         totalPages = result.pagination.totalPages;
         currentPage++;
       } while (currentPage <= totalPages);
-      const json = { data: allRows };
-
-      const XLSX = require("xlsx");
-      const rows = json.data.map((c: any, i: number) => ({
-        STT: i + 1,
-        UUID: c.uuid,
-        "Họ và tên": c.fullName,
-        MSSV: c.mssv,
-        "Ngành học": c.major,
-        GPA: c.gpa,
-        "Xếp loại": c.grade,
-        Lớp: c.className,
-        "Năm TN": c.namTotNghiep,
-        "Số hiệu": c.soHieu,
-        "Ngày cấp": c.issueDate,
-        "Trạng thái": c.status,
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(rows);
+      if (
+        allRows.length !== pagination.total ||
+        new Set(allRows.map((entry) => entry.uuid)).size !== allRows.length
+      )
+        throw new Error(
+          "Dữ liệu sổ vừa thay đổi. Anh làm mới danh sách rồi xuất lại.",
+        );
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.aoa_to_sheet(
+        registerSheetRows(allRows, appliedFilters),
+      );
+      ws["!cols"] = [
+        7, 28, 18, 14, 36, 16, 10, 18, 18, 24, 28, 14, 30, 18, 18, 24, 40,
+      ].map((width) => ({ wch: width }));
+      ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: registerHeaders.length - 1 } },
+      ];
+      ws["!autofilter"] = {
+        ref: XLSX.utils.encode_range({
+          s: { r: 5, c: 0 },
+          e: { r: allRows.length + 5, c: registerHeaders.length - 1 },
+        }),
+      };
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "DanhSachVanBang");
+      XLSX.utils.book_append_sheet(wb, ws, "SoVanBang");
       XLSX.writeFile(
         wb,
-        `VanBang_${new Date().toLocaleDateString("vi-VN").replace(/\//g, "-")}.xlsx`,
+        `SoVanBang_${new Date().toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).replace(/\//g, "-")}.xlsx`,
       );
       message.success({ content: "Xuất Excel thành công!", key: "export" });
-    } catch (err: any) {
+    } catch (error) {
       message.error({
-        content: "Lỗi xuất Excel: " + err.message,
+        content:
+          error instanceof Error
+            ? error.message
+            : "Không xuất được sổ văn bằng",
         key: "export",
       });
+    } finally {
+      setExporting(false);
     }
   };
 
-  const fetchCerts = useCallback(async (page = 1, limit = 20, q = "") => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/certificates?page=${page}&limit=${limit}&search=${encodeURIComponent(q)}`,
-      );
-      const json = await res.json();
-      if (json.success) {
+  const fetchCerts = useCallback(
+    async (page: number, limit: number, nextFilters: RegisterFilters) => {
+      const currentRequest = ++requestId.current;
+      setLoading(true);
+      setLoadError("");
+      try {
+        const res = await fetch(
+          `/api/certificates?${registerParams(nextFilters, page, limit)}`,
+          { cache: "no-store" },
+        );
+        const json = await res.json();
+        if (currentRequest !== requestId.current) return;
+        if (!res.ok || !json.success)
+          throw new Error(json.error || "Không tải được sổ văn bằng");
         setCertData(json.data);
-        setPagination((prev) => ({
-          ...prev,
+        setPagination({
           current: page,
           pageSize: limit,
           total: json.pagination.total,
-        }));
+        });
+      } catch (error) {
+        if (currentRequest !== requestId.current) return;
+        setLoadError(
+          error instanceof Error ? error.message : "Không kết nối được máy chủ",
+        );
+        setCertData([]);
+        setPagination({ current: 1, pageSize: limit, total: 0 });
+      } finally {
+        if (currentRequest === requestId.current) setLoading(false);
       }
-    } catch {
-      message.error("Lỗi tải dữ liệu!");
-    } finally {
-      setLoading(false);
-    }
+    },
+    [],
+  );
+
+  const cancelPendingFetch = useCallback(() => {
+    requestId.current++;
   }, []);
 
   useEffect(() => {
-    fetchCerts();
-  }, [fetchCerts]);
+    const initialFilters = emptyRegisterFilters(initialSearch);
+    setFilters(initialFilters);
+    setAppliedFilters(initialFilters);
+    void fetchCerts(1, 20, initialFilters);
+    return cancelPendingFetch;
+  }, [fetchCerts, initialSearch, cancelPendingFetch]);
 
-  // ✅ Tạo proof JSON đầy đủ để copy — gồm uuid + certHash để verify được
+  const applyFilters = () => {
+    if (
+      filters.issuedFrom &&
+      filters.issuedTo &&
+      filters.issuedFrom > filters.issuedTo
+    ) {
+      message.warning("Ngày cấp từ phải trước hoặc bằng ngày cấp đến");
+      return;
+    }
+    setAppliedFilters({ ...filters });
+    void fetchCerts(1, pagination.pageSize, filters);
+  };
+
   React.useEffect(() => {
     if (!auditRecord) return;
     setAuditLoading(true);
@@ -137,6 +244,7 @@ export default function CertificatesClient({ data }: { data: any[] }) {
         if (d.success) setAuditHistory(d.history);
         else message.error("Lỗi: " + d.error);
       })
+      .catch(() => message.error("Không thể tải lịch sử xử lý hồ sơ"))
       .finally(() => setAuditLoading(false));
   }, [auditRecord]);
 
@@ -160,7 +268,11 @@ export default function CertificatesClient({ data }: { data: any[] }) {
         message.success("Đã thu hồi văn bằng thành công!");
         setRevokeRecord(null);
         setRevokeReason("");
-        setTimeout(() => window.location.reload(), 1000);
+        await fetchCerts(
+          pagination.current,
+          pagination.pageSize,
+          appliedFilters,
+        );
       } else {
         message.error("Lỗi: " + data.error);
       }
@@ -170,26 +282,6 @@ export default function CertificatesClient({ data }: { data: any[] }) {
       setRevoking(false);
     }
   };
-
-  const buildProof = (record: any) =>
-    JSON.stringify(
-      record.proof || {
-        certUUID: record.uuid,
-        certHash: record.certHash,
-        fullName: record.fullName,
-        mssv: record.mssv,
-        major: record.major,
-        gpa: record.gpa,
-        grade: record.grade,
-        issueDate: record.issueDate,
-        soHieu: record.soHieu,
-        soVaoSo: record.soVaoSo,
-        className: record.className,
-        namTotNghiep: record.namTotNghiep,
-      },
-      null,
-      2,
-    );
 
   const handleVerify = async (record: any) => {
     setLoadingVerify((prev) => ({ ...prev, [record.uuid]: true }));
@@ -322,50 +414,17 @@ export default function CertificatesClient({ data }: { data: any[] }) {
     }
   };
 
-  async function submitDraft() {
-    if (!draftIssuedOn) {
-      message.warning("Cần ngày cấp thực tế đã được xác nhận");
-      return;
-    }
-    setSubmittingDraft(true);
-    try {
-      const response = await fetch(
-        "/api/cert/" + draftRecord.uuid + "/submit",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ issuedOn: draftIssuedOn }),
-        },
-      );
-      const result = await response.json();
-      if (!response.ok || !result.success)
-        throw new Error(
-          result.error || result.message || "Không gửi được bản nháp",
-        );
-      message.success(
-        "Đã gửi duyệt. Cần người khác phê duyệt trước khi neo blockchain.",
-      );
-      setDraftRecord(null);
-      setDraftIssuedOn("");
-      await fetchCerts(pagination.current, pagination.pageSize, search);
-    } catch (error: any) {
-      message.error(error.message);
-    } finally {
-      setSubmittingDraft(false);
-    }
-  }
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    ON_CHAIN: { label: "ĐÃ NEO BLOCKCHAIN", color: "green" },
-    DRAFT: { label: "BẢN NHÁP", color: "default" },
-    PENDING: { label: "CHỜ PHÊ DUYỆT", color: "blue" },
-    ANCHOR_PENDING: { label: "CHỜ FABRIC COMMIT", color: "orange" },
-    REJECTED: { label: "ĐÃ TỪ CHỐI", color: "red" },
-    REVOKED: { label: "ĐÃ THU HỒI", color: "red" },
-    REPLACED: { label: "ĐÃ THAY THẾ", color: "purple" },
-  };
+  const statusLabels = registerStatuses;
 
   const columns = [
-    { title: "Sinh viên", dataIndex: "fullName", key: "fullName", width: 180 },
+    {
+      title: "STT",
+      key: "index",
+      width: 65,
+      render: (_value: unknown, _record: unknown, index: number) =>
+        (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
+    { title: "Họ và tên", dataIndex: "fullName", key: "fullName", width: 180 },
     {
       title: "MSSV",
       dataIndex: "mssv",
@@ -374,19 +433,28 @@ export default function CertificatesClient({ data }: { data: any[] }) {
       render: (v: string) => v || <i style={{ color: "#bbb" }}>—</i>,
     },
     { title: "Ngành đào tạo", dataIndex: "major", key: "major" },
-    { title: "Xếp loại", dataIndex: "grade", key: "grade", width: 130 },
     {
-      title: "Mã Hash (On-chain)",
-      dataIndex: "certHash",
-      key: "certHash",
-      width: 160,
-      render: (hash: string) => (
-        <Tooltip title={hash}>
-          <Text code style={{ fontSize: 11 }}>
-            {hash?.substring(0, 12)}...
-          </Text>
-        </Tooltip>
-      ),
+      title: "Năm tốt nghiệp",
+      dataIndex: "namTotNghiep",
+      key: "namTotNghiep",
+      width: 110,
+    },
+    { title: "Xếp loại", dataIndex: "grade", key: "grade", width: 130 },
+    { title: "Số hiệu", dataIndex: "soHieu", key: "soHieu", width: 180 },
+    { title: "Số vào sổ", dataIndex: "soVaoSo", key: "soVaoSo", width: 180 },
+    {
+      title: "Ngày cấp",
+      dataIndex: "issueDate",
+      key: "issueDate",
+      width: 110,
+      render: (value: string | null) => registerDate(value) || "Chưa có",
+    },
+    {
+      title: "Quyết định tốt nghiệp",
+      dataIndex: "decisionNo",
+      key: "decisionNo",
+      width: 180,
+      render: (value: string | null) => value || "—",
     },
     {
       title: "Trạng thái",
@@ -400,118 +468,296 @@ export default function CertificatesClient({ data }: { data: any[] }) {
       ),
     },
     {
-      title: "Hành động",
+      title: "Thao tác",
       key: "action",
       width: 200,
-      render: (_: any, record: any) => (
-        <Space wrap>
-          {record.status === "DRAFT" && (
-            <Button
-              size="small"
-              type="primary"
-              onClick={() => {
-                setDraftRecord(record);
-                setDraftIssuedOn(record.issueDate || "");
-              }}
-            >
-              Gửi duyệt
-            </Button>
-          )}
-          <Button
-            type="primary"
-            icon={<SafetyCertificateOutlined />}
-            onClick={() => handleVerify(record)}
-            loading={loadingVerify[record.uuid]}
-            size="small"
-          >
-            Verify
-          </Button>
-          {/* ✅ Copy PROOF JSON đầy đủ thay vì chỉ copy hash */}
-          <Tooltip title="Copy chuỗi Proof JSON để gửi cho người cần xác thực">
-            <Button
-              icon={<CopyOutlined />}
-              size="small"
-              onClick={() => {
-                navigator.clipboard.writeText(buildProof(record));
-                message.success(
-                  "Đã copy Proof JSON! Dán vào trang Xác thực để kiểm định.",
-                );
-              }}
-            >
-              Copy Proof
-            </Button>
-          </Tooltip>
-          <Tooltip title="Hiển thị QR Code để quét xác thực">
-            <Button
-              icon={<QrcodeOutlined />}
-              size="small"
-              onClick={() => setQrRecord(record)}
-            >
-              QR Code
-            </Button>
-          </Tooltip>
-          <Tooltip title="Tải PDF văn bằng số có QR Code">
-            <Button
-              size="small"
-              onClick={async () => {
-                const url = `${window.location.origin}/verify?proof=${encodeURIComponent(buildProof(record))}`;
-                await generateCertPDF(record, url);
-              }}
-            >
-              PDF
-            </Button>
-          </Tooltip>
-          <Tooltip title="Xem lịch sử sự kiện được lưu trong PostgreSQL">
-            <Button size="small" onClick={() => setAuditRecord(record)}>
-              Audit
-            </Button>
-          </Tooltip>
-          {record.documentStatus === "ACTIVE" && (
-            <Tooltip title="Thu hồi văn bằng này">
+      render: (_: any, record: any) => {
+        const actions = getDiplomaActions(user, record);
+        const items = [
+          {
+            key: "detail",
+            icon: <EyeOutlined />,
+            label: "Chi tiết",
+            onClick: () => setDetailRecord(record),
+          },
+          ...(actions.share
+            ? [
+                {
+                  key: "qr",
+                  icon: <QrcodeOutlined />,
+                  label: "Mã QR xác thực",
+                  onClick: () => setQrRecord(record),
+                },
+              ]
+            : []),
+          ...(actions.history
+            ? [
+                {
+                  key: "history",
+                  icon: <HistoryOutlined />,
+                  label: "Lịch sử xử lý",
+                  onClick: () => setAuditRecord(record),
+                },
+              ]
+            : []),
+          ...(actions.revoke
+            ? [
+                {
+                  key: "revoke",
+                  danger: true,
+                  label: "Thu hồi văn bằng",
+                  onClick: () => {
+                    setRevokeRecord(record);
+                    setRevokeReason("");
+                  },
+                },
+              ]
+            : []),
+          ...(actions.replace
+            ? [
+                {
+                  key: "replacement",
+                  label: "Sửa sai và phát hành thay thế",
+                  onClick: () => setReplacementRecord(record),
+                },
+              ]
+            : []),
+          ...(record.replacement && workspace.kind === "approver"
+            ? [
+                {
+                  key: "replacement-file",
+                  label: "Xem hồ sơ thay thế",
+                  onClick: () => {
+                    window.location.href =
+                      "/pending?view=replacements&stage=" +
+                      record.replacement.workflowStatus;
+                  },
+                },
+              ]
+            : []),
+        ];
+        return (
+          <Space>
+            {actions.verify && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<SafetyCertificateOutlined />}
+                loading={loadingVerify[record.uuid]}
+                onClick={() => handleVerify(record)}
+              >
+                Xác thực
+              </Button>
+            )}
+            {actions.share && (
+              <Tooltip
+                title={
+                  record.signedPdfAvailable
+                    ? "Tải PDF đã ký số"
+                    : "Chưa có PDF phát hành"
+                }
+              >
+                <Button
+                  size="small"
+                  aria-label="Tải PDF đã ký số"
+                  icon={<DownloadOutlined />}
+                  disabled={!record.signedPdfAvailable}
+                  onClick={async () => {
+                    try {
+                      await generateCertPDF(record);
+                    } catch (error) {
+                      message.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Không tải được PDF",
+                      );
+                    }
+                  }}
+                />
+              </Tooltip>
+            )}
+            <Dropdown menu={{ items }} trigger={["click"]}>
               <Button
                 size="small"
-                danger
-                onClick={() => {
-                  setRevokeRecord(record);
-                  setRevokeReason("");
-                }}
-              >
-                Thu hồi
-              </Button>
-            </Tooltip>
-          )}
-        </Space>
-      ),
+                aria-label="Thao tác khác"
+                title="Thao tác khác"
+                icon={<MoreOutlined />}
+              />
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 
   const verifyUrl = qrRecord
-    ? `${window.location.origin}/verify?proof=${encodeURIComponent(buildProof(qrRecord))}`
+    ? window.location.origin +
+      "/verify?proof=" +
+      encodeURIComponent(JSON.stringify({ uuid: qrRecord.uuid }))
     : "";
 
   return (
     <>
-      <Modal
-        open={!!draftRecord}
-        title="Gửi bản nháp đi phê duyệt"
-        onCancel={() => setDraftRecord(null)}
-        onOk={submitDraft}
-        okText="Gửi duyệt"
-        cancelText="Hủy"
-        confirmLoading={submittingDraft}
-      >
-        <p className="mb-3">
-          {draftRecord?.fullName} — {draftRecord?.soHieu}
-        </p>
-        <p className="mb-2">
-          Ngày cấp thực tế theo hồ sơ (không dùng ngày quyết định để suy đoán):
-        </p>
-        <Input
-          type="date"
-          value={draftIssuedOn}
-          onChange={(event) => setDraftIssuedOn(event.target.value)}
-          max={new Date().toISOString().slice(0, 10)}
+      {workspace.kind === "approver" && (
+        <div className="mb-4">
+          <Link href="/pending?view=replacements">
+            Quản lý hồ sơ sửa sai và phát hành thay thế
+          </Link>
+        </div>
+      )}
+      {replacementRecord && (
+        <ReplacementCreateModal
+          source={replacementRecord}
+          onClose={() => setReplacementRecord(null)}
         />
+      )}
+      <Modal
+        open={!!detailRecord}
+        onCancel={() => setDetailRecord(null)}
+        footer={null}
+        title="Chi tiết hồ sơ văn bằng"
+        width={720}
+      >
+        {detailRecord && (
+          <>
+            {detailRecord.replaces && (
+              <Alert
+                className="mb-4"
+                type="info"
+                showIcon
+                title={
+                  "Văn bằng thay thế cho số hiệu " +
+                  detailRecord.replaces.certificateNo
+                }
+              />
+            )}
+            {detailRecord.replacement && (
+              <Alert
+                className="mb-4"
+                type="warning"
+                showIcon
+                title={"Có hồ sơ thay thế: " + detailRecord.replacement.soHieu}
+                description={
+                  detailRecord.replacement.committed
+                    ? "Văn bằng thay thế đã được ghi nhận. Bản cũ không còn hiệu lực."
+                    : detailRecord.status === "REPLACED"
+                      ? "Bản cũ đã ngừng hiệu lực. Văn bằng thay thế đang chờ đồng bộ."
+                      : "Hồ sơ thay thế đang được xử lý; bản cũ chưa tự ngừng hiệu lực."
+                }
+              />
+            )}
+            <Descriptions
+              column={1}
+              bordered
+              size="small"
+              items={[
+                {
+                  key: "student",
+                  label: "Sinh viên",
+                  children: detailRecord.fullName,
+                },
+                {
+                  key: "mssv",
+                  label: "Mã sinh viên",
+                  children: detailRecord.mssv,
+                },
+                {
+                  key: "dob",
+                  label: "Ngày sinh",
+                  children: registerDate(detailRecord.dob) || "—",
+                },
+                {
+                  key: "campus",
+                  label: "Cơ sở lập hồ sơ",
+                  children: detailRecord.campusName || detailRecord.org,
+                },
+                {
+                  key: "issuer",
+                  label: "Đơn vị phát hành",
+                  children: detailRecord.issuingCampusName || "Chưa phát hành",
+                },
+                {
+                  key: "major",
+                  label: "Ngành đào tạo",
+                  children: detailRecord.major,
+                },
+                {
+                  key: "gpa",
+                  label: "GPA",
+                  children: detailRecord.gpa ?? "Nguồn không có",
+                },
+                {
+                  key: "grade",
+                  label: "Xếp loại",
+                  children: detailRecord.grade || "—",
+                },
+                {
+                  key: "year",
+                  label: "Năm tốt nghiệp",
+                  children: detailRecord.namTotNghiep,
+                },
+                {
+                  key: "number",
+                  label: "Số hiệu văn bằng",
+                  children: detailRecord.soHieu,
+                },
+                {
+                  key: "registry",
+                  label: "Số vào sổ",
+                  children: detailRecord.soVaoSo,
+                },
+                {
+                  key: "date",
+                  label: "Ngày cấp",
+                  children:
+                    registerDate(detailRecord.issueDate) || "Chưa xác nhận",
+                },
+                {
+                  key: "decision",
+                  label: "Quyết định tốt nghiệp",
+                  children:
+                    [
+                      detailRecord.decisionNo,
+                      registerDate(detailRecord.decisionDate),
+                    ]
+                      .filter(Boolean)
+                      .join(" — ") || "—",
+                },
+                {
+                  key: "revocation",
+                  label: "Thông tin thu hồi",
+                  children:
+                    detailRecord.status === "REVOKED"
+                      ? detailRecord.revokedReason || "—"
+                      : "Không có",
+                },
+                {
+                  key: "status",
+                  label: "Trạng thái",
+                  children:
+                    statusLabels[detailRecord.status]?.label ||
+                    detailRecord.status,
+                },
+                {
+                  key: "reason",
+                  label: "Lý do thu hồi",
+                  children: detailRecord.revokedReason || "—",
+                },
+                {
+                  key: "transaction",
+                  label: "Giao dịch blockchain",
+                  children: detailRecord.txId ? (
+                    <Text copyable style={{ wordBreak: "break-all" }}>
+                      {detailRecord.txId}
+                    </Text>
+                  ) : (
+                    "Chưa có giao dịch được xác nhận"
+                  ),
+                },
+              ]}
+            />
+          </>
+        )}
       </Modal>
       <Modal
         open={!!qrRecord}
@@ -546,41 +792,181 @@ export default function CertificatesClient({ data }: { data: any[] }) {
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
             <Typography.Title level={2}>
-              KHO LƯU TRỮ VĂN BẰNG & KIỂM ĐỊNH
+              {
+                workspace.links.find((link) => link.path === "/certificates")
+                  ?.label
+              }
             </Typography.Title>
             <Typography.Text type="secondary">
-              Nhấn <strong>Verify</strong> để đối soát trực tiếp. Nhấn{" "}
-              <strong>Copy Proof</strong> để lấy chuỗi minh chứng gửi cho bên
-              thứ ba xác thực.
+              {workspace.kind === "admin"
+                ? "Danh sách văn bằng đã phát hành và lịch sử xử lý."
+                : workspace.kind === "approver"
+                  ? "Quản lý văn bằng đã phát hành, tải PDF ký số, xem lịch sử và thu hồi khi cần. Hồ sơ chưa phát hành được xử lý tại Hồ sơ cấp văn bằng."
+                  : "Văn bằng đã phát hành của cơ sở."}
             </Typography.Text>
           </div>
-          <div className="mb-4">
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder="Tìm theo tên, MSSV, số hiệu..."
-              allowClear
-              size="large"
-              style={{ maxWidth: 400 }}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onPressEnter={() => fetchCerts(1, pagination.pageSize, search)}
-              onClear={() => {
-                setSearch("");
-                fetchCerts(1, pagination.pageSize, "");
-              }}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              className="ml-2"
-              onClick={() => fetchCerts(1, pagination.pageSize, search)}
-            >
-              Tìm kiếm
-            </Button>
-            <Button className="ml-2" onClick={exportExcel}>
-              📥 Xuất Excel
-            </Button>
+          <Form layout="vertical" onFinish={applyFilters} disabled={exporting}>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-4">
+              <Form.Item label="Tra cứu văn bằng" htmlFor="register-search">
+                <Input
+                  id="register-search"
+                  placeholder="Họ tên, MSSV, số hiệu, số vào sổ"
+                  allowClear
+                  maxLength={255}
+                  value={filters.search}
+                  onChange={(event) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      search: event.target.value,
+                    }))
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Năm tốt nghiệp" htmlFor="register-year">
+                <InputNumber
+                  id="register-year"
+                  placeholder="Tất cả năm"
+                  min={1900}
+                  max={2200}
+                  precision={0}
+                  style={{ width: "100%" }}
+                  value={filters.year ? Number(filters.year) : null}
+                  onChange={(value) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      year: value == null ? "" : String(value),
+                    }))
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Ngành đào tạo" htmlFor="register-major">
+                <Input
+                  id="register-major"
+                  placeholder="Nhập tên ngành"
+                  allowClear
+                  maxLength={255}
+                  value={filters.major}
+                  onChange={(event) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      major: event.target.value,
+                    }))
+                  }
+                />
+              </Form.Item>
+              <Form.Item
+                label="Quyết định tốt nghiệp"
+                htmlFor="register-decision"
+              >
+                <Input
+                  id="register-decision"
+                  placeholder="Nhập số quyết định"
+                  allowClear
+                  maxLength={120}
+                  value={filters.decision}
+                  onChange={(event) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      decision: event.target.value,
+                    }))
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Trạng thái văn bằng" htmlFor="register-status">
+                <Select
+                  id="register-status"
+                  placeholder="Tất cả trạng thái"
+                  allowClear
+                  value={filters.status || undefined}
+                  options={Object.entries(registerStatuses).map(
+                    ([value, status]) => ({ value, label: status.label }),
+                  )}
+                  onChange={(value) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      status: value || "",
+                    }))
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Ngày cấp từ" htmlFor="register-issued-from">
+                <Input
+                  id="register-issued-from"
+                  type="date"
+                  value={filters.issuedFrom}
+                  onChange={(event) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      issuedFrom: event.target.value,
+                    }))
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Ngày cấp đến" htmlFor="register-issued-to">
+                <Input
+                  id="register-issued-to"
+                  type="date"
+                  value={filters.issuedTo}
+                  onChange={(event) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      issuedTo: event.target.value,
+                    }))
+                  }
+                />
+              </Form.Item>
+            </div>
+            <Space wrap className="mb-4">
+              <Button type="primary" htmlType="submit" loading={loading}>
+                Tra cứu
+              </Button>
+              <Button
+                onClick={() => {
+                  const cleared = emptyRegisterFilters();
+                  setFilters(cleared);
+                  setAppliedFilters(cleared);
+                  void fetchCerts(1, pagination.pageSize, cleared);
+                }}
+              >
+                Xóa bộ lọc
+              </Button>
+            </Space>
+          </Form>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Typography.Text type="secondary" className="flex-1">
+              {describeRegisterFilters(appliedFilters)} · {pagination.total} văn
+              bằng
+            </Typography.Text>
+            <Tooltip title="Xuất toàn bộ kết quả theo bộ lọc đang áp dụng">
+              <Button
+                icon={<FileExcelOutlined />}
+                aria-label="Xuất Excel"
+                onClick={exportExcel}
+                loading={exporting}
+                disabled={loading || !pagination.total || !!loadError}
+              >
+                Xuất Excel
+              </Button>
+            </Tooltip>
+            <Tooltip title="Làm mới">
+              <Button
+                icon={<ReloadOutlined />}
+                aria-label="Làm mới"
+                loading={loading}
+                disabled={exporting}
+                onClick={() =>
+                  fetchCerts(
+                    pagination.current,
+                    pagination.pageSize,
+                    appliedFilters,
+                  )
+                }
+              />
+            </Tooltip>
           </div>
+          {loadError && (
+            <Alert type="error" showIcon title={loadError} className="mb-4" />
+          )}
           <Table
             dataSource={certData}
             columns={columns}
@@ -588,14 +974,22 @@ export default function CertificatesClient({ data }: { data: any[] }) {
             bordered
             size="small"
             loading={loading}
+            scroll={{ x: 1900 }}
+            locale={{
+              emptyText: loadError
+                ? "Chưa tải được sổ văn bằng"
+                : "Không có văn bằng phù hợp. Hồ sơ chưa phát hành được xử lý tại Hồ sơ cấp văn bằng.",
+            }}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
               total: pagination.total,
               showSizeChanger: true,
+              disabled: exporting,
               pageSizeOptions: ["10", "20", "50", "100"],
               showTotal: (total) => `Tổng ${total} văn bằng`,
-              onChange: (page, pageSize) => fetchCerts(page, pageSize, search),
+              onChange: (page, pageSize) =>
+                fetchCerts(page, pageSize, appliedFilters),
             }}
             rowClassName={(record) =>
               record.status === "REVOKED"
@@ -653,7 +1047,7 @@ export default function CertificatesClient({ data }: { data: any[] }) {
           setAuditHistory([]);
         }}
         footer={null}
-        title={auditRecord ? `Audit Trail — ${auditRecord.fullName}` : ""}
+        title={auditRecord ? "Lịch sử xử lý — " + auditRecord.fullName : ""}
         width={700}
         centered
       >
@@ -664,36 +1058,41 @@ export default function CertificatesClient({ data }: { data: any[] }) {
         ) : (
           <div className="p-4">
             <Timeline
-              items={auditHistory.map((h, i) => ({
-                color: i === 0 ? "green" : "blue",
+              items={auditHistory.map((event, index) => ({
+                color:
+                  event.eventType === "REJECTED" ||
+                  event.eventType === "REVOKED"
+                    ? "red"
+                    : "blue",
                 children: (
-                  <div key={h.txId}>
+                  <div key={event.id || index}>
                     <div className="font-bold text-sm">
-                      {i === 0
-                        ? "✅ Giao dịch mới nhất"
-                        : `Giao dịch #${auditHistory.length - i}`}
+                      {eventLabels[event.eventType] || event.eventType}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      TxID: <code>{h.txId}</code>
-                    </div>
-                    <div className="text-xs text-gray-500">
                       Thời gian:{" "}
-                      {h.timestamp
-                        ? new Date(h.timestamp.seconds * 1000).toLocaleString(
-                            "vi-VN",
-                          )
-                        : "N/A"}
+                      {event.timestamp
+                        ? new Date(event.timestamp).toLocaleString("vi-VN")
+                        : "—"}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      Thao tác: {h.isDelete ? "🗑️ Xóa" : "📝 Ghi"}
-                    </div>
+                    {event.reason && (
+                      <div className="text-sm mt-1">Lý do: {event.reason}</div>
+                    )}
+                    {event.txId && (
+                      <div
+                        className="text-xs text-gray-500 mt-1"
+                        style={{ wordBreak: "break-all" }}
+                      >
+                        TxID: <code>{event.txId}</code>
+                      </div>
+                    )}
                   </div>
                 ),
               }))}
             />
             {auditHistory.length === 0 && !auditLoading && (
               <div className="text-center text-gray-400 py-4">
-                Không có lịch sử giao dịch
+                Chưa có sự kiện xử lý hồ sơ
               </div>
             )}
           </div>

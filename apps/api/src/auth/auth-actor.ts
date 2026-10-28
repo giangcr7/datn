@@ -7,6 +7,9 @@ export interface AuthActor {
   institutionId: string;
   campusId: string;
   org: string;
+  campusName: string;
+  isHeadquarters: boolean;
+  canApproveDiplomas: boolean;
   studentId: string | null;
   mssv: string | null;
   sessionVersion: number;

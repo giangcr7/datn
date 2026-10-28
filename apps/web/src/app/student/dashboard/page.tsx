@@ -46,7 +46,7 @@ export default async function StudentDashboardPage() {
     type: cert.diplomaType || "Văn bằng tốt nghiệp",
     major: cert.major,
     issueDate: cert.issueDate,
-    certNo: cert.certNo || cert.uuid,
+    certNo: cert.soHieu || cert.certNo || cert.uuid,
     txId: cert.txId,
     fullName: cert.fullName,
     mssv: cert.mssv,
@@ -57,7 +57,8 @@ export default async function StudentDashboardPage() {
     className: cert.className,
     namTotNghiep: cert.namTotNghiep,
     certHash: cert.certHash,
-    proof: cert.proof,
+    signedPdfAvailable: cert.signedPdfAvailable,
+    pdfSigningMode: cert.pdfSigningMode,
   }));
 
   // 5. Truyền dữ liệu tĩnh xuống giao diện Client

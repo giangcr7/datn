@@ -13,7 +13,7 @@
 | Bảng                 | Trường quan trọng                                           | Trường ít thiết yếu/optional                               | Ghi chú                                               |
 | -------------------- | ----------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
 | institutions         | id, code, name                                              | created_at                                                 | Một trường có thể có nhiều cơ sở                      |
-| campuses             | id, institution_id, code                                    | name, fabric_msp_id                                        | code ORG1/ORG2 là mapping legacy; MSP cần unique      |
+| campuses             | id, institution_id, code, is_headquarters                    | name, fabric_msp_id                                        | Hà Nội/ORG1 là trụ sở; tối đa một trụ sở mỗi trường; MSP cần unique |
 | programs             | id, institution_id, code, name                              | national_code, active                                      | Tên Excel không dùng trực tiếp làm khóa               |
 | program_aliases      | normalized_name, program_id, approved_by_id                 | original_name                                              | Bắt buộc duyệt alias typo/viết hoa                    |
 | academic_classes     | campus_id, code                                             | cohort_code                                                | Lớp là thuộc tính enrollment, không đặt trong Student |
@@ -21,7 +21,7 @@
 | enrollments          | student_id, program_id, campus_id                           | class_id, start/end year, cohort                           | Cho phép sinh viên có nhiều quá trình học             |
 | graduation_decisions | document_number, decision_year                              | signed_on, signer_name, source_document_id                 | Quyết định tái sử dụng cho nhiều graduation record    |
 | graduation_records   | student_id, program_id, graduation_year                     | GPA, classification, degree_type, specialization           | Có thể tồn tại dù chưa có Diploma                     |
-| diplomas             | graduation_id, certificate_no, registry_no, workflow/status | issued_on, replacement/revocation fields                   | Chỉ tạo khi có đủ cặp số; unique theo institution     |
+| diplomas             | graduation_id, campus_id, issuing_campus_id, certificate_no, registry_no, workflow/status | issued_on, replacement/revocation fields | campus_id giữ cơ sở nguồn; issuing_campus_id là trụ sở phát hành sau duyệt; cặp số unique theo institution |
 | diploma_versions     | diploma_id, version, schema_version, payload, payload_hash  | created_by_id                                              | Snapshot bất biến để xác thực                         |
 | diploma_events       | diploma_id, event_type, actor_id                            | reason, metadata                                           | Append-only event history                             |
 | blockchain_anchors   | version_id, event_type, status, payload_hash                | tx/block/MSP/error                                         | Chỉ là index kết quả anchor, không thay thế chain     |
@@ -41,11 +41,18 @@
 | Bảng                | Trường quan trọng                             | Quy tắc                                       |
 | ------------------- | --------------------------------------------- | --------------------------------------------- |
 | accounts            | email, password_hash, active, session_version | Không lưu mật khẩu plaintext; email lowercase |
-| account_memberships | account_id, campus_id, role, active           | Quyền có phạm vi campus                       |
+| account_memberships | account_id, campus_id, role, active, can_approve_diplomas | Chỉ university tại trụ sở có capability mới duyệt; admin không duyệt thay |
 | refresh_sessions    | token_hash, family_id, expires_at, revoked_at | Rotation và reuse detection                   |
 | otp_challenges      | account_id, code_hash, expires_at, attempts   | Hash OTP; tối đa 5 lần                        |
 | audit_logs          | actor, action, result, target, metadata       | Append-only, không log secret/OTP             |
 | integrity_alerts    | diploma_id, type, db/fabric hash              | Unique alert đang mở                          |
+
+## Trường điều khiển luồng HCM → Hà Nội
+
+- campuses.is_headquarters: đánh dấu cơ sở trụ sở chính; Hà Nội/ORG1 có giá trị true, HCM/ORG2 là false.
+- account_memberships.can_approve_diplomas: quyền nghiệp vụ trên membership đang hoạt động. Quyền này phải đi cùng role university tại trụ sở, không suy từ tên tài khoản hay role admin.
+- diplomas.campus_id: cơ sở lập và quản lý hồ sơ nguồn, vẫn giữ HCM/ORG2 sau phê duyệt.
+- diplomas.issuing_campus_id: cơ sở có thẩm quyền phát hành; được gắn với Hà Nội/ORG1 khi phê duyệt. Snapshot và anchor sử dụng MSP của cơ sở phát hành, không dùng MSP của cơ sở nguồn.
 
 ## Mapping Excel → model
 
@@ -92,6 +99,7 @@ Quyền theo campus
 | role | Role | Có |  |
 | active | boolean | Có |  |
 | created_at | timestamptz(3) | Có |  |
+| can_approve_diplomas | boolean | Có |  |
 
 ### accounts
 
@@ -161,6 +169,7 @@ Cơ sở và mapping MSP
 | name | varchar(255) | Có |  |
 | fabric_msp_id | varchar(100) | Không |  |
 | created_at | timestamptz(3) | Có |  |
+| is_headquarters | boolean | Có |  |
 
 ### diploma_events
 
@@ -175,6 +184,28 @@ Lịch sử nghiệp vụ append-only
 | reason | text | Không |  |
 | metadata | jsonb | Không |  |
 | created_at | timestamptz(3) | Có |  |
+
+### diploma_pdf_signatures
+
+Hai chữ ký cơ sở/trụ sở và chứng thư đã dùng
+
+| Cột | Kiểu | Bắt buộc | Khóa |
+|---|---|---|---|
+| id | uuid | Có | PK |
+| document_id | uuid | Có | FK |
+| signature_order | integer | Có |  |
+| field_name | varchar(80) | Có |  |
+| actor_id | uuid | Có | FK |
+| campus_id | uuid | Có | FK |
+| signer_name | varchar(255) | Có |  |
+| certificate_sha256 | char(64) | Có |  |
+| certificate_serial | varchar(255) | Có |  |
+| certificate_subject | text | Có |  |
+| certificate_issuer | text | Có |  |
+| valid_from | timestamptz(3) | Có |  |
+| valid_to | timestamptz(3) | Có |  |
+| signed_at | timestamptz(3) | Có |  |
+| validation_evidence | jsonb | Không |  |
 
 ### diploma_versions
 
@@ -216,6 +247,14 @@ Văn bằng và vòng đời pháp lý
 | revoked_at | timestamptz(3) | Không |  |
 | created_at | timestamptz(3) | Có |  |
 | updated_at | timestamptz(3) | Có |  |
+| issuing_campus_id | uuid | Không | FK |
+| print_template | varchar(60) | Không |  |
+| full_name_latin | varchar(255) | Không |  |
+| major_name_en | varchar(255) | Không |  |
+| issue_place | varchar(120) | Không |  |
+| diploma_signer_name | varchar(255) | Không |  |
+| diploma_signer_title | varchar(120) | Không |  |
+| origin_type | varchar(20) | Có |  |
 
 ### enrollments
 
@@ -315,6 +354,7 @@ Trường/đơn vị quản lý
 | code | varchar(40) | Có |  |
 | name | varchar(255) | Có |  |
 | created_at | timestamptz(3) | Có |  |
+| name_en | varchar(255) | Không |  |
 
 ### integrity_alerts
 
@@ -405,6 +445,7 @@ Danh mục ngành
 | national_code | varchar(30) | Không |  |
 | active | boolean | Có |  |
 | created_at | timestamptz(3) | Có |  |
+| name_en | varchar(255) | Không |  |
 
 ### refresh_sessions
 
@@ -423,6 +464,26 @@ Refresh-token rotation theo family
 | ip | varchar(100) | Không |  |
 | user_agent | varchar(500) | Không |  |
 | created_at | timestamptz(3) | Có |  |
+
+### signed_diploma_documents
+
+PDF ký số theo phiên bản; khóa lưu trữ và SHA-256
+
+| Cột | Kiểu | Bắt buộc | Khóa |
+|---|---|---|---|
+| id | uuid | Có | PK |
+| diploma_id | uuid | Có | FK |
+| version | integer | Có |  |
+| version_id | uuid | Không | FK |
+| payload_hash | char(64) | Có |  |
+| signing_mode | varchar(20) | Có |  |
+| origin_pdf_key | varchar(500) | Có |  |
+| origin_pdf_hash | char(64) | Có |  |
+| signed_pdf_key | varchar(500) | Không |  |
+| signed_pdf_hash | char(64) | Không |  |
+| byte_size | integer | Có |  |
+| created_at | timestamptz(3) | Có |  |
+| completed_at | timestamptz(3) | Không |  |
 
 ### source_documents
 

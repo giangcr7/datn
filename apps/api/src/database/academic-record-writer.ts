@@ -35,6 +35,7 @@ export async function writeAcademicRecord(
   input: AcademicInput,
   sourceRowId?: string,
   sourceDocumentId?: string,
+  options: { createStudent?: boolean } = {},
 ) {
   const program = await transaction.program.findFirst({
     where: { id: input.programId, institutionId: scope.institutionId },
@@ -50,7 +51,7 @@ export async function writeAcademicRecord(
       },
     },
   });
-  if (!student)
+  if (!student && options.createStudent !== false)
     student = await transaction.student.create({
       data: {
         institutionId: scope.institutionId,
@@ -63,6 +64,10 @@ export async function writeAcademicRecord(
         nationality: input.nationality,
       },
     });
+  if (!student)
+    throw new BadRequestException(
+      'MSSV chưa có hồ sơ sinh viên; hãy nhập hồ sơ trước khi ghi quá trình học',
+    );
   await transaction.$queryRaw`SELECT id FROM students WHERE id = ${student.id}::uuid FOR UPDATE`;
   if (
     lookupText(student.fullName) !== lookupText(input.fullName) ||
@@ -161,12 +166,36 @@ export async function writeAcademicRecord(
       throw new ConflictException('Hồ sơ tốt nghiệp đã tồn tại từ nguồn khác');
     if (
       existing.classification !== (input.classification || null) ||
+      (input.degreeType &&
+        existing.degreeType &&
+        existing.degreeType !== input.degreeType) ||
       (existing.gpa === null ? null : Number(existing.gpa)) !==
         (input.gpa ?? null)
     )
       throw new ConflictException(
         'Kết quả tốt nghiệp mâu thuẫn với hồ sơ đã lưu',
       );
+    if (input.degreeType && !existing.degreeType) {
+      if (
+        await transaction.diploma.findFirst({
+          where: {
+            graduationId: existing.id,
+            OR: [
+              { workflowStatus: { not: 'DRAFT' } },
+              { signedDocuments: { some: {} } },
+            ],
+          },
+          select: { id: true },
+        })
+      )
+        throw new ConflictException(
+          'Loại bằng đã gắn với hồ sơ có chữ ký, không sửa ngược',
+        );
+      return transaction.graduationRecord.update({
+        where: { id: existing.id },
+        data: { degreeType: input.degreeType },
+      });
+    }
     return existing;
   }
   return transaction.graduationRecord.create({

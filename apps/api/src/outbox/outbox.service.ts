@@ -3,7 +3,7 @@ import { Interval } from '@nestjs/schedule';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import { FabricService } from '../fabric/fabric.service';
-import { OutboxEvent } from '../generated/prisma/client';
+import { OUTBOX_MAX_ATTEMPTS } from './outbox-policy';
 
 @Injectable()
 export class OutboxService {
@@ -34,16 +34,43 @@ export class OutboxService {
   }
   async processOne() {
     const lockToken = randomUUID();
-    const claimed = await this.database.$queryRaw<{ id: string }[]>`
+    const claimed = await this.database.$queryRaw<
+      { id: string; status: string }[]
+    >`
       WITH candidate AS (
-        SELECT id FROM outbox_events
-        WHERE (status = 'PENDING' AND available_at <= now()) OR (status = 'PROCESSING' AND locked_until < now())
-        ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1
-      )
-      UPDATE outbox_events SET status = 'PROCESSING', attempts = attempts + 1, locked_until = now() + interval '5 minutes', lock_token = ${lockToken}::uuid
-      WHERE id IN (SELECT id FROM candidate) RETURNING id
+        SELECT candidate_event.id FROM outbox_events candidate_event
+        WHERE ((candidate_event.status = 'PENDING' AND candidate_event.available_at <= now()) OR (candidate_event.status = 'PROCESSING' AND candidate_event.locked_until < now()))
+          AND (candidate_event.event_type <> 'REVOKE' OR EXISTS (SELECT 1 FROM blockchain_anchors issue_anchor
+            WHERE issue_anchor.version_id = candidate_event.version_id AND issue_anchor.event_type = 'ISSUE' AND issue_anchor.status = 'COMMITTED'))
+          AND (candidate_event.event_type <> 'ISSUE' OR NOT EXISTS (
+            SELECT 1 FROM diploma_versions candidate_version JOIN diplomas replacement ON replacement.id = candidate_version.diploma_id
+            WHERE candidate_version.id = candidate_event.version_id AND replacement.supersedes_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM diploma_versions previous_version
+                JOIN outbox_events revoke_event ON revoke_event.version_id = previous_version.id
+                JOIN blockchain_anchors revoke_anchor ON revoke_anchor.version_id = previous_version.id AND revoke_anchor.event_type = 'REVOKE'
+                WHERE previous_version.diploma_id = replacement.supersedes_id
+                  AND previous_version.version = (replacement.replacement_data->>'previousVersion')::integer
+                  AND revoke_event.event_type = 'REVOKE' AND revoke_event.status = 'COMPLETED' AND revoke_anchor.status = 'COMMITTED')
+          ))
+        ORDER BY candidate_event.created_at FOR UPDATE OF candidate_event SKIP LOCKED LIMIT 1
+      ), claimed AS (
+        UPDATE outbox_events SET
+          status = (CASE WHEN attempts >= ${OUTBOX_MAX_ATTEMPTS} THEN 'FAILED' ELSE 'PROCESSING' END)::"OutboxStatus",
+          attempts = CASE WHEN attempts >= ${OUTBOX_MAX_ATTEMPTS} THEN attempts ELSE attempts + 1 END,
+          locked_until = CASE WHEN attempts >= ${OUTBOX_MAX_ATTEMPTS} THEN NULL ELSE now() + interval '5 minutes' END,
+          lock_token = CASE WHEN attempts >= ${OUTBOX_MAX_ATTEMPTS} THEN NULL ELSE ${lockToken}::uuid END,
+          last_error = CASE WHEN attempts >= ${OUTBOX_MAX_ATTEMPTS}
+            THEN 'Worker lease expired after the final allowed attempt; commit status unknown. Previous error: ' || COALESCE(last_error, 'none') ELSE last_error END
+        WHERE id IN (SELECT id FROM candidate) RETURNING id, version_id, event_type, status, last_error
+      ), exhausted_anchors AS (
+        UPDATE blockchain_anchors anchor SET status = 'FAILED', last_error = claimed.last_error
+        FROM claimed WHERE claimed.status = 'FAILED' AND anchor.version_id = claimed.version_id
+          AND anchor.event_type = claimed.event_type AND anchor.status <> 'COMMITTED'
+        RETURNING anchor.id
+      ) SELECT id, status FROM claimed
     `;
     if (!claimed[0]) return false;
+    if (claimed[0].status === 'FAILED') return true;
     const event = await this.database.outboxEvent.findUniqueOrThrow({
       where: { id: claimed[0].id },
       include: { version: true },
@@ -68,9 +95,15 @@ export class OutboxService {
           : [payload.reasonHash!]),
       );
       if (!response.payload) throw new Error('Fabric không trả payload');
-      const result = JSON.parse(response.payload);
+      const result = JSON.parse(response.payload) as {
+        success?: boolean;
+        txId?: string;
+        hash?: string;
+        idempotent?: boolean;
+      };
       if (
-        !result.success ||
+        result?.success !== true ||
+        typeof result.txId !== 'string' ||
         !result.txId ||
         (event.eventType === 'ISSUE' &&
           result.hash !== event.version.payloadHash)
@@ -99,7 +132,7 @@ export class OutboxService {
             status: 'COMMITTED',
             transactionId: result.txId,
             blockNumber:
-              result.idempotent || !response.blockNumber
+              result.idempotent === true || !response.blockNumber
                 ? null
                 : BigInt(response.blockNumber),
             committedAt: new Date(),
@@ -127,7 +160,8 @@ export class OutboxService {
         const changed = await transaction.outboxEvent.updateMany({
           where: { id: event.id, lockToken, status: 'PROCESSING' },
           data: {
-            status: event.attempts >= 10 ? 'FAILED' : 'PENDING',
+            status:
+              event.attempts >= OUTBOX_MAX_ATTEMPTS ? 'FAILED' : 'PENDING',
             availableAt: new Date(
               Date.now() +
                 Math.min(3600000, 10000 * 2 ** Math.min(event.attempts, 10)),
