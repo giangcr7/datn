@@ -1,11 +1,11 @@
 // src/app/(admin)/users/UserTable.tsx
 "use client";
 
-import React, { useState } from "react";
-import { Table, Typography, Input, Tag, Row, Col } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import PageTitle from "@/components/PageTitle";
 
-const { Title } = Typography;
+import React, { useState } from "react";
+import { Table, Input, Tag, Row, Col } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 
 interface UserData {
   key: string;
@@ -79,14 +79,8 @@ export default function UserTable({ data }: UserTableProps) {
   ];
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 max-w-6xl mx-auto">
-      <Title
-        level={3}
-        className="text-center mb-8"
-        style={{ color: "#1890ff" }}
-      >
-        DANH SÁCH TÀI KHOẢN HỆ THỐNG
-      </Title>
+    <div>
+      <PageTitle>Tài khoản hệ thống</PageTitle>
 
       <Row justify="space-between" align="middle" className="mb-6">
         <Col>
@@ -95,7 +89,7 @@ export default function UserTable({ data }: UserTableProps) {
             placeholder="Tìm kiếm theo tên hoặc email..."
             prefix={<SearchOutlined className="text-gray-400" />}
             size="large"
-            style={{ width: 350 }}
+            style={{ width: "100%", maxWidth: 350 }}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             allowClear

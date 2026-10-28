@@ -1,4 +1,6 @@
 "use client";
+
+import PageTitle from "@/components/PageTitle";
 import DiplomaWorkflowWorkspace from "@/components/DiplomaWorkflowWorkspace";
 import type { WorkspaceUser } from "@/lib/workspace-access";
 import { Tabs } from "antd";
@@ -19,7 +21,8 @@ export default function PendingClient({
 }) {
   const router = useRouter();
   return (
-    <div className="p-2 md:p-4">
+    <div className="workspace-page">
+      <PageTitle>Duyệt và xử lý hồ sơ</PageTitle>
       <Tabs
         activeKey={view}
         onChange={(value) => router.replace("/pending?view=" + value)}

@@ -1,5 +1,7 @@
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -149,8 +151,8 @@ export default function CatalogClient() {
   );
 
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto">
-      <Typography.Title level={2}>Danh mục</Typography.Title>
+    <div className="workspace-page">
+      <PageTitle>Danh mục</PageTitle>
       <Typography.Paragraph type="secondary">
         Quản lý ngành đào tạo và các tên ngành được chấp thuận khi nhập dữ liệu
         cấp văn bằng.

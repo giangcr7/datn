@@ -1,4 +1,6 @@
 "use client";
+
+import PageTitle from "@/components/PageTitle";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Table,
@@ -13,7 +15,7 @@ import {
 import { FileExcelOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function StudentsClient({
   initialData,
@@ -110,12 +112,10 @@ export default function StudentsClient({
   ];
 
   return (
-    <div className="p-8 bg-white min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="workspace-page">
+      <div className="min-w-0">
         <div className="flex flex-wrap justify-between items-center gap-3 mb-6 border-b pb-4">
-          <Title level={2} style={{ margin: 0 }}>
-            Hồ sơ sinh viên của cơ sở
-          </Title>
+          <PageTitle>Hồ sơ sinh viên của cơ sở</PageTitle>
           <Space>
             <Button
               icon={<FileExcelOutlined />}

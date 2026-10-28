@@ -1,4 +1,6 @@
 "use client";
+
+import PageTitle from "@/components/PageTitle";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   getDiplomaActions,
@@ -597,7 +599,7 @@ export default function CertificatesClient({
     : "";
 
   return (
-    <>
+    <div className="workspace-page">
       {workspace.kind === "approver" && (
         <div className="mb-4">
           <Link href="/pending?view=replacements">
@@ -788,15 +790,15 @@ export default function CertificatesClient({
           </div>
         )}
       </Modal>
-      <div className="p-8 bg-white min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-w-0">
+        <div className="min-w-0">
           <div className="mb-6">
-            <Typography.Title level={2}>
+            <PageTitle>
               {
                 workspace.links.find((link) => link.path === "/certificates")
                   ?.label
               }
-            </Typography.Title>
+            </PageTitle>
             <Typography.Text type="secondary">
               {workspace.kind === "admin"
                 ? "Danh sách văn bằng đã phát hành và lịch sử xử lý."
@@ -1098,6 +1100,6 @@ export default function CertificatesClient({
           </div>
         )}
       </Modal>
-    </>
+    </div>
   );
 }

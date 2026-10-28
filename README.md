@@ -29,6 +29,14 @@ Trang chủ theo bố cục cổng thông tin giáo dục: đầu trang nhận d
 
 Kiểm thử trang chủ và CSS: `node scripts/test-homepage.mjs`. Để kiểm tra thêm HTTP/CSS trên web đang chạy local, đặt `HOMEPAGE_TEST_BASE_URL=http://localhost:3000` trước khi chạy lệnh; không có thao tác ghi database hoặc blockchain.
 
+## Giao diện thống nhất
+
+- Các trang công khai, đăng nhập, kích hoạt và đổi mật khẩu dùng chung đầu trang, điều hướng và chân trang theo mẫu trang chủ. Không sao chép thêm logo/đầu trang vào từng màn hình.
+- Bảng màu đặt tại `apps/web/src/lib/school-theme.ts`; root layout xuất các biến `--school-*`, Ant Design dùng cùng bộ theme. CSS chung tại `apps/web/src/styles`; nền sáng, xanh nhà trường, điểm nhấn vàng, khối trắng có viền và góc bo nhỏ. Không thay màu cảnh báo, lỗi hay trạng thái nghiệp vụ thành màu thương hiệu.
+- Màn hình nghiệp vụ dùng `workspace-page` và `PageTitle`; nội dung tab con dùng `workspace-section` và tiêu đề cấp hai. Giữ nguyên menu theo quyền, luồng phê duyệt, tra cứu và xác thực. Tailwind được cấu hình qua PostCSS để các lớp bố cục thực sự có CSS; không nạp Preflight nhằm giữ mẫu trang chủ đã duyệt.
+- Kiểm tra theme, các trang, menu và CSS responsive: `node scripts/test-university-ui.mjs`. Kiểm tra biên dịch HTTP cho các màn hình công khai/cán bộ/sinh viên: `node scripts/test-university-ui-web.mjs` (bản web riêng trong OS temp, phiên đăng nhập giả lập và backend chỉ đọc; tự dừng/dọn trong finally, không dùng env hay dữ liệu thật). Đây không thay thế kiểm tra hình ảnh bằng trình duyệt.
+- Nếu đang chạy bản production, thay đổi mã nguồn chưa tự cập nhật giao diện. Chỉ build lại và khởi động lại Web sau khi dừng phiên chạy hiện tại theo quy trình; không ghi đè `apps/web/.next` khi Web đang hoạt động.
+
 ## Tra cứu văn bằng trong kho
 
 - Trang `/search` có tiêu đề giữa, nền xanh nhạt, ô nhập và nút tra cứu xanh theo nhận diện nhà trường. Hiển thị đủ 14 trường trong ba nhóm: người được cấp (họ tên, ngày sinh, MSSV); đào tạo (lớp, ngành, trình độ, năm tốt nghiệp, xếp loại, điểm trung bình); văn bằng (số hiệu, số vào sổ, ngày cấp, số và ngày quyết định). Không thêm ô CCCD khi kho chưa có dữ liệu đối chiếu.

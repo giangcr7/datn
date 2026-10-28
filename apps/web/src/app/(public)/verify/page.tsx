@@ -2,17 +2,17 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { Alert, Button, Spin, Tabs, Typography, Upload, message } from "antd";
 import { CameraOutlined, InboxOutlined } from "@ant-design/icons";
 import type { IScannerControls } from "@zxing/browser";
+import styles from "@/styles/public-pages.module.css";
 import DiplomaVerificationResult from "@/components/DiplomaVerificationResult";
 import {
   parseDiplomaQr,
   type DiplomaVerification,
 } from "@/lib/public-verification";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Dragger } = Upload;
 
 function VerifyContent() {
@@ -158,30 +158,13 @@ function VerifyContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4">
-      <div className="max-w-3xl w-full bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-blue-100">
-        <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-blue-50">
-          <Image
-            src="/logo-tlu.png"
-            alt="Trường Đại học Thủy lợi"
-            width={64}
-            height={64}
-            style={{ width: 64, height: 64, objectFit: "contain" }}
-          />
-          <div>
-            <Title
-              level={3}
-              style={{ margin: 0, color: "#002140", fontWeight: "bold" }}
-            >
-              TRƯỜNG ĐẠI HỌC THỦY LỢI
-            </Title>
-            <Text style={{ color: "#003b93", fontWeight: 600, fontSize: 14 }}>
-              CỔNG XÁC THỰC VĂN BẰNG TỐT NGHIỆP
-            </Text>
-          </div>
-        </div>
-
-        <Spin spinning={loading} tip="Đang xác thực văn bằng...">
+    <div className={styles.content}>
+      <section className={styles.introduction} aria-labelledby="verify-title">
+        <h1 id="verify-title">Xác thực văn bằng</h1>
+        <p>Kiểm tra văn bằng tốt nghiệp bằng tệp PDF hoặc mã QR được cấp.</p>
+      </section>
+      <div className={styles.panel}>
+        <Spin spinning={loading} description="Đang xác thực văn bằng...">
           <Tabs
             activeKey={activeTab}
             onChange={(key) => {
@@ -217,7 +200,7 @@ function VerifyContent() {
                   <div>
                     <video
                       ref={videoRef}
-                      className="w-full rounded-lg"
+                      className={styles.camera}
                       autoPlay
                       muted
                       playsInline
@@ -251,7 +234,7 @@ function VerifyContent() {
           />
 
           {verification && (
-            <div className="mt-8 pt-8 border-t">
+            <div className={styles.result}>
               <DiplomaVerificationResult verification={verification} />
             </div>
           )}
@@ -272,7 +255,13 @@ function VerifyContent() {
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Đang tải...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-8 text-center" role="status">
+          Đang tải...
+        </div>
+      }
+    >
       <VerifyContent />
     </Suspense>
   );

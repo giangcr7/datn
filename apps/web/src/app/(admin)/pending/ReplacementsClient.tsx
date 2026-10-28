@@ -1,4 +1,6 @@
 "use client";
+
+import PageTitle from "@/components/PageTitle";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -179,10 +181,8 @@ export default function ReplacementsClient({
     }
   }
   return (
-    <div>
-      <Typography.Title level={3}>
-        Sửa sai và phát hành văn bằng thay thế
-      </Typography.Title>
+    <div className="workspace-section">
+      <PageTitle level={2}>Sửa sai và phát hành văn bằng thay thế</PageTitle>
       <Alert
         type="info"
         showIcon

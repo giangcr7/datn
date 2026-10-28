@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createWebLoader } from "./lib/web-component-loader.mjs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -274,14 +275,20 @@ const Page = compile(page, {
   "@/lib/diploma-lookup": helpers,
   "./page.module.css": { __esModule: true, default: names },
 }).default;
-const html = renderToStaticMarkup(React.createElement(Page));
+const Shell = createWebLoader({
+  "next/navigation": { usePathname: () => "/search" },
+})("app/(public)/PublicShell.tsx").default;
+const html = renderToStaticMarkup(
+  React.createElement(Shell, null, React.createElement(Page)),
+);
 check(
   "the reference subtitle is preserved",
   html.includes("Vui lòng nhập thông tin để tra cứu"),
 );
 check(
-  "the reference uses the school's blue, not its red palette",
-  css.includes("--lookup-blue: #003b93") && css.includes("background: #f2f6fb"),
+  "lookup uses school blue and the shared page background",
+  css.includes("--lookup-blue: var(--school-primary, #003b93)") &&
+    !css.includes("background: #f2f6fb"),
 );
 check(
   "reference title is centered",

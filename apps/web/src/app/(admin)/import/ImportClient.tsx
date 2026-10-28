@@ -1,4 +1,6 @@
 "use client";
+
+import PageTitle from "@/components/PageTitle";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -232,8 +234,8 @@ export default function ImportClient({
   const selectedBatch = batches.find((batch) => batch.id === batchId);
   const batchSummary = selectedBatch?.reviewSummary;
   return (
-    <div className="p-6 space-y-5">
-      <Typography.Title level={3}>Kiểm tra dữ liệu</Typography.Title>
+    <div className="workspace-page space-y-5">
+      <PageTitle>Kiểm tra dữ liệu</PageTitle>
       <section className="border-t border-gray-200 py-4">
         <Typography.Title level={4}>Nhập file Excel</Typography.Title>
         <Space wrap>

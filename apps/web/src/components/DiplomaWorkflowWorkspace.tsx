@@ -1,5 +1,7 @@
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -436,16 +438,20 @@ export default function DiplomaWorkflowWorkspace({
       : "");
 
   return (
-    <div className="p-6 space-y-5">
+    <div
+      className={
+        (prepare ? "workspace-page" : "workspace-section") + " space-y-5"
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Typography.Title level={3}>
+          <PageTitle level={prepare ? 1 : 2}>
             {prepare
               ? "Duyệt và phát hành văn bằng"
               : canApprove
                 ? "Hồ sơ chờ xử lý nội bộ"
                 : "Theo dõi hồ sơ nội bộ"}
-          </Typography.Title>
+          </PageTitle>
         </div>
         <Space wrap>
           {prepare && (

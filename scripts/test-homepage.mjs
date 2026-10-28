@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import React from "react";
+import { createWebLoader } from "./lib/web-component-loader.mjs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { transform } from "lightningcss";
 import postcss from "postcss";
@@ -12,7 +13,10 @@ const pageUrl = new URL("../apps/web/src/app/page.tsx", import.meta.url);
 const [source, stylesheet] = await Promise.all([
   readFile(pageUrl, "utf8"),
   readFile(
-    new URL("../apps/web/src/app/page.module.css", import.meta.url),
+    new URL(
+      "../apps/web/src/styles/university-portal.module.css",
+      import.meta.url,
+    ),
     "utf8",
   ),
 ]);
@@ -42,9 +46,11 @@ const pageRequire = createRequire(import.meta.url);
 const pageModule = { exports: {} };
 new Function("require", "module", "exports", compiled.outputText)(
   (specifier) =>
-    specifier === "./page.module.css"
+    specifier === "@/styles/university-portal.module.css"
       ? { __esModule: true, default: styleNames }
-      : pageRequire(specifier),
+      : specifier === "@/components/UniversityChrome"
+        ? createWebLoader()("components/UniversityChrome.tsx")
+        : pageRequire(specifier),
   pageModule,
   pageModule.exports,
 );

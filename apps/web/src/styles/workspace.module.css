@@ -1,0 +1,159 @@
+.shell {
+  min-height: 100vh;
+  color: var(--school-ink);
+  background: var(--school-background);
+}
+
+.skipLink {
+  position: fixed;
+  z-index: 1100;
+  top: 8px;
+  left: 16px;
+  padding: 10px 16px;
+  color: var(--school-primary);
+  background: #ffffff;
+  transform: translateY(-180%);
+}
+
+.skipLink:focus {
+  transform: translateY(0);
+}
+
+.shell .sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 100vh;
+  overflow-y: auto;
+  border-top: 3px solid var(--school-primary);
+  border-inline-end: 1px solid var(--school-border);
+  background: #ffffff;
+}
+
+.sidebarTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 18px;
+  border-bottom: 1px solid var(--school-border);
+  color: var(--school-primary);
+  text-decoration: none;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.sidebarTitle img {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.scope {
+  margin: 16px 16px 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--school-border);
+  color: var(--school-muted);
+  font-size: 12px;
+}
+
+.scope p {
+  margin: 6px 0 0;
+}
+
+.sidebar .menu {
+  border-inline-end: 0;
+  background: transparent;
+}
+
+.shell .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  height: auto;
+  min-height: 80px;
+  padding: 12px 24px;
+  border-bottom: 3px solid var(--school-gold);
+  background: #ffffff;
+  line-height: 1.5;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.content {
+  min-width: 0;
+  background: var(--school-background);
+}
+
+.header .account {
+  height: auto;
+  padding: 6px 8px;
+}
+
+.scrim {
+  position: fixed;
+  z-index: 99;
+  inset: 0;
+  border: 0;
+  background: #16345966;
+}
+
+.studentHeader {
+  background: #ffffff;
+}
+
+.studentNav {
+  border-bottom: 3px solid var(--school-gold);
+  background: var(--school-primary);
+}
+
+.studentNav .studentMenu {
+  max-width: 1120px;
+  min-width: 0;
+  margin-inline: auto;
+  border-bottom: 0;
+  background: transparent;
+  line-height: 48px;
+}
+
+.studentMenu :global(.ant-menu-item-danger) {
+  color: #ffffff;
+}
+
+.studentMenu :global(.ant-menu-item-danger:hover) {
+  background: #002d70;
+}
+
+@media (max-width: 991px) {
+  .shell .sidebar {
+    position: fixed;
+    inset-inline-start: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell .header {
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  .identity {
+    gap: 4px;
+  }
+  .publicAction {
+    display: none;
+  }
+  .studentNav .studentMenu {
+    line-height: 44px;
+  }
+}

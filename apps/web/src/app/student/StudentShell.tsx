@@ -5,13 +5,19 @@ import { Layout, Menu } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
+  UniversityMasthead,
+  UniversityFooter,
+} from "@/components/UniversityChrome";
+import styles from "@/styles/workspace.module.css";
+import portalStyles from "@/styles/university-portal.module.css";
+import {
   DashboardOutlined,
   LogoutOutlined,
   UserOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 
-const { Header, Content } = Layout;
+const { Content } = Layout;
 
 export default function StudentShell({
   children,
@@ -57,75 +63,27 @@ export default function StudentShell({
   };
 
   return (
-    <Layout className="min-h-screen">
-      {/* HEADER CHO SINH VIÊN */}
-      <Header
-        style={{
-          background: "linear-gradient(135deg, #001a38 0%, #003b93 100%)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 24px",
-          boxShadow: "0 2px 8px rgba(0, 33, 64, 0.2)",
-          zIndex: 10,
-        }}
-      >
-        {/* Tên hệ thống phía Sinh viên */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            marginRight: 20,
-          }}
-        >
-          <img
-            src="/logo-tlu.png"
-            alt="Đại học Thủy Lợi"
-            style={{
-              width: 38,
-              height: 38,
-              objectFit: "contain",
-              background: "#fff",
-              borderRadius: "50%",
-              padding: 2,
-            }}
+    <Layout className={styles.shell + " " + portalStyles.page} id="dau-trang">
+      <a className={styles.skipLink} href="#student-content">
+        Chuyển đến nội dung chính
+      </a>
+      <header className={styles.studentHeader}>
+        <UniversityMasthead />
+        <nav className={styles.studentNav} aria-label="Điều hướng sinh viên">
+          <Menu
+            theme="dark"
+            mode="horizontal"
+            selectedKeys={[pathname]}
+            items={menuItems}
+            onClick={handleMenuClick}
+            className={styles.studentMenu}
           />
-          <div className="hidden lg:block">
-            <div
-              style={{
-                color: "#fff",
-                fontWeight: "bold",
-                fontSize: 16,
-                lineHeight: 1.2,
-              }}
-            >
-              TRƯỜNG ĐẠI HỌC THỦY LỢI
-            </div>
-            <div style={{ color: "#91caff", fontSize: 11, fontWeight: 500 }}>
-              CỔNG THÔNG TIN VĂN BẰNG SINH VIÊN
-            </div>
-          </div>
-        </div>
-
-        {/* Menu Điều hướng */}
-        <Menu
-          theme="dark"
-          mode="horizontal"
-          selectedKeys={[pathname]}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{
-            background: "transparent",
-            borderBottom: 0,
-            minWidth: 0,
-            flex: 1,
-            justifyContent: "flex-end",
-          }}
-        />
-      </Header>
-
-      {/* NỘI DUNG CHÍNH (Thay thế cho <Outlet />) */}
-      <Content className="bg-gray-50">{children}</Content>
+        </nav>
+      </header>
+      <Content id="student-content" tabIndex={-1} className={styles.content}>
+        {children}
+      </Content>
+      <UniversityFooter />
     </Layout>
   );
 }

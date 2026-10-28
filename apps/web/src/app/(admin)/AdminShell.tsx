@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   Layout,
   Menu,
-  Typography,
   Dropdown,
   Avatar,
   Tag,
@@ -35,6 +34,9 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
+import { UniversityBrand } from "@/components/UniversityChrome";
+import styles from "@/styles/workspace.module.css";
 import {
   canAccessWorkspacePath,
   getWorkspace,
@@ -42,7 +44,6 @@ import {
 } from "@/lib/workspace-access";
 
 const { Header, Sider, Content } = Layout;
-const { Text } = Typography;
 const navigationIcons: Record<string, React.ReactNode> = {
   "/diploma-records": <FolderOpenOutlined />,
   "/catalog": <AppstoreOutlined />,
@@ -65,6 +66,7 @@ export default function AdminShell({
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobile, setMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const workspace = getWorkspace(user);
@@ -117,112 +119,74 @@ export default function AdminShell({
   ];
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout className={styles.shell}>
+      <a className={styles.skipLink} href="#workspace-content">
+        Chuyển đến nội dung chính
+      </a>
+      {mobile && !collapsed && (
+        <button
+          className={styles.scrim}
+          aria-label="Đóng menu"
+          onClick={() => setCollapsed(true)}
+        />
+      )}
       <Sider
         collapsed={collapsed}
         onCollapse={setCollapsed}
+        onBreakpoint={setMobile}
         breakpoint="lg"
-        collapsedWidth={72}
+        collapsedWidth={mobile ? 0 : 72}
         width={272}
-        style={{
-          background: "#001a38",
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          overflowY: "auto",
-          zIndex: 100,
-        }}
+        className={styles.sidebar}
       >
         <Link
           href="/dashboard"
-          style={{
-            height: 80,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: collapsed ? 16 : 20,
-            borderBottom: "1px solid #ffffff1f",
-          }}
+          className={styles.sidebarTitle}
+          aria-label="Tổng quan quản lý văn bằng"
         >
-          <img
+          <Image
             src="/logo-tlu.png"
             alt="Đại học Thủy Lợi"
-            style={{
-              width: 40,
-              height: 40,
-              padding: 3,
-              background: "#fff",
-              borderRadius: "50%",
-            }}
+            width={36}
+            height={36}
           />
-          {!collapsed && (
-            <div style={{ lineHeight: 1.5 }}>
-              <Text strong style={{ color: "#fff", fontSize: 15 }}>
-                DIPLOMACHAIN
-              </Text>
-              <div style={{ color: "#91caff", fontSize: 11 }}>
-                ĐẠI HỌC THỦY LỢI
-              </div>
-            </div>
-          )}
+          {!collapsed && <span>QUẢN LÝ VĂN BẰNG</span>}
         </Link>
         {!collapsed && (
-          <div
-            style={{
-              margin: "20px 16px 12px",
-              padding: 14,
-              borderRadius: 10,
-              background: "#ffffff0d",
-              border: "1px solid #ffffff1a",
-            }}
-          >
-            <Tag color={workspace.color} style={{ marginBottom: 8 }}>
-              {workspace.roleLabel}
-            </Tag>
-            <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>
-              {user.campusName || "Toàn hệ thống"}
-            </div>
+          <div className={styles.scope}>
+            <Tag color={workspace.color}>{workspace.roleLabel}</Tag>
+            <p>{user.campusName || "Toàn hệ thống"}</p>
           </div>
         )}
         <Menu
-          theme="dark"
           mode="inline"
           selectedKeys={[pathname]}
           defaultOpenKeys={["group:/diploma-records"]}
           items={menuItems}
-          onClick={({ key }) => router.push(key)}
-          style={{
-            background: "transparent",
-            marginTop: 12,
-            borderInlineEnd: 0,
+          onClick={({ key }) => {
+            router.push(key);
+            if (mobile) setCollapsed(true);
           }}
+          className={styles.menu}
         />
       </Sider>
       <Layout style={{ minWidth: 0 }}>
-        <Header
-          style={{
-            background: "#fff",
-            padding: "0 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            position: "sticky",
-            top: 0,
-            zIndex: 90,
-            borderBottom: "1px solid #e5eaf0",
-          }}
-        >
-          <Space>
+        <Header className={styles.header}>
+          <div className={styles.identity}>
             <Button
               aria-label={collapsed ? "Mở menu" : "Thu gọn menu"}
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
             />
-          </Space>
-          <Space size="middle">
-            <Link href="/verify" target="_blank" className="hidden md:inline">
+            <UniversityBrand compact />
+          </div>
+          <Space size="middle" wrap>
+            <Link
+              href="/verify"
+              target="_blank"
+              className={styles.publicAction}
+            >
               <Button
                 aria-label="Xác thực công khai"
                 title="Xác thực công khai"
@@ -236,11 +200,11 @@ export default function AdminShell({
                 aria-label={user.name || user.email || "Người dùng"}
                 title={user.name || user.email || "Người dùng"}
                 type="text"
-                style={{ height: "auto", padding: "6px 8px" }}
+                className={styles.account}
               >
                 <Avatar
                   size="small"
-                  style={{ background: workspace.color }}
+                  style={{ background: "var(--school-primary)" }}
                   icon={<UserOutlined />}
                 />
                 <span>Tài khoản</span>
@@ -249,7 +213,9 @@ export default function AdminShell({
           </Space>
         </Header>
         <Content
-          style={{ background: "#f3f6fa", minHeight: "calc(100vh - 64px)" }}
+          id="workspace-content"
+          tabIndex={-1}
+          className={styles.content}
         >
           {canAccessWorkspacePath(user, pathname) ? (
             children

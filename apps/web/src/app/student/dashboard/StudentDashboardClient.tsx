@@ -1,6 +1,8 @@
 // src/app/(student)/dashboard/StudentDashboardClient.tsx
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import {
@@ -15,11 +17,11 @@ import {
   Empty,
   Tag,
 } from "antd";
-import { SafetyCertificateOutlined, ShareAltOutlined } from "@ant-design/icons";
+import { ShareAltOutlined } from "@ant-design/icons";
 import QRCode from "react-qr-code";
 import { generateCertPDF } from "@/lib/generateCertPDF";
 
-const { Text, Title, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 interface CertificateData {
   uuid: string;
@@ -67,29 +69,25 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <Title level={3} style={{ color: "#1890ff", margin: 0 }}>
-            <SafetyCertificateOutlined className="mr-2" />
-            Quản lý Văn bằng Cá nhân
-          </Title>
+    <div className="workspace-page">
+      <div className="min-w-0">
+        <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+          <PageTitle>Văn bằng của tôi</PageTitle>
           <Button onClick={() => router.push("/student/profile")}>
-            👤 Tài khoản
+            Tài khoản
           </Button>
         </div>
 
         {initialCertificates.length === 0 ? (
           <Empty
             description="Không tìm thấy văn bằng nào đã được cấp phát"
-            className="mt-20 bg-white p-12 rounded-lg shadow-sm border border-gray-200"
+            className="mt-6 bg-white p-6 border border-gray-200"
           />
         ) : (
           initialCertificates.map((cert) => (
             <Card
               key={cert.uuid}
-              hoverable
-              className="mb-6 rounded-xl border border-gray-200 shadow-sm"
+              className="mb-6"
               styles={{ body: { padding: "24px" } }}
             >
               <Row gutter={[24, 24]}>
@@ -100,7 +98,7 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
                   >
                     MÃ ĐỊNH DANH (UUID)
                   </Text>
-                  <div className="font-mono text-blue-600 text-lg">
+                  <div className="font-mono break-all text-base">
                     {cert.uuid}
                   </div>
                 </Col>
@@ -226,14 +224,13 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
                         }
                       }}
                     >
-                      📄 Tải PDF ký số
+                      Tải PDF ký số
                     </Button>
                     <Button
                       type="primary"
                       size="large"
                       icon={<ShareAltOutlined />}
                       onClick={() => setSelectedCert(cert)}
-                      className="rounded-md bg-blue-600 font-medium"
                     >
                       Chia sẻ văn bằng
                     </Button>
@@ -257,7 +254,6 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
             key="copy"
             type="primary"
             onClick={handleCopyVerificationLink}
-            className="bg-blue-600"
           >
             Sao chép liên kết xác thực
           </Button>,

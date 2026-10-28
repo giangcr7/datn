@@ -1,12 +1,10 @@
 .page {
-  --lookup-blue: #003b93;
-  --lookup-navy: #163459;
-  --lookup-muted: #59697a;
-  --lookup-border: #d9e0e8;
-  --lookup-gold: #bc9850;
-  min-height: 100vh;
+  --lookup-blue: var(--school-primary, #003b93);
+  --lookup-navy: var(--school-navy, #163459);
+  --lookup-muted: var(--school-muted, #59697a);
+  --lookup-border: var(--school-border, #d9e0e8);
+  --lookup-gold: var(--school-gold, #bc9850);
   color: #25384c;
-  background: #f2f6fb;
   font-family: "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.7;
@@ -41,82 +39,6 @@
   width: min(1120px, calc(100% - 64px));
   margin-inline: auto;
 }
-.skipLink {
-  position: absolute;
-  z-index: 10;
-  top: 8px;
-  left: 20px;
-  padding: 10px 16px;
-  background: #fff;
-  transform: translateY(-180%);
-}
-.skipLink:focus {
-  transform: translateY(0);
-}
-.header {
-  background: #fff;
-}
-.utility {
-  padding: 7px 24px;
-  border-top: 3px solid var(--lookup-blue);
-  border-bottom: 1px solid #e8edf3;
-  color: var(--lookup-muted);
-  background: #f6f8fb;
-  font-size: 11px;
-  text-align: center;
-}
-.masthead {
-  padding-block: 22px;
-}
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 18px;
-}
-.brand img {
-  flex-shrink: 0;
-  object-fit: contain;
-}
-.brand > span {
-  display: grid;
-  gap: 5px;
-  color: #25384c;
-}
-.brand strong {
-  color: var(--lookup-blue);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 25px;
-  line-height: 1.4;
-}
-.brand > span > span {
-  font-size: 14px;
-}
-.navigation {
-  border-bottom: 3px solid var(--lookup-gold);
-  background: var(--lookup-blue);
-}
-.navigation > div {
-  display: flex;
-  flex-wrap: wrap;
-}
-.navigation a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 11px 24px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-}
-.navigation a:hover,
-.navigation a[aria-current="page"] {
-  background: #002d70;
-  text-decoration: none;
-}
-.navigation a:last-child {
-  margin-left: auto;
-}
 .main {
   padding-block: 20px 42px;
 }
@@ -134,20 +56,30 @@
 .introduction h1 {
   color: var(--lookup-navy);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 36px;
+  font-size: 30px;
+  font-weight: 700;
   line-height: 1.4;
+  text-transform: uppercase;
+}
+.introduction h1::after {
+  display: block;
+  width: 50px;
+  height: 2px;
+  margin: 15px auto;
+  background: var(--lookup-gold);
+  content: "";
 }
 .introduction p {
-  margin-top: 13px;
-  color: var(--lookup-blue);
-  font-size: 19px;
-  font-weight: 600;
+  color: var(--lookup-muted);
+  font-size: 15px;
+  line-height: 1.75;
 }
 .form {
   padding: 28px 30px;
   border: 1px solid var(--lookup-border);
-  border-radius: 6px;
-  background: #f8fbff;
+  border-top: 3px solid var(--lookup-blue);
+  border-radius: 3px;
+  background: #ffffff;
 }
 .formHeading {
   display: flex;
@@ -412,63 +344,18 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.footer {
-  padding-block: 24px;
-  border-top: 3px solid var(--lookup-gold);
-  color: #fff;
-  background: var(--lookup-navy);
-}
-.footer > div {
-  display: grid;
-  gap: 4px;
-}
-.footer strong {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 16px;
-}
-.footer span {
-  color: #dbe4ee;
-  font-size: 12px;
-}
 @media (max-width: 900px) {
   .fields,
   .resultDetails {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .navigation a {
-    padding-inline: 16px;
   }
 }
 @media (max-width: 640px) {
   .container {
     width: calc(100% - 32px);
   }
-  .masthead {
-    padding-block: 18px;
-  }
-  .brand {
-    gap: 12px;
-  }
-  .brand img {
-    width: 48px;
-    height: 48px;
-  }
-  .brand strong {
-    font-size: 18px;
-  }
-  .brand > span > span {
-    font-size: 12px;
-  }
-  .navigation a {
-    flex: 1 1 50%;
-    padding-inline: 7px;
-    font-size: 12px;
-  }
-  .navigation a:last-child {
-    margin-left: 0;
-  }
   .introduction h1 {
-    font-size: 26px;
+    font-size: 25px;
   }
   .form {
     padding: 20px 18px;

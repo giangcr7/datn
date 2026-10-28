@@ -1,5 +1,7 @@
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -165,8 +167,8 @@ export default function CorrectionsClient({
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-5">
-      <Typography.Title level={3}>Hồ sơ bị từ chối và bổ sung</Typography.Title>
+    <div className="workspace-section space-y-5">
+      <PageTitle level={2}>Hồ sơ bị từ chối và bổ sung</PageTitle>
       <Alert
         showIcon
         type="info"

@@ -1,11 +1,9 @@
 "use client";
 import React, { useState } from "react";
-import { Card, Form, Input, Button, Typography, Alert } from "antd";
-import { LockOutlined } from "@ant-design/icons";
+import { Form, Input, Button, Alert } from "antd";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-
-const { Title, Text } = Typography;
+import styles from "@/styles/public-pages.module.css";
 
 function ChangePasswordContent() {
   const [loading, setLoading] = useState(false);
@@ -47,44 +45,69 @@ function ChangePasswordContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card style={{ width: 440, borderRadius: 12 }}>
-        <div className="text-center mb-6">
-          <LockOutlined style={{ fontSize: 40, color: "#0056b3" }} />
-          <Title level={3} style={{ marginTop: 12, marginBottom: 4 }}>Đổi Mật Khẩu</Title>
-          <Text type="secondary">Vui lòng đổi mật khẩu để kích hoạt tài khoản</Text>
-        </div>
-
+    <div className={styles.content}>
+      <section className={styles.introduction} aria-labelledby="password-title">
+        <h1 id="password-title">Đổi mật khẩu</h1>
+        <p>Cập nhật mật khẩu để bảo vệ tài khoản truy cập hệ thống.</p>
+      </section>
+      <div className={styles.accountPanel}>
         {success && (
-          <Alert title="Đổi mật khẩu thành công! Đang chuyển hướng..." type="success" showIcon className="mb-4" />
+          <Alert
+            title="Đổi mật khẩu thành công! Đang chuyển hướng..."
+            type="success"
+            showIcon
+            className="mb-4"
+          />
         )}
         {error && (
           <Alert title={error} type="error" showIcon className="mb-4" />
         )}
 
         <Form layout="vertical" onFinish={handleSubmit}>
-          <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: "Vui lòng nhập mật khẩu hiện tại!" }]}>
-            <Input.Password size="large" placeholder="Nhập mật khẩu tạm từ email" />
+          <Form.Item
+            label="Mật khẩu hiện tại"
+            name="currentPassword"
+            rules={[
+              { required: true, message: "Vui lòng nhập mật khẩu hiện tại!" },
+            ]}
+          >
+            <Input.Password
+              size="large"
+              placeholder="Nhập mật khẩu tạm từ email"
+            />
           </Form.Item>
-          <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: "Vui lòng nhập mật khẩu mới!" }, { min: 6, message: "Ít nhất 6 ký tự!" }]}>
+          <Form.Item
+            label="Mật khẩu mới"
+            name="newPassword"
+            rules={[
+              { required: true, message: "Vui lòng nhập mật khẩu mới!" },
+              { min: 6, message: "Ít nhất 6 ký tự!" },
+            ]}
+          >
             <Input.Password size="large" placeholder="Nhập mật khẩu mới" />
           </Form.Item>
-          <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true, message: "Vui lòng xác nhận mật khẩu!" }]}>
+          <Form.Item
+            label="Xác nhận mật khẩu mới"
+            name="confirmPassword"
+            rules={[{ required: true, message: "Vui lòng xác nhận mật khẩu!" }]}
+          >
             <Input.Password size="large" placeholder="Nhập lại mật khẩu mới" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" size="large" block loading={loading} style={{ background: "#0056b3" }}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            block
+            loading={loading}
+          >
             Đổi mật khẩu
           </Button>
         </Form>
-      </Card>
+      </div>
     </div>
   );
 }
 
 export default function ChangePasswordPage() {
-  return (
-    
-      <ChangePasswordContent />
-    
-  );
+  return <ChangePasswordContent />;
 }

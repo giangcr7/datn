@@ -1,4 +1,6 @@
 "use client";
+
+import PageTitle from "@/components/PageTitle";
 import React, { useState } from "react";
 import { Upload, Button, Alert, Typography, Space } from "antd";
 import {
@@ -41,7 +43,8 @@ export default function ImportStudentsClient() {
     } catch {
       setResult({
         success: false,
-        error: "Không nhận được kết quả nhập. Kiểm tra danh sách sinh viên trước khi thử lại vì dữ liệu có thể đã được lưu.",
+        error:
+          "Không nhận được kết quả nhập. Kiểm tra danh sách sinh viên trước khi thử lại vì dữ liệu có thể đã được lưu.",
       });
     } finally {
       setLoading(false);
@@ -62,10 +65,10 @@ export default function ImportStudentsClient() {
   };
 
   return (
-    <div className="p-8 bg-white min-h-screen">
-      <div className="max-w-4xl mx-auto">
+    <div className="workspace-page">
+      <div className="min-w-0">
         <div className="mb-8">
-          <Title level={2}>Nhập hồ sơ sinh viên</Title>
+          <PageTitle>Nhập hồ sơ sinh viên</PageTitle>
         </div>
 
         <section className="mb-6 border-t border-gray-200 pt-4">
@@ -129,7 +132,13 @@ export default function ImportStudentsClient() {
                       : "Đã xử lý xong danh sách sinh viên.")
                   : result.error || result.message || "Không nhập được file"
               }
-              type={result.success ? (result.failed ? "warning" : "success") : "error"}
+              type={
+                result.success
+                  ? result.failed
+                    ? "warning"
+                    : "success"
+                  : "error"
+              }
               showIcon
               className="mb-4"
             />
@@ -145,7 +154,9 @@ export default function ImportStudentsClient() {
                   Tổng dòng: <strong>{result.total}</strong>
                 </Text>
                 {!!result.failed && (
-                  <Text type="danger">Dòng lỗi: <strong>{result.failed}</strong></Text>
+                  <Text type="danger">
+                    Dòng lỗi: <strong>{result.failed}</strong>
+                  </Text>
                 )}
               </Space>
             )}

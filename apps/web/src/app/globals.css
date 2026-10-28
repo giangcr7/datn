@@ -1,0 +1,107 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "../";
+
+@theme inline {
+  --color-blue-50: #f2f6fb;
+  --color-blue-100: #e5edf8;
+  --color-blue-500: var(--school-primary);
+  --color-blue-600: var(--school-primary);
+  --color-blue-700: #002d70;
+  --color-gray-50: var(--school-background);
+  --color-gray-200: var(--school-border);
+  --color-gray-500: var(--school-muted);
+  --color-gray-800: var(--school-ink);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--school-ink);
+  background: var(--school-background);
+  font-family: "Segoe UI", sans-serif;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--school-primary);
+  text-decoration: none;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid var(--school-gold);
+  outline-offset: 3px;
+}
+
+.workspace-page {
+  width: 100%;
+  max-width: 1440px;
+  min-width: 0;
+  margin-inline: auto;
+  padding: 28px 32px 40px;
+}
+
+.workspace-section {
+  min-width: 0;
+  padding-block: 8px 20px;
+}
+
+.page-title,
+h1.page-title,
+h2.page-title {
+  margin: 0 0 16px;
+  color: var(--school-navy);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.page-title::after {
+  display: block;
+  width: 50px;
+  height: 2px;
+  margin-top: 13px;
+  background: var(--school-gold);
+  content: "";
+}
+
+.workspace-section .page-title {
+  font-size: 24px;
+}
+
+.workspace-page .ant-table-wrapper {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.workspace-page .ant-table-content {
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .workspace-page {
+    padding: 22px 16px 30px;
+  }
+  .page-title,
+  h1.page-title,
+  h2.page-title {
+    font-size: 24px;
+  }
+}

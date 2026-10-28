@@ -1,5 +1,7 @@
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import Link from "next/link";
 import { Alert, Button, Card, Col, Row, Steps } from "antd";
 import { ArrowRightOutlined } from "@ant-design/icons";
@@ -11,8 +13,8 @@ export default function DiplomaRecordsClient({
   links: WorkspaceLink[];
 }) {
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-3">Hồ sơ cấp văn bằng</h1>
+    <div className="workspace-page">
+      <PageTitle>Hồ sơ cấp văn bằng</PageTitle>
       <p className="text-gray-500 mb-6">
         Quản lý hồ sơ từ nhập dữ liệu đến duyệt và phát hành tại cơ sở chính.
         Một cán bộ xử lý, không chuyển hồ sơ sang đơn vị khác.

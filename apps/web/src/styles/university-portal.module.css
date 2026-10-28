@@ -1,13 +1,13 @@
 .page {
-  --home-blue: #003b93;
-  --home-navy: #163459;
-  --home-ink: #25384c;
-  --home-muted: #59697a;
-  --home-border: #d9e0e8;
-  --home-gold: #bc9850;
+  --home-blue: var(--school-primary, #003b93);
+  --home-navy: var(--school-navy, #163459);
+  --home-ink: var(--school-ink, #25384c);
+  --home-muted: var(--school-muted, #59697a);
+  --home-border: var(--school-border, #d9e0e8);
+  --home-gold: var(--school-gold, #bc9850);
   min-height: 100vh;
   color: var(--home-ink);
-  background: #f5f7fa;
+  background: var(--school-background, #f5f7fa);
   font-family: "Segoe UI", sans-serif;
   font-size: 15px;
   line-height: 1.6;
@@ -20,7 +20,7 @@
   box-sizing: border-box;
 }
 
-.page a {
+.page a:where(:not([class*="ant-"])) {
   color: inherit;
   text-decoration: none;
   transition:
@@ -34,10 +34,7 @@
   outline-offset: 4px;
 }
 
-.page h1,
-.page h2,
-.page h3,
-.page p {
+.page :where(h1, h2, h3, p):where(:not([class*="ant-"])) {
   margin: 0;
 }
 
@@ -90,6 +87,7 @@
 }
 
 .brand {
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 20px;
@@ -148,7 +146,7 @@
   background: #002d70;
 }
 
-.navigationInner > .currentPage {
+.navigationInner > [aria-current="page"] {
   background: #002d70;
 }
 
@@ -541,7 +539,7 @@
     font-size: 12px;
   }
   .navigationDetail,
-  .navigationInner > .currentPage {
+  .navigationInner > .homeLink {
     display: none;
   }
   .navigationInner > a {
@@ -608,5 +606,45 @@
 @media (prefers-reduced-motion: reduce) {
   .page a {
     transition: none;
+  }
+}
+
+.publicContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.publicPage {
+  display: flex;
+  flex-direction: column;
+}
+
+.brandCompact {
+  gap: 12px;
+}
+
+.brandCompact img {
+  width: 42px;
+  height: 42px;
+}
+
+.brandCompact .brandText {
+  gap: 2px;
+}
+
+.brandCompact .brandText strong {
+  font-size: 17px;
+}
+
+.brandCompact .brandText > span {
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .brandCompact .brandText strong {
+    font-size: 13px;
+  }
+  .brandCompact .brandText > span {
+    display: none;
   }
 }

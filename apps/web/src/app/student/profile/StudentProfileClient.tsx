@@ -1,7 +1,27 @@
 "use client";
+
+import PageTitle from "@/components/PageTitle";
 import React, { useState } from "react";
-import { Card, Row, Col, Typography, Button, Form, Input, Alert, Avatar, Tag, Divider } from "antd";
-import { UserOutlined, LockOutlined, MailOutlined, IdcardOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import {
+  Card,
+  Row,
+  Col,
+  Typography,
+  Button,
+  Form,
+  Input,
+  Alert,
+  Avatar,
+  Tag,
+  Divider,
+} from "antd";
+import {
+  UserOutlined,
+  LockOutlined,
+  MailOutlined,
+  IdcardOutlined,
+  ArrowLeftOutlined,
+} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 
 const { Title, Text } = Typography;
@@ -53,24 +73,33 @@ export default function StudentProfileClient({ user }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-3xl mx-auto">
+    <div className="workspace-page">
+      <div className="min-w-0">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/student/dashboard")}>
+        <div className="flex flex-wrap items-start gap-4 mb-6">
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => router.push("/student/dashboard")}
+          >
             Quay lại
           </Button>
-          <Title level={3} style={{ margin: 0 }}>Thông tin tài khoản</Title>
+          <PageTitle>Thông tin tài khoản</PageTitle>
         </div>
 
         <Row gutter={[24, 24]}>
           {/* Thông tin cá nhân */}
           <Col span={24}>
-            <Card variant="borderless" className="shadow-sm rounded-xl">
+            <Card>
               <div className="flex items-center gap-4 mb-6">
-                <Avatar size={72} icon={<UserOutlined />} style={{ background: "#0056b3" }} />
+                <Avatar
+                  size={72}
+                  icon={<UserOutlined />}
+                  style={{ background: "var(--school-primary)" }}
+                />
                 <div>
-                  <Title level={4} style={{ margin: 0 }}>{user.name}</Title>
+                  <Title level={4} style={{ margin: 0 }}>
+                    {user.name}
+                  </Title>
                   <Tag color="blue">Sinh viên</Tag>
                 </div>
               </div>
@@ -78,31 +107,41 @@ export default function StudentProfileClient({ user }: Props) {
               <Row gutter={[24, 16]}>
                 <Col xs={24} sm={12}>
                   <div className="flex items-center gap-2 mb-1">
-                    <IdcardOutlined style={{ color: "#0056b3" }} />
+                    <IdcardOutlined
+                      style={{ color: "var(--school-primary)" }}
+                    />
                     <Text type="secondary">Mã số sinh viên</Text>
                   </div>
-                  <Text strong style={{ fontSize: 16 }}>{user.mssv}</Text>
+                  <Text strong style={{ fontSize: 16 }}>
+                    {user.mssv}
+                  </Text>
                 </Col>
                 <Col xs={24} sm={12}>
                   <div className="flex items-center gap-2 mb-1">
-                    <MailOutlined style={{ color: "#0056b3" }} />
+                    <MailOutlined style={{ color: "var(--school-primary)" }} />
                     <Text type="secondary">Email</Text>
                   </div>
-                  <Text strong style={{ fontSize: 16 }}>{user.email}</Text>
+                  <Text strong style={{ fontSize: 16 }}>
+                    {user.email}
+                  </Text>
                 </Col>
                 <Col xs={24} sm={12}>
                   <div className="flex items-center gap-2 mb-1">
-                    <UserOutlined style={{ color: "#0056b3" }} />
+                    <UserOutlined style={{ color: "var(--school-primary)" }} />
                     <Text type="secondary">Ngày tạo tài khoản</Text>
                   </div>
-                  <Text>{user.createdAt ? new Date(user.createdAt).toLocaleDateString("vi-VN") : "N/A"}</Text>
+                  <Text>
+                    {user.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString("vi-VN")
+                      : "N/A"}
+                  </Text>
                 </Col>
                 <Col xs={24} sm={12}>
                   <div className="flex items-center gap-2 mb-1">
-                    <LockOutlined style={{ color: "#0056b3" }} />
+                    <LockOutlined style={{ color: "var(--school-primary)" }} />
                     <Text type="secondary">Trạng thái</Text>
                   </div>
-                  <Tag color="green">✅ Đã kích hoạt</Tag>
+                  <Tag color="green">Đã kích hoạt</Tag>
                 </Col>
               </Row>
             </Card>
@@ -110,20 +149,70 @@ export default function StudentProfileClient({ user }: Props) {
 
           {/* Đổi mật khẩu */}
           <Col span={24}>
-            <Card title={<span><LockOutlined /> Đổi mật khẩu</span>} bordered={false} className="shadow-sm rounded-xl">
-              {error && <Alert title={error} type="error" showIcon className="mb-4" />}
-              {success && <Alert title={success} type="success" showIcon className="mb-4" />}
+            <Card
+              title={
+                <span>
+                  <LockOutlined /> Đổi mật khẩu
+                </span>
+              }
+            >
+              {error && (
+                <Alert title={error} type="error" showIcon className="mb-4" />
+              )}
+              {success && (
+                <Alert
+                  title={success}
+                  type="success"
+                  showIcon
+                  className="mb-4"
+                />
+              )}
               <Form layout="vertical" onFinish={handleChangePassword}>
-                <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: "Vui lòng nhập mật khẩu hiện tại!" }]}>
-                  <Input.Password size="large" placeholder="Nhập mật khẩu hiện tại" />
+                <Form.Item
+                  label="Mật khẩu hiện tại"
+                  name="currentPassword"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Vui lòng nhập mật khẩu hiện tại!",
+                    },
+                  ]}
+                >
+                  <Input.Password
+                    size="large"
+                    placeholder="Nhập mật khẩu hiện tại"
+                  />
                 </Form.Item>
-                <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true }, { min: 6, message: "Ít nhất 6 ký tự!" }]}>
-                  <Input.Password size="large" placeholder="Nhập mật khẩu mới" />
+                <Form.Item
+                  label="Mật khẩu mới"
+                  name="newPassword"
+                  rules={[
+                    { required: true },
+                    { min: 6, message: "Ít nhất 6 ký tự!" },
+                  ]}
+                >
+                  <Input.Password
+                    size="large"
+                    placeholder="Nhập mật khẩu mới"
+                  />
                 </Form.Item>
-                <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true }]}>
-                  <Input.Password size="large" placeholder="Nhập lại mật khẩu mới" />
+                <Form.Item
+                  label="Xác nhận mật khẩu mới"
+                  name="confirmPassword"
+                  rules={[{ required: true }]}
+                >
+                  <Input.Password
+                    size="large"
+                    placeholder="Nhập lại mật khẩu mới"
+                  />
                 </Form.Item>
-                <Button type="primary" htmlType="submit" size="large" loading={loading} style={{ background: "#0056b3" }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  size="large"
+                  loading={loading}
+                  style={{ background: "var(--school-primary)" }}
+                >
                   Cập nhật mật khẩu
                 </Button>
               </Form>

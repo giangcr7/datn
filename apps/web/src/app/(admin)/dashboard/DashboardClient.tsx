@@ -1,5 +1,7 @@
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -67,13 +69,11 @@ export default function DashboardClient({
   ];
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="workspace-page">
       <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
         <div>
           <Tag color={workspace.color}>{workspace.roleLabel}</Tag>
-          <Title level={2} style={{ color: "#002140", margin: "10px 0" }}>
-            Tổng quan
-          </Title>
+          <PageTitle>Tổng quan</PageTitle>
           <Paragraph type="secondary" style={{ marginBottom: 4 }}>
             {workspace.title} · {user.campusName || workspace.scope}
           </Paragraph>

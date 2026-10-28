@@ -1,5 +1,7 @@
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -92,8 +94,8 @@ export default function ActivityClient() {
   }
 
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto">
-      <Typography.Title level={2}>Nhật ký hoạt động</Typography.Title>
+    <div className="workspace-page">
+      <PageTitle>Nhật ký hoạt động</PageTitle>
       <Typography.Paragraph type="secondary">
         Tra cứu người thực hiện, thời điểm và kết quả xử lý trong phạm vi nhà
         trường. Nhật ký chỉ được xem, không chỉnh sửa hoặc xóa.

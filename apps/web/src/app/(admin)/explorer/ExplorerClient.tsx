@@ -1,5 +1,7 @@
 "use client";
 
+import PageTitle from "@/components/PageTitle";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -350,14 +352,14 @@ export default function ExplorerClient({ user }: { user: WorkspaceUser }) {
   );
 
   return (
-    <div className="p-6 md:p-8 bg-white min-h-screen">
+    <div className="workspace-page">
       <div className="flex flex-wrap justify-between gap-4 mb-6">
         <div>
-          <Typography.Title level={2}>
+          <PageTitle>
             {workspace.kind === "admin"
               ? "Giám sát blockchain"
               : "Đối chiếu blockchain"}
-          </Typography.Title>
+          </PageTitle>
           <Typography.Text type="secondary">
             Theo dõi giao dịch phát hành, thu hồi và đối chiếu dữ liệu văn bằng
             với Hyperledger Fabric.

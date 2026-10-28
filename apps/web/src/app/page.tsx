@@ -1,20 +1,21 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRightOutlined,
   BankOutlined,
   FilePdfOutlined,
-  HomeOutlined,
   InfoCircleOutlined,
-  LoginOutlined,
   QrcodeOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import styles from "./page.module.css";
+import styles from "@/styles/university-portal.module.css";
+import {
+  UniversityHeader,
+  UniversityFooter,
+} from "@/components/UniversityChrome";
 
 const steps = [
   {
@@ -41,53 +42,7 @@ export default function HomePage() {
         Chuyển đến nội dung chính
       </a>
 
-      <header className={styles.header}>
-        <div className={styles.utilityBar}>
-          <div className={styles.container + " " + styles.utilityInner}>
-            <span>HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG</span>
-            <span>Văn bằng tốt nghiệp</span>
-          </div>
-        </div>
-        <div className={styles.container + " " + styles.headerInner}>
-          <Link
-            className={styles.brand}
-            href="/"
-            aria-label="Trang chủ Đại học Thủy Lợi"
-          >
-            <Image
-              src="/logo-tlu.png"
-              alt="Logo Trường Đại học Thủy Lợi"
-              width={70}
-              height={70}
-              priority
-            />
-            <span className={styles.brandText}>
-              <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
-              <span>Hệ thống quản lý và xác thực văn bằng</span>
-            </span>
-          </Link>
-        </div>
-
-        <nav className={styles.navigation} aria-label="Điều hướng chính">
-          <div className={styles.container + " " + styles.navigationInner}>
-            <Link className={styles.currentPage} href="/" aria-current="page">
-              <HomeOutlined aria-hidden="true" />
-              Trang chủ
-            </Link>
-            <Link href="/search" aria-label="Tra cứu văn bằng">
-              Tra cứu<span className={styles.navigationDetail}> văn bằng</span>
-            </Link>
-            <Link href="/verify" aria-label="Xác thực văn bằng">
-              Xác thực<span className={styles.navigationDetail}> văn bằng</span>
-            </Link>
-            <a href="#huong-dan">Hướng dẫn</a>
-            <Link className={styles.loginLink} href="/login">
-              <LoginOutlined aria-hidden="true" />
-              Đăng nhập
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <UniversityHeader />
 
       <main id="noi-dung" tabIndex={-1}>
         <div className={styles.container + " " + styles.mainContent}>
@@ -237,21 +192,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      <footer className={styles.footer}>
-        <div className={styles.container + " " + styles.footerInner}>
-          <div>
-            <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
-            <p>Hệ thống quản lý và xác thực văn bằng</p>
-            <p className={styles.technologyNote}>
-              Ứng dụng blockchain trong quản lý và xác thực văn bằng.
-            </p>
-          </div>
-          <nav aria-label="Liên kết cuối trang">
-            <a href="#huong-dan">Hướng dẫn sử dụng</a>
-            <a href="#dau-trang">Về đầu trang ↑</a>
-          </nav>
-        </div>
-      </footer>
+      <UniversityFooter home />
     </div>
   );
 }
