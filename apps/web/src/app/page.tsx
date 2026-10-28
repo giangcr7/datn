@@ -5,8 +5,9 @@ import Link from "next/link";
 import {
   ArrowRightOutlined,
   BankOutlined,
-  BlockOutlined,
   FilePdfOutlined,
+  HomeOutlined,
+  InfoCircleOutlined,
   LoginOutlined,
   QrcodeOutlined,
   SafetyCertificateOutlined,
@@ -17,19 +18,19 @@ import styles from "./page.module.css";
 
 const steps = [
   {
-    title: "Chọn hình thức",
+    title: "Chọn chức năng",
     description:
-      "Tra cứu để tìm thông tin; xác thực khi bạn đã có tệp PDF hoặc mã QR trên văn bằng.",
+      "Chọn tra cứu thông tin hoặc xác thực văn bằng theo nhu cầu sử dụng.",
   },
   {
     title: "Cung cấp thông tin",
     description:
-      "Nhập thông tin cần tra cứu, tải lên tệp PDF hoặc mở camera để quét mã QR.",
+      "Nhập thông tin tra cứu; hoặc sử dụng tệp PDF, mã QR để xác thực văn bằng.",
   },
   {
     title: "Xem kết quả",
     description:
-      "Đọc thông tin văn bằng, kết quả kiểm tra và các lưu ý về tình trạng văn bằng.",
+      "Đối chiếu thông tin và đọc kết quả kiểm tra, bao gồm các lưu ý về tình trạng văn bằng.",
   },
 ];
 
@@ -41,6 +42,12 @@ export default function HomePage() {
       </a>
 
       <header className={styles.header}>
+        <div className={styles.utilityBar}>
+          <div className={styles.container + " " + styles.utilityInner}>
+            <span>HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG</span>
+            <span>Văn bằng tốt nghiệp</span>
+          </div>
+        </div>
         <div className={styles.container + " " + styles.headerInner}>
           <Link
             className={styles.brand}
@@ -50,17 +57,23 @@ export default function HomePage() {
             <Image
               src="/logo-tlu.png"
               alt="Logo Trường Đại học Thủy Lợi"
-              width={48}
-              height={48}
+              width={70}
+              height={70}
               priority
             />
             <span className={styles.brandText}>
               <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
-              <span>Cổng thông tin văn bằng</span>
+              <span>Hệ thống quản lý và xác thực văn bằng</span>
             </span>
           </Link>
+        </div>
 
-          <nav className={styles.navigation} aria-label="Điều hướng chính">
+        <nav className={styles.navigation} aria-label="Điều hướng chính">
+          <div className={styles.container + " " + styles.navigationInner}>
+            <Link className={styles.currentPage} href="/" aria-current="page">
+              <HomeOutlined aria-hidden="true" />
+              Trang chủ
+            </Link>
             <Link href="/search" aria-label="Tra cứu văn bằng">
               Tra cứu<span className={styles.navigationDetail}> văn bằng</span>
             </Link>
@@ -68,160 +81,160 @@ export default function HomePage() {
               Xác thực<span className={styles.navigationDetail}> văn bằng</span>
             </Link>
             <a href="#huong-dan">Hướng dẫn</a>
-          </nav>
-
-          <Link className={styles.loginLink} href="/login">
-            <LoginOutlined aria-hidden="true" />
-            <span>Đăng nhập</span>
-          </Link>
-        </div>
+            <Link className={styles.loginLink} href="/login">
+              <LoginOutlined aria-hidden="true" />
+              Đăng nhập
+            </Link>
+          </div>
+        </nav>
       </header>
 
       <main id="noi-dung" tabIndex={-1}>
-        <section className={styles.hero} aria-labelledby="home-title">
-          <div className={styles.container + " " + styles.heroInner}>
-            <div className={styles.introduction}>
-              <p className={styles.eyebrow}>
-                KẾT NỐI THÔNG TIN, CỦNG CỐ NIỀM TIN
-              </p>
-              <h1 id="home-title">
-                Cổng tra cứu và <span>xác thực văn bằng</span>
-              </h1>
-              <p className={styles.lead}>
-                Tra cứu thông tin văn bằng. Xác thực bằng tệp PDF hoặc mã QR mà
-                không cần đăng nhập.
-              </p>
-              <a className={styles.guideLink} href="#huong-dan">
-                Tìm hiểu cách sử dụng
-                <ArrowRightOutlined aria-hidden="true" />
-              </a>
-              <div className={styles.technologyNote}>
-                <BlockOutlined aria-hidden="true" />
-                <p>Ứng dụng blockchain trong quản lý và xác thực văn bằng.</p>
-              </div>
-            </div>
+        <div className={styles.container + " " + styles.mainContent}>
+          <section className={styles.introduction} aria-labelledby="home-title">
+            <h1 id="home-title">Cổng tra cứu và xác thực văn bằng</h1>
+            <span className={styles.headingRule} aria-hidden="true" />
+            <p>
+              Tra cứu thông tin và kiểm tra tình trạng văn bằng tốt nghiệp do
+              nhà trường quản lý.
+            </p>
+          </section>
 
-            <div className={styles.services} aria-label="Chức năng công khai">
-              <article className={styles.serviceCard + " " + styles.verifyCard}>
-                <div className={styles.serviceTopline}>
-                  <span className={styles.serviceIcon}>
-                    <SafetyCertificateOutlined aria-hidden="true" />
-                  </span>
-                  <span className={styles.serviceCategory}>
-                    KIỂM TRA VĂN BẰNG
-                  </span>
+          <section className={styles.services} aria-label="Chức năng công khai">
+            <article className={styles.serviceCard}>
+              <div className={styles.serviceHeading}>
+                <SafetyCertificateOutlined
+                  className={styles.serviceIcon}
+                  aria-hidden="true"
+                />
+                <div>
+                  <h2>Xác thực văn bằng</h2>
+                  <p>Kiểm tra văn bằng được cung cấp</p>
                 </div>
-                <h2>Xác thực văn bằng</h2>
-                <p>
-                  Bạn đã có văn bằng? Sử dụng tệp PDF hoặc quét mã QR để kiểm
-                  tra thông tin và tình trạng văn bằng.
-                </p>
-                <div className={styles.methods} aria-label="Hình thức xác thực">
-                  <span>
-                    <FilePdfOutlined aria-hidden="true" /> Tệp PDF
-                  </span>
-                  <span>
-                    <QrcodeOutlined aria-hidden="true" /> Mã QR
-                  </span>
+              </div>
+              <p className={styles.serviceDescription}>
+                Xác thực bằng tệp PDF hoặc mã QR mà không cần đăng nhập. Xem kết
+                quả kiểm tra và tình trạng văn bằng trong hệ thống.
+              </p>
+              <div className={styles.methods} aria-label="Hình thức xác thực">
+                <span>
+                  <FilePdfOutlined aria-hidden="true" /> Tệp PDF văn bằng
+                </span>
+                <span>
+                  <QrcodeOutlined aria-hidden="true" /> Mã QR trên văn bằng
+                </span>
+              </div>
+              <Link className={styles.primaryAction} href="/verify">
+                Xác thực ngay
+                <ArrowRightOutlined aria-hidden="true" />
+              </Link>
+            </article>
+
+            <article className={styles.serviceCard}>
+              <div className={styles.serviceHeading}>
+                <SearchOutlined
+                  className={styles.serviceIcon}
+                  aria-hidden="true"
+                />
+                <div>
+                  <h2>Tra cứu văn bằng</h2>
+                  <p>Tìm kiếm thông tin văn bằng</p>
                 </div>
-                <Link className={styles.primaryAction} href="/verify">
-                  Xác thực ngay
+              </div>
+              <p className={styles.serviceDescription}>
+                Tìm thông tin văn bằng theo họ tên, mã sinh viên hoặc số hiệu
+                văn bằng, trong phạm vi được nhà trường cho phép tra cứu.
+              </p>
+              <p className={styles.searchNote}>
+                Thông tin tra cứu không thay thế kết quả xác thực tệp văn bằng.
+              </p>
+              <Link className={styles.secondaryAction} href="/search">
+                Tra cứu ngay
+                <ArrowRightOutlined aria-hidden="true" />
+              </Link>
+            </article>
+          </section>
+
+          <div className={styles.notice}>
+            <InfoCircleOutlined aria-hidden="true" />
+            <p>
+              <strong>Lưu ý khi sử dụng:</strong> Để kiểm tra tính toàn vẹn của
+              tệp văn bằng, vui lòng sử dụng tệp PDF được cấp từ hệ thống.
+            </p>
+          </div>
+
+          <div className={styles.informationGrid}>
+            <section
+              className={styles.guide}
+              id="huong-dan"
+              aria-labelledby="guide-title"
+            >
+              <h2 className={styles.sectionTitle} id="guide-title">
+                Hướng dẫn sử dụng
+              </h2>
+              <ol className={styles.steps}>
+                {steps.map((step, index) => (
+                  <li key={step.title}>
+                    <span className={styles.stepNumber} aria-hidden="true">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <h3>{step.title}</h3>
+                      <p>{step.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <div className={styles.questions}>
+                <details>
+                  <summary>Tra cứu và xác thực khác nhau thế nào?</summary>
+                  <p>
+                    Tra cứu giúp tìm thông tin văn bằng trong hệ thống. Xác thực
+                    giúp kiểm tra văn bằng bạn cung cấp. Việc tìm thấy thông tin
+                    không thay thế cho việc kiểm tra tệp PDF.
+                  </p>
+                </details>
+                <details>
+                  <summary>Nên dùng tệp PDF hay mã QR?</summary>
+                  <p>
+                    Dùng tệp PDF khi cần kiểm tra tính toàn vẹn của chính tệp
+                    đó. Quét mã QR để mở và kiểm tra thông tin văn bằng được
+                    liên kết; mã QR không thay thế việc kiểm tra nội dung tệp
+                    PDF.
+                  </p>
+                </details>
+              </div>
+            </section>
+
+            <section
+              className={styles.accounts}
+              aria-labelledby="accounts-title"
+            >
+              <h2 className={styles.sectionTitle} id="accounts-title">
+                Truy cập hệ thống
+              </h2>
+              <p className={styles.accountsDescription}>
+                Dành cho sinh viên và cán bộ nhà trường. Sử dụng tài khoản được
+                cấp để truy cập các chức năng theo phân quyền.
+              </p>
+              <div className={styles.accountLinks}>
+                <Link href="/login?type=student">
+                  <UserOutlined aria-hidden="true" />
+                  Đăng nhập sinh viên
                   <ArrowRightOutlined aria-hidden="true" />
                 </Link>
-              </article>
-
-              <article className={styles.serviceCard + " " + styles.searchCard}>
-                <div className={styles.searchIcon}>
-                  <SearchOutlined aria-hidden="true" />
-                </div>
-                <div className={styles.searchContent}>
-                  <h2>Tra cứu văn bằng</h2>
-                  <p>
-                    Tìm thông tin văn bằng theo họ tên, mã sinh viên hoặc số
-                    hiệu văn bằng, trong phạm vi được nhà trường cho phép tra
-                    cứu.
-                  </p>
-                  <Link className={styles.secondaryAction} href="/search">
-                    Tra cứu ngay
-                    <ArrowRightOutlined aria-hidden="true" />
-                  </Link>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section
-          className={styles.guide}
-          id="huong-dan"
-          aria-labelledby="guide-title"
-        >
-          <div className={styles.container}>
-            <div className={styles.sectionHeading}>
-              <div>
-                <p className={styles.eyebrow}>HƯỚNG DẪN SỬ DỤNG</p>
-                <h2 id="guide-title">Bắt đầu chỉ với 3 bước</h2>
+                <Link href="/login?type=university">
+                  <BankOutlined aria-hidden="true" />
+                  Đăng nhập cán bộ
+                  <ArrowRightOutlined aria-hidden="true" />
+                </Link>
               </div>
-              <p>Chọn đúng chức năng để nhận kết quả phù hợp.</p>
-            </div>
-
-            <ol className={styles.steps}>
-              {steps.map((step, index) => (
-                <li key={step.title}>
-                  <span className={styles.stepNumber} aria-hidden="true">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div>
-                    <h3>{step.title}</h3>
-                    <p>{step.description}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-
-            <div className={styles.questions}>
-              <details>
-                <summary>Tra cứu và xác thực khác nhau thế nào?</summary>
-                <p>
-                  Tra cứu giúp tìm thông tin văn bằng trong hệ thống. Xác thực
-                  giúp kiểm tra văn bằng bạn cung cấp. Việc tìm thấy thông tin
-                  không thay thế cho việc kiểm tra tệp PDF.
-                </p>
-              </details>
-              <details>
-                <summary>Nên dùng tệp PDF hay mã QR?</summary>
-                <p>
-                  Dùng tệp PDF khi cần kiểm tra tính toàn vẹn của chính tệp đó.
-                  Quét mã QR để mở và kiểm tra thông tin văn bằng được liên kết;
-                  mã QR không thay thế việc kiểm tra nội dung tệp PDF.
-                </p>
-              </details>
-            </div>
+              <p className={styles.accountNote}>
+                Tra cứu và xác thực văn bằng được bố trí ở các mục phía trên.
+              </p>
+            </section>
           </div>
-        </section>
-
-        <section className={styles.accounts} aria-labelledby="accounts-title">
-          <div className={styles.container + " " + styles.accountsInner}>
-            <div>
-              <h2 id="accounts-title">
-                Dành cho sinh viên và cán bộ nhà trường
-              </h2>
-              <p>Đăng nhập để sử dụng các chức năng theo tài khoản được cấp.</p>
-            </div>
-            <div className={styles.accountLinks}>
-              <Link href="/login?type=student">
-                <UserOutlined aria-hidden="true" />
-                Đăng nhập sinh viên
-                <ArrowRightOutlined aria-hidden="true" />
-              </Link>
-              <Link href="/login?type=university">
-                <BankOutlined aria-hidden="true" />
-                Đăng nhập cán bộ
-                <ArrowRightOutlined aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-        </section>
+        </div>
       </main>
 
       <footer className={styles.footer}>
@@ -229,6 +242,9 @@ export default function HomePage() {
           <div>
             <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
             <p>Hệ thống quản lý và xác thực văn bằng</p>
+            <p className={styles.technologyNote}>
+              Ứng dụng blockchain trong quản lý và xác thực văn bằng.
+            </p>
           </div>
           <nav aria-label="Liên kết cuối trang">
             <a href="#huong-dan">Hướng dẫn sử dụng</a>

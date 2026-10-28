@@ -181,7 +181,10 @@ function mobileRule(selector, property, value) {
   return mobile?.nodes.some(
     (rule) =>
       rule.type === "rule" &&
-      rule.selector === selector &&
+      rule.selector
+        .split(",")
+        .map((item) => item.trim())
+        .includes(selector) &&
       rule.nodes.some(
         (declaration) =>
           declaration.prop === property && declaration.value === value,
@@ -190,15 +193,15 @@ function mobileRule(selector, property, value) {
 }
 check(
   "mobile stacks services",
-  mobileRule(".heroInner", "grid-template-columns", "minmax(0, 1fr)"),
+  mobileRule(".services", "grid-template-columns", "minmax(0, 1fr)"),
 );
 check(
-  "mobile stacks guide steps",
-  mobileRule(".steps", "grid-template-columns", "minmax(0, 1fr)"),
+  "mobile stacks guidance and institutional accounts",
+  mobileRule(".informationGrid", "grid-template-columns", "minmax(0, 1fr)"),
 );
 check(
-  "mobile account links stay available",
-  mobileRule(".accountLinks", "flex-direction", "column"),
+  "mobile navigation uses compact readable labels",
+  mobileRule(".navigationDetail", "display", "none"),
 );
 check("keyboard focus styling", stylesheet.includes(":focus-visible"));
 check(
@@ -207,7 +210,34 @@ check(
     (node) =>
       node.type === "atrule" &&
       node.params === "(prefers-reduced-motion: reduce)" &&
-      node.toString().includes("animation: none"),
+      node.toString().includes("transition: none"),
+  ),
+);
+
+check(
+  "the home navigation item identifies the current page",
+  html.includes('aria-current="page"'),
+);
+check(
+  "the institutional masthead identifies the management system",
+  text(html).includes("Hệ thống quản lý và xác thực văn bằng"),
+);
+check(
+  "the page has no promotional slogan",
+  !text(html).includes("KẾT NỐI THÔNG TIN, CỦNG CỐ NIỀM TIN"),
+);
+check(
+  "service panels use a restrained institutional treatment",
+  !stylesheet.includes("gradient(") && !stylesheet.includes("box-shadow"),
+);
+check(
+  "the page has no entrance animations",
+  !stylesheet.includes("animation:"),
+);
+check(
+  "the footer retains the thesis context",
+  text(html.slice(html.indexOf("<footer"))).includes(
+    "Ứng dụng blockchain trong quản lý và xác thực văn bằng",
   ),
 );
 
@@ -226,6 +256,14 @@ if (process.env.HOMEPAGE_TEST_BASE_URL) {
       !home.includes("NEXT_HTTP_ERROR_FALLBACK;500"),
   );
   check("production contains the new action", home.includes("Xác thực ngay"));
+  check(
+    "production contains the institutional utility bar",
+    home.includes("HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG"),
+  );
+  check(
+    "production does not serve the previous promotional design",
+    !home.includes("KẾT NỐI THÔNG TIN, CỦNG CỐ NIỀM TIN"),
+  );
   const styleLinks = [...home.matchAll(/<link [^>]*>/g)]
     .map(([tag]) => tag)
     .filter((tag) => tag.includes('rel="stylesheet"'))

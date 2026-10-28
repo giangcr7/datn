@@ -25,7 +25,7 @@ Không tự tải binaries, tạo lại channel hoặc deploy/reset Fabric. URL 
 
 ## Trang chủ công khai
 
-Trang chủ ưu tiên xác thực bằng PDF/QR, tách biệt với tra cứu thông tin và giữ đăng nhập sinh viên/cán bộ ở khu vực riêng. Hướng dẫn ba bước và câu hỏi mở rộng hoạt động ngay trên trang; không hiển thị menu quản trị, số liệu minh họa hay thông tin kỹ thuật xác thực. Việc tra cứu vẫn tuân theo cấu hình công bố dữ liệu hiện có, không tự mở quyền truy cập.
+Trang chủ theo bố cục cổng thông tin giáo dục: đầu trang nhận diện trường, thanh điều hướng xanh, tiêu đề trang gọn và hai khối chức năng cân đối. Không dùng khẩu hiệu quảng bá, nền chuyển màu, thẻ nổi hay hiệu ứng xuất hiện. Xác thực PDF/QR tách biệt với tra cứu thông tin; hướng dẫn và đăng nhập sinh viên/cán bộ đặt ở khu vực riêng. Không hiển thị menu quản trị, số liệu minh họa hay thông tin kỹ thuật xác thực. Việc tra cứu vẫn tuân theo cấu hình công bố dữ liệu hiện có, không tự mở quyền truy cập.
 
 Kiểm thử trang chủ và CSS: `node scripts/test-homepage.mjs`. Để kiểm tra thêm HTTP/CSS trên web đang chạy local, đặt `HOMEPAGE_TEST_BASE_URL=http://localhost:3000` trước khi chạy lệnh; không có thao tác ghi database hoặc blockchain.
 
