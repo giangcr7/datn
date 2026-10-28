@@ -46,3 +46,27 @@
 - Before finishing a task, review its new files, remove task-owned artifacts,
   confirm protected data is unchanged, and report any deliberately retained
   deliverables or evidence. Do not create cleanup logs or manifests as new junk.
+
+## Commit and publish completed work
+
+- After completing each feature, bug fix, or coherent change, including
+  documentation or configuration changes, create a descriptive Git commit and
+  push it to the current branch's configured upstream before reporting the task
+  as finished. This is standing authorization; do not ask again unless the user
+  explicitly requests otherwise or a safety issue requires clarification.
+- First run validation appropriate to the change, review the diff for secrets
+  and unintended changes, and clean up task-owned temporary artifacts. Do not
+  publish unfinished work or work whose required validation has failed.
+- Stage and commit only changes belonging to the completed task. Preserve
+  unrelated local edits, deletions, untracked files, and pre-existing staged
+  changes; never use a blanket add to include them accidentally.
+- Keep runtime data, environment secrets, private keys, wallets, signed PDFs,
+  database dumps, dependencies, generated bundles, and temporary artifacts out
+  of commits. Retain source assets, migrations, tests, and relevant documentation.
+- Do not create branches, amend commits, rewrite history, or force-push unless
+  explicitly requested. If the upstream is missing or a push is rejected,
+  preserve the local commit and report the blocker instead of bypassing it.
+- Verify that the upstream branch contains the new commit after a successful
+  push. Report the commit hash, branch, validation performed, and any intentionally
+  uncommitted files. If publishing fails, clearly distinguish a local commit
+  from a successful GitHub push.
