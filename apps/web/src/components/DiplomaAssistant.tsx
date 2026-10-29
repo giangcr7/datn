@@ -5,8 +5,11 @@ import { Button, Drawer, Input } from "antd";
 import type { TextAreaRef } from "antd/es/input/TextArea";
 import {
   CommentOutlined,
+  BulbOutlined,
   DeleteOutlined,
+  DownOutlined,
   SendOutlined,
+  UpOutlined,
 } from "@ant-design/icons";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -36,6 +39,7 @@ export default function DiplomaAssistant() {
     canAccessWorkspacePath(user, "/import");
   const identity = status + ":" + (user?.id || "public") + ":" + staff;
   const [open, setOpen] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [context, setContext] = useState<AssistantContext>();
   const [entries, setEntries] = useState<ChatEntry[]>([]);
@@ -56,6 +60,7 @@ export default function DiplomaAssistant() {
   function reset() {
     cancel();
     setEntries([]);
+    setSuggestionsOpen(false);
     setContext(undefined);
     setQuestion("");
     setError("");
@@ -65,6 +70,7 @@ export default function DiplomaAssistant() {
     sequence.current++;
     controller.current?.abort();
     setEntries([]);
+    setSuggestionsOpen(false);
     setContext(undefined);
     setQuestion("");
     setError("");
@@ -98,6 +104,7 @@ export default function DiplomaAssistant() {
       controller.current?.abort();
       setLoading(false);
       setError("");
+      setSuggestionsOpen(false);
       setContext({ type: "registry-issues", codes });
       setQuestion(
         "Giải thích các lỗi kiểm tra dữ liệu đã chọn và hướng dẫn xử lý.",
@@ -127,6 +134,7 @@ export default function DiplomaAssistant() {
     const activeController = new AbortController();
     controller.current = activeController;
     setLoading(true);
+    setSuggestionsOpen(false);
     setError("");
     setEntries((current) => [
       ...current.slice(-6),
@@ -245,6 +253,7 @@ export default function DiplomaAssistant() {
                   <Button
                     key={suggestion}
                     block
+                    disabled={loading}
                     onClick={() => {
                       setQuestion(suggestion);
                       setContext(undefined);
@@ -314,6 +323,48 @@ export default function DiplomaAssistant() {
             <div ref={bottom} />
           </div>
           <form className={styles.composer} onSubmit={submit}>
+            {!!entries.length && (
+              <div className={styles.followUp}>
+                <Button
+                  type="text"
+                  htmlType="button"
+                  icon={<BulbOutlined aria-hidden="true" />}
+                  className={styles.suggestionToggle}
+                  aria-expanded={suggestionsOpen}
+                  aria-controls="diploma-assistant-suggestions"
+                  onClick={() => setSuggestionsOpen((current) => !current)}
+                >
+                  Gợi ý câu hỏi
+                  {suggestionsOpen ? (
+                    <UpOutlined aria-hidden="true" />
+                  ) : (
+                    <DownOutlined aria-hidden="true" />
+                  )}
+                </Button>
+                <section
+                  id="diploma-assistant-suggestions"
+                  className={styles.followUpQuestions}
+                  aria-label="Gợi ý câu hỏi tiếp theo"
+                  hidden={!suggestionsOpen}
+                >
+                  {suggestions.map((suggestion) => (
+                    <Button
+                      key={suggestion}
+                      htmlType="button"
+                      disabled={loading}
+                      onClick={() => {
+                        setQuestion(suggestion);
+                        setContext(undefined);
+                        setSuggestionsOpen(false);
+                        input.current?.focus({ cursor: "end" });
+                      }}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </section>
+              </div>
+            )}
             {context && (
               <div className={styles.context}>
                 Đã chọn {context.codes.length} mã lỗi, không kèm dữ liệu hồ sơ.

@@ -261,6 +261,25 @@ try {
     widget.find((element) => element.props.id === "diploma-assistant-question")
       .props.disabled,
   );
+  const suggestionToggle = () =>
+    widget.find(
+      (element) =>
+        element.props["aria-controls"] === "diploma-assistant-suggestions",
+    );
+  check(
+    "suggestion toggle remains available after first send",
+    suggestionToggle().props["aria-expanded"] === false,
+  );
+  suggestionToggle().props.onClick();
+  widget.render();
+  check(
+    "pending request cannot be replaced by a suggestion",
+    widget.find(
+      (element) => element.props.children === "Tra cứu cần nhập những gì?",
+    ).props.disabled === true,
+  );
+  suggestionToggle().props.onClick();
+  widget.render();
   const pendingKey = widget.key();
   check(
     "pending Enter cannot resubmit",
@@ -281,6 +300,36 @@ try {
     "composer unlocked after success",
     !widget.find((element) => element.props.id === "diploma-assistant-question")
       .props.disabled,
+  );
+  check(
+    "suggestions stay collapsed without taking conversation space",
+    widget.find(
+      (element) => element.props.id === "diploma-assistant-suggestions",
+    ).props.hidden === true,
+  );
+  suggestionToggle().props.onClick();
+  widget.render();
+  check(
+    "suggestions reopen after an answer",
+    suggestionToggle().props["aria-expanded"] === true &&
+      widget.find(
+        (element) => element.props.id === "diploma-assistant-suggestions",
+      ).props.hidden === false,
+  );
+  widget
+    .find(
+      (element) =>
+        element.props.children === "Xác thực PDF và mã QR như thế nào?",
+    )
+    .props.onClick();
+  widget.render();
+  check(
+    "choosing a follow-up fills composer without sending or clearing history",
+    widget.find((element) => element.props.id === "diploma-assistant-question")
+      .props.value === "Xác thực PDF và mã QR như thế nào?" &&
+      suggestionToggle().props["aria-expanded"] === false &&
+      widget.text().includes("Hướng dẫn tra cứu") &&
+      requests.length === 1,
   );
 
   widget.type("Câu hỏi thứ hai");
@@ -356,6 +405,10 @@ try {
   check(
     "reset conversation stays empty after stale response",
     !widget.text().includes("Hướng dẫn tra cứu"),
+  );
+  check(
+    "reset restores initial question suggestions",
+    widget.find((element) => element.props["aria-label"] === "Gợi ý câu hỏi"),
   );
 
   widget.type("Câu hỏi trước khi đổi tài khoản");

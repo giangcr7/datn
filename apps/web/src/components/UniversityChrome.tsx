@@ -99,7 +99,6 @@ export function UniversityFooter({ home = false }: { home?: boolean }) {
           <Link href={home ? "#huong-dan" : "/#huong-dan"}>
             Hướng dẫn sử dụng
           </Link>
-          <a href="#dau-trang">Về đầu trang ↑</a>
         </nav>
       </div>
     </footer>

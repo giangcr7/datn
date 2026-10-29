@@ -19,6 +19,7 @@
 }
 
 .notice {
+  flex-shrink: 0;
   padding: 16px 20px;
   border-bottom: 1px solid var(--school-border);
   background: #ffffff;
@@ -139,9 +140,54 @@
 }
 
 .composer {
+  flex-shrink: 0;
   padding: 16px 20px max(16px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--school-border);
   background: #ffffff;
+}
+
+.followUp {
+  margin-bottom: 12px;
+}
+
+.followUp .suggestionToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  color: var(--school-primary);
+  background: #f0f5fb;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.suggestionToggle > :last-child {
+  margin-left: auto;
+}
+
+.followUpQuestions:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 156px;
+  margin-top: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.followUpQuestions button {
+  height: auto;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border-color: var(--school-border);
+  border-radius: 16px;
+  color: var(--school-navy);
+  font-size: 12px;
+  text-align: left;
+  white-space: normal;
 }
 
 .composer label {
