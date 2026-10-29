@@ -4,6 +4,9 @@ Tài liệu này là baseline để triển khai dài hạn. Mô hình mới kh�
 
 ## Bộ tài liệu
 
+- [Tác dụng và quan hệ của đủ 27 bảng hiện tại](./vai-tro-cac-bang-va-chuc-nang.md)
+- [Link API, quyền và mẫu nhập để test Postman](./api-test-samples.md)
+- [Collection Postman](./api-test-samples.postman_collection.json) và [environment local](./api-test-samples.postman_environment.json)
 - [Kiến trúc và phương án đề xuất](./architecture.md)
 - [ERD Mermaid](./erd.mmd)
 - [ERD DBML](./erd.dbml)
@@ -36,4 +39,4 @@ Luồng hiện tại dùng một cơ sở chính TP.HCM và một cán bộ duy�
 - [ERD nghiệp vụ](./erd-core.svg) và [ERD đầy đủ](./erd-full.svg).
 - [Ràng buộc vật lý](./constraints.md) và [kết quả đọc Excel](./excel-findings.md).
 - ERD sinh từ PostgreSQL catalog đã migrate: 27 bảng, 263 cột và 68 khóa ngoại vật lý, gồm `signed_diploma_documents` và `diploma_pdf_signatures.validation_evidence`. SVG/Mermaid hiển thị quan hệ đơn cột để tránh lặp scope; DBML và constraints.md chứa cả composite FK.
-- Schema/migration chạy local; Excel mới preview, chưa commit. Fabric local đã có chaincode `educert` sequence 2 và issuer Hà Nội; production vẫn cần gate cutover riêng.
+- Các sơ đồ/chi tiết vật lý là ảnh chụp tại lần sinh tài liệu, không phải trạng thái dữ liệu runtime. Tra cứu tác dụng bảng theo schema hiện hành ở tài liệu 27 bảng; luồng hiện tại dùng cơ sở chính TP.HCM và danh tính phát hành kỹ thuật `Org1MSP`, không phải issuer Hà Nội. Production vẫn cần gate cutover riêng.

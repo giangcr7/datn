@@ -1,23 +1,28 @@
 {
   "info": {
-    "name": "DiplomaChain - mau test tung chuc nang (local)",
+    "name": "DiplomaChain - CSDL va API mot co so (29-10-2026)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Chỉ local/test và dữ liệu giả. HCM lập hồ sơ; Hà Nội (university) duyệt/từ chối/thu hồi và phát hành; admin chỉ quản trị/audit. Điền biến local, không export secret/token. Gửi từng request, không Run All. Fabric commit thật mới ON_CHAIN/VERIFIED; các lệnh ghi không tự rollback."
-  },
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{accessToken}}",
-        "type": "string"
-      }
-    ]
+    "description": "Đọc docs/database/api-test-samples.md. Một cơ sở chính TP.HCM, một cán bộ UNIVERSITY có canApproveDiplomas. Không Run All: có các nhánh duyệt/từ chối/thay thế/thu hồi và thay đổi mật khẩu. Dữ liệu mẫu là giả. Chỉ dùng DB/Fabric thử nghiệm tách biệt. Request [GHI] và [NHAY_CAM] bị bỏ qua mặc định; bật allowMutations=true và thêm allowSensitiveActions=true cho lệnh nhạy cảm rồi tắt ngay. Chọn environment local đi kèm. Không xuất/chia sẻ environment có token, mật khẩu, OTP hoặc Excel thật. ANCHOR_PENDING không phải COMMITTED. Không có API xóa ledger."
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:3001/api",
+      "type": "string"
+    },
+    {
+      "key": "webUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "allowMutations",
+      "value": "false",
+      "type": "string"
+    },
+    {
+      "key": "allowSensitiveActions",
+      "value": "false",
       "type": "string"
     },
     {
@@ -41,22 +46,17 @@
       "type": "string"
     },
     {
-      "key": "studentCode",
-      "value": "0099999991",
-      "type": "string"
-    },
-    {
       "key": "studentEmail",
       "value": "student.test@example.com",
       "type": "string"
     },
     {
-      "key": "accessToken",
+      "key": "studentPassword",
       "value": "",
       "type": "string"
     },
     {
-      "key": "adminToken",
+      "key": "accessToken",
       "value": "",
       "type": "string"
     },
@@ -71,12 +71,112 @@
       "type": "string"
     },
     {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminAccountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentAccountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentCode",
+      "value": "9900000091",
+      "type": "string"
+    },
+    {
+      "key": "fullName",
+      "value": "Nguyễn Văn Kiểm Thử",
+      "type": "string"
+    },
+    {
+      "key": "dob",
+      "value": "2002-01-15",
+      "type": "string"
+    },
+    {
+      "key": "major",
+      "value": "Công nghệ thông tin",
+      "type": "string"
+    },
+    {
+      "key": "programCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "programId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testRunId",
+      "value": "20261029-01",
+      "type": "string"
+    },
+    {
+      "key": "issueDate",
+      "value": "2026-10-20",
+      "type": "string"
+    },
+    {
+      "key": "replacementIssueDate",
+      "value": "2026-10-29",
+      "type": "string"
+    },
+    {
+      "key": "diplomaSignerName",
+      "value": "Nguyễn Văn Mẫu",
+      "type": "string"
+    },
+    {
       "key": "certUUID",
       "value": "",
       "type": "string"
     },
     {
       "key": "draftUUID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rejectedUUID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sourceUUID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "replacementUUID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "correctionUpdatedAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sourceUpdatedAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "replacementUpdatedAt",
       "value": "",
       "type": "string"
     },
@@ -91,7 +191,12 @@
       "type": "string"
     },
     {
-      "key": "programId",
+      "key": "anchorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expectedRetryToken",
       "value": "",
       "type": "string"
     },
@@ -101,18 +206,23 @@
       "type": "string"
     },
     {
+      "key": "txId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "blockNumber",
+      "value": "0",
+      "type": "string"
+    },
+    {
       "key": "otp",
       "value": "",
       "type": "string"
     },
     {
-      "key": "testRunId",
-      "value": "20261015-local-01",
-      "type": "string"
-    },
-    {
       "key": "xlsxFileName",
-      "value": "so-goc-test.xlsx",
+      "value": "01_hop_le.xlsx",
       "type": "string"
     },
     {
@@ -131,16 +241,6 @@
       "type": "string"
     },
     {
-      "key": "blockNumber",
-      "value": "0",
-      "type": "string"
-    },
-    {
-      "key": "txId",
-      "value": "",
-      "type": "string"
-    },
-    {
       "key": "currentPassword",
       "value": "",
       "type": "string"
@@ -149,29 +249,70 @@
       "key": "newPassword",
       "value": "",
       "type": "string"
-    },
+    }
+  ],
+  "event": [
     {
-      "key": "headquartersEmail",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "headquartersPassword",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "headquartersToken",
-      "value": "",
-      "type": "string"
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const requestName = pm.info.requestName || \"\";",
+          "const changesData = /^\\[(GHI|NHAY_CAM)\\]/.test(requestName);",
+          "const sensitive = requestName.startsWith(\"[NHAY_CAM]\");",
+          "if ((changesData && pm.variables.get(\"allowMutations\") !== \"true\") ||",
+          "    (sensitive && pm.variables.get(\"allowSensitiveActions\") !== \"true\")) {",
+          "  console.warn(\"Request skipped: enable the required safety flags for this request only.\");",
+          "  pm.execution.skipRequest();",
+          "}",
+          "const parts = [pm.request.url.toString(), pm.request.body && pm.request.body.raw || \"\"];",
+          "if (pm.request.auth && pm.request.auth.type === \"bearer\") {",
+          "  parts.push(pm.request.auth.bearer.get(\"token\") || \"\");",
+          "}",
+          "const references = parts.join(\"\\n\").match(/\\{\\{[a-zA-Z][a-zA-Z0-9]*\\}\\}/g) || [];",
+          "const missing = [...new Set(references.map(value => value.slice(2, -2)))].filter(key => {",
+          "  const value = pm.variables.get(key);",
+          "  return value === undefined || value === null || String(value).trim() === \"\";",
+          "});",
+          "if (missing.length) {",
+          "  console.warn(\"Request skipped: missing variables: \" + missing.join(\", \"));",
+          "  pm.execution.skipRequest();",
+          "}"
+        ]
+      }
     }
   ],
   "item": [
     {
-      "name": "1. Dang nhap - lay token truoc",
+      "name": "01. Ket noi va dang nhap",
+      "description": "Chọn environment local. Đăng nhập cán bộ tại cơ sở chính; kiểm tra me có canApproveDiplomas=true và isHeadquarters=true. Đăng nhập tạo phiên và nhật ký dù không gắn nhãn GHI.",
       "item": [
         {
-          "name": "Login cán bộ",
+          "name": "Health - ket noi PostgreSQL va Fabric",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/health",
+            "description": "200 khi các thành phần health đang hoạt động; 503 nếu có thành phần lỗi."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dang nhap can bo co so chinh",
           "request": {
             "method": "POST",
             "header": [
@@ -180,8 +321,11 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "noauth"
+            },
             "url": "{{baseUrl}}/auth/login",
-            "description": "Login cán bộ",
+            "description": "Nhập email và mật khẩu thật tại máy local, không dùng chuỗi password_hash. Trả access_token, refresh_token và user; script lưu vào environment đã chọn.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{staffEmail}}\",\n  \"password\": \"{{staffPassword}}\",\n  \"role\": \"university\"\n}",
@@ -190,22 +334,21 @@
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "noauth"
             }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  const data = pm.response.json();",
-                  "  pm.collectionVariables.set(\"accessToken\", data.access_token);",
-                  "  pm.collectionVariables.set(\"refreshToken\", data.refresh_token);",
-                  "  pm.collectionVariables.set(\"accountId\", data.user.id);",
+                  "const data = pm.response.json();",
+                  "if (data.access_token) pm.environment.set(\"accessToken\", data.access_token);",
+                  "if (data.user && data.user.id) pm.environment.set(\"accountId\", data.user.id);",
+                  "if (data.refresh_token) pm.environment.set(\"refreshToken\", data.refresh_token);",
                   "}"
                 ]
               }
@@ -213,46 +356,38 @@
           ]
         },
         {
-          "name": "Login Hà Nội - người duyệt và phát hành",
+          "name": "Ho so can bo dang dang nhap",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/login",
-            "description": "Login Hà Nội - người duyệt và phát hành",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{headquartersEmail}}\",\n  \"password\": \"{{headquartersPassword}}\",\n  \"role\": \"university\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
                 }
-              }
+              ]
             },
-            "auth": {
-              "type": "noauth"
-            }
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Kiểm tra quyền UNIVERSITY tại cơ sở chính. Nếu mustChangePassword=true, đổi mật khẩu của chính mình trước."
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  pm.collectionVariables.set(\"headquartersToken\", pm.response.json().access_token);",
-                  "}"
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Login ADMIN - chỉ quản trị và audit",
+          "name": "Dang nhap admin - khong duyet thay",
           "request": {
             "method": "POST",
             "header": [
@@ -261,8 +396,11 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "noauth"
+            },
             "url": "{{baseUrl}}/auth/login",
-            "description": "Login ADMIN - chỉ quản trị và audit",
+            "description": "Lưu adminToken riêng; không ghi đè token cán bộ. Admin không được duyệt/phát hành thay.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"role\": \"admin\"\n}",
@@ -271,19 +409,20 @@
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "noauth"
             }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  pm.collectionVariables.set(\"adminToken\", pm.response.json().access_token);",
+                  "const data = pm.response.json();",
+                  "if (data.access_token) pm.environment.set(\"adminToken\", data.access_token);",
+                  "if (data.user && data.user.id) pm.environment.set(\"adminAccountId\", data.user.id);",
                   "}"
                 ]
               }
@@ -291,31 +430,10 @@
           ]
         },
         {
-          "name": "Xem hồ sơ đăng nhập",
+          "name": "Danh sach tai khoan - admin",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/me",
-            "description": "Xem hồ sơ đăng nhập"
-          }
-        },
-        {
-          "name": "Danh sách tài khoản ADMIN",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/users",
-            "description": "Danh sách tài khoản ADMIN",
+            "header": [],
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -325,30 +443,347 @@
                   "type": "string"
                 }
               ]
+            },
+            "url": "{{baseUrl}}/auth/users",
+            "description": "Chỉ ADMIN trong phạm vi trường."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
             }
-          }
+          ]
         }
       ]
     },
     {
-      "name": "2. Sinh vien - can tao truoc request",
+      "name": "02. Tong quan va so van bang",
+      "description": "Các API danh sách chỉ hiển thị trong phạm vi quyền. Bộ lọc sổ là ON_CHAIN, REVOKED, REPLACED.",
       "item": [
         {
-          "name": "Danh sách sinh viên",
+          "name": "Tong quan cong viec",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/dashboard/overview",
+            "description": "ADMIN hoặc UNIVERSITY; trả thống kê và công việc cần xử lý."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
               }
-            ],
-            "url": "{{baseUrl}}/students?page=1&limit=20&search={{studentCode}}",
-            "description": "Danh sách sinh viên"
-          }
+            }
+          ]
         },
         {
-          "name": "Tạo sinh viên/tài khoản chờ kích hoạt",
+          "name": "Thong ke van bang",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/statistics",
+            "description": "ADMIN, UNIVERSITY hoặc STUDENT; dữ liệu giới hạn theo vai trò."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "So van bang da phat hanh",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/register?page=1&limit=20&status=ON_CHAIN",
+            "description": "ADMIN hoặc UNIVERSITY. Có thể thêm year=2026, major, decision, issuedFrom, issuedTo."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Danh sach ho so van bang",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert?page=1&limit=20&search={{studentCode}}",
+            "description": "ADMIN/UNIVERSITY/STUDENT; thêm issuedOnly=true nếu chỉ xem đã phát hành."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chi tiet van bang",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{certUUID}}",
+            "description": "Trả projection trực tiếp: uuid, status, documentStatus, workflowStatus, updatedAt..."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Van bang theo MSSV",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/student/{{studentCode}}",
+            "description": "STUDENT chỉ được truy cập văn bằng của mình."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tim kiem noi bo co dang nhap",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/search?q={{studentCode}}",
+            "description": "Tìm theo phạm vi quyền; tìm công khai theo tên bị tắt mặc định. Dùng POST /cert/lookup cho người ngoài."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lich su mot van bang",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{certUUID}}/history",
+            "description": "ADMIN hoặc UNIVERSITY. Đây là lịch sử nghiệp vụ PostgreSQL, không phải mọi khối của ledger."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tai PDF da ky",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{certUUID}}/pdf",
+            "description": "ADMIN/UNIVERSITY hoặc sinh viên sở hữu; trả application/pdf, không phải JSON. Chọn Send and Download nếu muốn lưu."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Danh muc nganh va anh xa",
+      "description": "UNIVERSITY tại cơ sở chính có quyền duyệt. Chọn đúng programId và programCode từ danh sách, không tự động lấy ngành đầu tiên.",
+      "item": [
+        {
+          "name": "Danh muc nganh va alias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/programs",
+            "description": "Trả mảng ngành kèm aliases. Sao chép id của ngành cần dùng vào programId; tên vào major."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Them nganh kiem thu",
           "request": {
             "method": "POST",
             "header": [
@@ -357,21 +792,88 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/students",
-            "description": "Tạo sinh viên/tài khoản chờ kích hoạt",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/programs",
+            "description": "Chỉ tạo ngành mới khi cần test Danh mục; không tạo trùng ngành thật.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Sinh viên kiểm thử\",\n  \"email\": \"{{studentEmail}}\",\n  \"studentId\": \"{{studentCode}}\"\n}",
+              "raw": "{\n  \"code\": \"TEST-{{testRunId}}\",\n  \"name\": \"Ngành kiểm thử {{testRunId}}\",\n  \"nameEn\": \"Test Program {{testRunId}}\",\n  \"note\": \"Tạo danh mục giả trong môi trường kiểm thử tách biệt\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Import tài khoản sinh viên từ Excel",
+          "name": "[GHI] Cap nhat nganh da chon",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/programs/{{programId}}",
+            "description": "Cần cả code, name, nameEn, note. Đây là cập nhật thật vào programId đã chọn, chỉ dùng ngành thử nghiệm.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{programCode}}\",\n  \"name\": \"{{major}}\",\n  \"nameEn\": \"Information Technology\",\n  \"note\": \"Đã đối chiếu tên ngành thử nghiệm theo danh mục được phép\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Phe duyet ten nganh tuong duong",
           "request": {
             "method": "POST",
             "header": [
@@ -380,8 +882,221 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/program-aliases",
+            "description": "Ánh xạ về ngành có sẵn; không tạo ngành mới. Khi lập hồ sơ phải dùng major đã có alias, không chỉ tên bất kỳ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programId\": \"{{programId}}\",\n  \"originalName\": \"CNTT TEST {{testRunId}}\",\n  \"note\": \"Đã đối chiếu tên tương đương với ngành được phê duyệt\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Danh muc nganh cho import",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/programs",
+            "description": "API tương thích phục vụ màn hình nhập Excel."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Them alias qua API import",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/program-aliases",
+            "description": "Tác dụng tương đương endpoint catalog/program-aliases. Chỉ chọn một endpoint, không gửi cả hai cùng tên.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programId\": \"{{programId}}\",\n  \"originalName\": \"CNTT TEST {{testRunId}}\",\n  \"note\": \"Đã đối chiếu tên tương đương với ngành được phê duyệt\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Sinh vien va kich hoat tai khoan",
+      "description": "Tạo sinh viên trước khi POST /cert/request. Sinh viên mới phải nhận OTP qua SMTP; địa chỉ example.com chỉ là mẫu, cần thay bằng hộp thư do anh kiểm soát khi test gửi mail.",
+      "item": [
+        {
+          "name": "Danh sach sinh vien",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/students?page=1&limit=20&search={{studentCode}}",
+            "description": "ADMIN hoặc UNIVERSITY; sinh viên không được xem danh sách này dù controller chỉ yêu cầu JWT."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Tao sinh vien va tai khoan cho kich hoat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/students",
+            "description": "MSSV đúng 10 chữ số và chưa dùng cho người khác. Không nhập UUID vào studentId; đây là tên trường API cho MSSV.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{fullName}}\",\n  \"email\": \"{{studentEmail}}\",\n  \"studentId\": \"{{studentCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Nhap sinh vien tu Excel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/students/import",
-            "description": "Import tài khoản sinh viên từ Excel",
+            "description": "Base64 thuần của workbook sinh viên đúng định dạng, không phải file sổ gốc.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fileName\": \"{{studentXlsxFileName}}\",\n  \"fileData\": \"{{studentXlsxBase64}}\"\n}",
@@ -391,10 +1106,22 @@
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Gửi OTP - cần hộp thư thật do anh kiểm soát và SMTP",
+          "name": "[GHI] Gui OTP kich hoat sinh vien",
           "request": {
             "method": "POST",
             "header": [
@@ -403,8 +1130,11 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "noauth"
+            },
             "url": "{{baseUrl}}/auth/send-otp",
-            "description": "Gửi OTP - cần hộp thư thật do anh kiểm soát và SMTP",
+            "description": "PUBLIC; cần sinh viên/tài khoản được tạo trước, MSSV/email khớp và SMTP hoạt động. Lấy OTP từ email, không từ DB hash.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"mssv\": \"{{studentCode}}\",\n  \"email\": \"{{studentEmail}}\"\n}",
@@ -413,14 +1143,23 @@
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "noauth"
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Kích hoạt sinh viên - OTP vừa nhận",
+          "name": "[GHI] Kich hoat sinh vien bang OTP",
           "request": {
             "method": "POST",
             "header": [
@@ -429,57 +1168,116 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "noauth"
+            },
             "url": "{{baseUrl}}/auth/register",
-            "description": "Kích hoạt sinh viên - OTP vừa nhận",
+            "description": "PUBLIC; mật khẩu ít nhất 6 ký tự, OTP chưa hết hạn/chưa dùng.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"mssv\": \"{{studentCode}}\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"Student-Local-2026!\",\n  \"otp\": \"{{otp}}\",\n  \"role\": \"student\"\n}",
+              "raw": "{\n  \"mssv\": \"{{studentCode}}\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"otp\": \"{{otp}}\",\n  \"role\": \"student\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dang nhap sinh vien",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "auth": {
               "type": "noauth"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Lưu studentToken riêng; không thay token cán bộ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"role\": \"student\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "const data = pm.response.json();",
+                  "if (data.access_token) pm.environment.set(\"studentToken\", data.access_token);",
+                  "if (data.user && data.user.id) pm.environment.set(\"studentAccountId\", data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sinh vien xem van bang cua minh",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/student/{{studentCode}}",
+            "description": "Dùng studentToken để kiểm tra giới hạn chính chủ."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "3. So goc - preview stage review commit",
+      "name": "05. Excel - kiem tra trung - review - commit",
+      "description": "Chọn file nhỏ trong test/ theo README. Preview không commit nghiệp vụ; stage lưu nguồn và đợt nhập. Kiểm tra lỗi trước khi commit. Mỗi dòng READY chỉ nhập một lần.",
       "item": [
         {
-          "name": "Danh mục ngành - lưu PROGRAM_ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/imports/programs",
-            "description": "Danh mục ngành - lưu PROGRAM_ID"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  const program = pm.response.json().find(item => item.name === \"Công nghệ thông tin\");",
-                  "  if (program) pm.collectionVariables.set(\"programId\", program.id);",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Preview sổ gốc",
+          "name": "Xem truoc file so goc",
           "request": {
             "method": "POST",
             "header": [
@@ -488,8 +1286,18 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/imports/registry/preview",
-            "description": "Preview sổ gốc",
+            "description": "Phân tích và trả dữ liệu/lỗi dự kiến, chưa tạo đợt nhập chính thức. Base64 thuần không có tiền tố data:.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fileName\": \"{{xlsxFileName}}\",\n  \"fileData\": \"{{xlsxBase64}}\"\n}",
@@ -499,10 +1307,22 @@
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Stage sổ gốc - lưu BATCH_ID",
+          "name": "[GHI] Luu dot kiem tra Excel",
           "request": {
             "method": "POST",
             "header": [
@@ -511,8 +1331,18 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/imports/registry",
-            "description": "Stage sổ gốc - lưu BATCH_ID",
+            "description": "Lưu source_documents/import_batches/import_rows/validation_issues; script lấy batchId. Cùng file/cơ sở/mapping có thể reused=true.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fileName\": \"{{xlsxFileName}}\",\n  \"fileData\": \"{{xlsxBase64}}\"\n}",
@@ -523,14 +1353,17 @@
               }
             }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  pm.collectionVariables.set(\"batchId\", pm.response.json().batchId);",
+                  "const data = pm.response.json();",
+                  "if (data.batchId) pm.environment.set(\"batchId\", data.batchId);",
                   "}"
                 ]
               }
@@ -538,49 +1371,100 @@
           ]
         },
         {
-          "name": "Danh sách batch",
+          "name": "Danh sach dot nhap",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/imports?page=1&limit=20",
-            "description": "Danh sách batch"
-          }
-        },
-        {
-          "name": "Dòng cần đối soát - lưu ROW_ID đầu tiên",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/imports/{{batchId}}/rows?page=1&limit=20&status=NEEDS_REVIEW",
-            "description": "Dòng cần đối soát - lưu ROW_ID đầu tiên"
+            "description": "Chọn batchId đúng đợt cần kiểm tra, không lấy UUID văn bằng."
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  const rows = pm.response.json().data;",
-                  "  if (rows.length) pm.collectionVariables.set(\"rowId\", rows[0].id);",
-                  "}"
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Sửa đúng dòng đã đối soát",
+          "name": "Cac dong trong dot",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/{{batchId}}/rows?page=1&limit=20",
+            "description": "Chọn rowId từ dòng cần sửa; có thể thêm status=NEEDS_REVIEW hoặc rowId=UUID."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chi tiet ban ghi trung de so sanh",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/{{batchId}}/rows/{{rowId}}/duplicates?page=1&limit=5",
+            "description": "Đối chiếu dòng hiện tại với dữ liệu trùng; không tự sửa hoặc tự xóa bản ghi trùng."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Sua dong co doi soat",
           "request": {
             "method": "PATCH",
             "header": [
@@ -589,21 +1473,43 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/imports/{{batchId}}/rows/{{rowId}}",
-            "description": "Sửa đúng dòng đã đối soát",
+            "description": "Chỉ gửi trường cần sửa trong corrections; mẫu đầy đủ là minh họa, không ghi đè hàng loạt vào nhiều dòng. Không suy GPA/xếp loại nếu nguồn thiếu.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"corrections\": {\n    \"studentCode\": \"{{studentCode}}\",\n    \"fullName\": \"Sinh viên kiểm thử\",\n    \"dateOfBirth\": \"2002-01-01\",\n    \"programId\": \"{{programId}}\",\n    \"graduationYear\": 2024,\n    \"gpa\": null,\n    \"gpaScale\": 4,\n    \"classification\": \"GOOD\",\n    \"certificateNo\": \"TEST-{{testRunId}}-IMPORT\",\n    \"registryNo\": \"TEST/{{testRunId}}/IMPORT\",\n    \"issuedOn\": \"2024-10-15\"\n  },\n  \"note\": \"Đã đối soát hồ sơ kiểm thử\"\n}",
+              "raw": "{\n  \"corrections\": {\n    \"studentCode\": \"{{studentCode}}\",\n    \"fullName\": \"{{fullName}}\",\n    \"dateOfBirth\": \"{{dob}}\",\n    \"programId\": \"{{programId}}\",\n    \"graduationYear\": 2026,\n    \"gpa\": 3.2,\n    \"gpaScale\": 4,\n    \"classification\": \"GOOD\",\n    \"degreeType\": \"BACHELOR\",\n    \"certificateNo\": \"TEST-{{testRunId}}-001\",\n    \"registryNo\": \"TEST/{{testRunId}}/001\",\n    \"issuedOn\": \"{{issueDate}}\",\n    \"majorNameEn\": \"Information Technology\",\n    \"issuePlace\": \"TP. Hồ Chí Minh\",\n    \"diplomaSignerName\": \"{{diplomaSignerName}}\",\n    \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\"\n  },\n  \"note\": \"Đã đối chiếu từng trường sửa với nguồn hồ sơ kiểm thử\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Commit READY",
+          "name": "[GHI] Kiem tra lai sau khi them alias",
           "request": {
             "method": "POST",
             "header": [
@@ -612,21 +1518,88 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/{{batchId}}/recheck",
+            "description": "Chạy sau khi bổ sung danh mục/ánh xạ hoặc cần làm mới kiểm tra trùng, lưu kết quả kiểm tra.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Nhap dong READY de cap moi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/imports/{{batchId}}/commit",
-            "description": "Commit READY",
+            "description": "Cấp mới cần đủ ngày cấp thực tế, thông tin in và dữ liệu nguồn được kiểm tra. Xem imported, diplomas, conflicts/lỗi từng dòng, không chỉ HTTP 2xx.",
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"originType\": \"ISSUANCE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Alias ngành",
+          "name": "[GHI] So hoa so goc - nhanh thay the cho cap moi",
           "request": {
             "method": "POST",
             "header": [
@@ -635,26 +1608,49 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/imports/program-aliases",
-            "description": "Alias ngành",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/{{batchId}}/commit",
+            "description": "Chọn một chế độ commit phù hợp nguồn. Không đổi sang số hóa chỉ để lách lỗi thiếu thông tin; không giả định ngày cấp.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"programId\": \"{{programId}}\",\n  \"originalName\": \"CNTT - hệ chính quy\",\n  \"note\": \"Đã đối chiếu ngành chuẩn\"\n}",
+              "raw": "{\n  \"originType\": \"DIGITIZATION\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "4. Van bang - mau cu duoc gom lai",
+      "name": "06. Ho so cap van bang - duyet tai mot co so",
+      "description": "Luồng A: tạo sinh viên -> request -> approve HOẶC reject. Luồng B từ Excel: commit -> candidates -> print-data -> preview -> bulk/submit -> pending -> approve. Cùng cán bộ được ủy quyền có thể lập và duyệt; không dùng tài khoản Hà Nội.",
       "item": [
         {
-          "name": "Lập yêu cầu - lưu UUID",
+          "name": "[GHI] Lap ho so cap moi cho sinh vien da co",
           "request": {
             "method": "POST",
             "header": [
@@ -663,11 +1659,21 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/cert/request",
-            "description": "Lập yêu cầu - lưu UUID",
+            "description": "Cần sinh viên tồn tại và tên ngành có alias đã phê duyệt. Không chạy cho cùng kết quả đã commit từ Excel. Trả uuid để dùng ở certUUID; đây là hồ sơ chờ xử lý, chưa ghi chain.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"mssv\": \"{{studentCode}}\",\n  \"fullName\": \"Sinh viên kiểm thử\",\n  \"dob\": \"2002-01-01\",\n  \"major\": \"Công nghệ thông tin\",\n  \"gpa\": null,\n  \"grade\": \"Khá\",\n  \"soHieu\": \"TEST-{{testRunId}}-001\",\n  \"soVaoSo\": \"TEST/{{testRunId}}/001\",\n  \"className\": \"TEST-IT\",\n  \"namTotNghiep\": 2024,\n  \"issueDate\": \"2024-10-15\",\n  \"org\": \"ORG2\",\n  \"degreeType\": \"BACHELOR\",\n  \"majorNameEn\": \"Information Technology\",\n  \"issuePlace\": \"Hà Nội\",\n  \"diplomaSignerName\": \"Người ký bằng kiểm thử\",\n  \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\"\n}",
+              "raw": "{\n  \"mssv\": \"{{studentCode}}\",\n  \"fullName\": \"{{fullName}}\",\n  \"major\": \"{{major}}\",\n  \"grade\": \"Khá\",\n  \"gpa\": 3.2,\n  \"soHieu\": \"TEST-{{testRunId}}-001\",\n  \"soVaoSo\": \"TEST/{{testRunId}}/001\",\n  \"className\": \"TEST-2026\",\n  \"namTotNghiep\": 2026,\n  \"dob\": \"{{dob}}\",\n  \"issueDate\": \"{{issueDate}}\",\n  \"degreeType\": \"BACHELOR\",\n  \"fullNameLatin\": \"NGUYEN VAN KIEM THU\",\n  \"majorNameEn\": \"Information Technology\",\n  \"issuePlace\": \"TP. Hồ Chí Minh\",\n  \"diplomaSignerName\": \"{{diplomaSignerName}}\",\n  \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -675,14 +1681,17 @@
               }
             }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  pm.collectionVariables.set(\"certUUID\", pm.response.json().uuid);",
+                  "const data = pm.response.json();",
+                  "if (data.uuid) pm.environment.set(\"certUUID\", data.uuid);",
                   "}"
                 ]
               }
@@ -690,44 +1699,114 @@
           ]
         },
         {
-          "name": "Gửi DRAFT từ import - điền draftUUID riêng",
+          "name": "Ho so nhap Excel du dieu kien luu",
           "request": {
-            "method": "POST",
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/candidates?page=1&limit=20&batchId={{batchId}}",
+            "description": "Chọn uuid cần xử lý vào draftUUID; kiểm tra requestErrors."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Doi chieu thong tin in bang nhap",
+          "request": {
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/cert/{{draftUUID}}/submit",
-            "description": "Gửi DRAFT từ import - điền draftUUID riêng",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{draftUUID}}/print-data",
+            "description": "Chỉ sửa bản nháp chưa ký/chưa trình. Tên trường ngày ở đây là issueDate, không phải issuedOn.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"issuedOn\": \"2024-10-15\"\n}",
+              "raw": "{\n  \"issueDate\": \"{{issueDate}}\",\n  \"degreeType\": \"BACHELOR\",\n  \"fullNameLatin\": \"NGUYEN VAN KIEM THU\",\n  \"majorNameEn\": \"Information Technology\",\n  \"issuePlace\": \"TP. Hồ Chí Minh\",\n  \"diplomaSignerName\": \"{{diplomaSignerName}}\",\n  \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\",\n  \"note\": \"Đã đối chiếu thông tin in và ngày cấp từ hồ sơ kiểm thử\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Danh sách chờ duyệt",
+          "name": "Xem PDF nhap",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{draftUUID}}/preview",
+            "description": "Trả application/pdf bản xem trước chưa ký; không lưu PDF phát hành hoặc ghi blockchain."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
               }
-            ],
-            "url": "{{baseUrl}}/cert/pending",
-            "description": "Danh sách chờ duyệt"
-          }
+            }
+          ]
         },
         {
-          "name": "Hà Nội phê duyệt và gửi neo blockchain",
+          "name": "[GHI] Bo sung thong tin in theo nhom",
           "request": {
             "method": "POST",
             "header": [
@@ -736,8 +1815,139 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/bulk/print-data",
+            "description": "Tối đa 100 UUID khác nhau; chỉ áp dụng thông tin chung đã đối soát, không dùng tên mẫu cho sinh viên thật.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diplomaIds\": [\n    \"{{draftUUID}}\"\n  ],\n  \"printData\": {\n    \"issueDate\": \"{{issueDate}}\",\n    \"degreeType\": \"BACHELOR\",\n    \"fullNameLatin\": \"NGUYEN VAN KIEM THU\",\n    \"majorNameEn\": \"Information Technology\",\n    \"issuePlace\": \"TP. Hồ Chí Minh\",\n    \"diplomaSignerName\": \"{{diplomaSignerName}}\",\n    \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\",\n    \"note\": \"Đã đối chiếu thông tin in và ngày cấp từ hồ sơ kiểm thử\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Luu ban nhap vao hang cho tai co so chinh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/bulk/submit",
+            "description": "Dùng được cả một UUID. Cần bản nháp DRAFT hợp lệ; không gửi ngày cấp tại bước này. Xem succeeded/failed/results. Không dùng POST /cert/:uuid/submit vì DTO và service hiện không khớp.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diplomaIds\": [\n    \"{{draftUUID}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Danh sach cho can bo duyet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/pending?page=1&limit=20",
+            "description": "Chọn certUUID từ danh sách đúng hồ sơ muốn duyệt. Nếu muốn test từ chối, sao chép một hồ sơ khác vào rejectedUUID."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Duyet va ky phat hanh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/cert/approve/{{certUUID}}",
-            "description": "Duyệt bằng ADMIN độc lập",
+            "description": "Chỉ UNIVERSITY có canApproveDiplomas tại cơ sở chính. Thành công trả ANCHOR_PENDING; chờ worker/Fabric COMMITTED mới xác thực hợp lệ.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -746,447 +1956,222 @@
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{headquartersToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Từ chối - chỉ chạy trên yêu cầu khác còn PENDING",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/reject/{{certUUID}}",
-            "description": "Từ chối - chỉ chạy trên yêu cầu khác còn PENDING",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reason\": \"Hồ sơ kiểm thử không đạt\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{headquartersToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Danh sách văn bằng",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert?page=1&limit=20&search={{studentCode}}",
-            "description": "Danh sách văn bằng"
-          }
-        },
-        {
-          "name": "Chi tiết văn bằng",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/{{certUUID}}",
-            "description": "Chi tiết văn bằng"
-          }
-        },
-        {
-          "name": "Theo MSSV",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/student/{{studentCode}}",
-            "description": "Theo MSSV"
-          }
-        },
-        {
-          "name": "Lịch sử văn bằng",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/{{certUUID}}/history",
-            "description": "Lịch sử văn bằng"
-          }
-        },
-        {
-          "name": "Thống kê",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/statistics",
-            "description": "Thống kê"
-          }
-        },
-        {
-          "name": "Tìm có đăng nhập",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/search?q={{studentCode}}",
-            "description": "Tìm có đăng nhập"
-          }
-        },
-        {
-          "name": "Verify công khai",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/verify",
-            "description": "Verify công khai",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"certUUID\": \"{{certUUID}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          }
-        },
-        {
-          "name": "Thu hồi bằng giả đã duyệt",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/revoke",
-            "description": "Thu hồi bằng giả đã duyệt",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"certUUID\": \"{{certUUID}}\",\n  \"reason\": \"Thu hồi dữ liệu kiểm thử\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{headquartersToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "5. Audit Integrity Explorer Health",
-      "item": [
-        {
-          "name": "Health",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/health",
-            "description": "Health",
-            "auth": {
-              "type": "noauth"
-            }
-          }
-        },
-        {
-          "name": "Audit của trường",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/audit?page=1&limit=20",
-            "description": "Audit của trường",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{adminToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Audit một tài khoản",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/audit/user/{{accountId}}",
-            "description": "Audit một tài khoản",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{adminToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Integrity check",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/integrity/check?days=1&limit=50",
-            "description": "Integrity check",
-            "body": {
-              "mode": "raw",
-              "raw": "{}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Integrity alerts",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/integrity/alerts?resolved=false",
-            "description": "Integrity alerts"
-          }
-        },
-        {
-          "name": "Resolve cảnh báo có thật",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/integrity/alerts/{{alertId}}/resolve",
-            "description": "Resolve cảnh báo có thật",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"note\": \"Đã đối chiếu snapshot và xử lý theo biên bản kiểm thử\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Debug counts",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/integrity/debug",
-            "description": "Debug counts"
-          }
-        },
-        {
-          "name": "Explorer overview - cần Fabric",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/explorer/overview",
-            "description": "Explorer overview - cần Fabric",
-            "auth": {
-              "type": "noauth"
-            }
-          }
-        },
-        {
-          "name": "Explorer blocks - cần Fabric",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/explorer/blocks?page=1&limit=10",
-            "description": "Explorer blocks - cần Fabric",
-            "auth": {
-              "type": "noauth"
-            }
-          }
-        },
-        {
-          "name": "Explorer block - cần Fabric",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/explorer/blocks/{{blockNumber}}",
-            "description": "Explorer block - cần Fabric",
-            "auth": {
-              "type": "noauth"
-            }
-          }
-        },
-        {
-          "name": "Explorer transaction - cần Fabric",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/explorer/tx/{{txId}}",
-            "description": "Explorer transaction - cần Fabric",
-            "auth": {
-              "type": "noauth"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "6. Thay doi phien/mat khau - chay cuoi va chon tung lenh",
-      "item": [
-        {
-          "name": "Refresh - lưu token mới, không dùng lại token cũ",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/refresh",
-            "description": "Refresh - lưu token mới, không dùng lại token cũ",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "noauth"
             }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Tu choi ho so khac dang cho",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/reject/{{rejectedUUID}}",
+            "description": "Nhánh thay thế cho duyệt, không từ chối hồ sơ đã phát hành. Điền rejectedUUID riêng.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Hồ sơ kiểm thử cần bổ sung ngày sinh theo nguồn gốc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Duyet nhom ho so",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/bulk/approve",
+            "description": "Chọn thay cho duyệt đơn, không gửi cả hai. Tối đa 100 UUID; kiểm tra lỗi từng kết quả.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diplomaIds\": [\n    \"{{certUUID}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Tu choi nhom ho so",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/bulk/reject",
+            "description": "Chọn thay cho từ chối đơn; không dùng UUID đã duyệt.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diplomaIds\": [\n    \"{{rejectedUUID}}\"\n  ],\n  \"reason\": \"Cần bổ sung hồ sơ gốc trước khi phát hành\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. Ho so bi tu choi - bo sung va trinh lai",
+      "description": "Chỉ hồ sơ chưa ký, chưa có phiên bản bất biến. Sau MỖI thao tác mở lại/sửa/trình, gọi lại GET chi tiết để lấy updatedAt mới. Không dùng mốc ngày giờ tự đặt.",
+      "item": [
+        {
+          "name": "Danh sach ho so bi tu choi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/corrections?stage=REJECTED&page=1&limit=20",
+            "description": "Chọn rejectedUUID từ data; xem rejection.reason, blockedReason và correctionErrors. Đổi stage=DRAFT để xem đang bổ sung."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tai lai chi tiet ho so can sua",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{rejectedUUID}}",
+            "description": "Script lưu updatedAt vào correctionUpdatedAt. Chạy lại sau mỗi thay đổi."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  const data = pm.response.json();",
-                  "  pm.collectionVariables.set(\"accessToken\", data.access_token);",
-                  "  pm.collectionVariables.set(\"refreshToken\", data.refresh_token);",
+                  "const data = pm.response.json();",
+                  "if (data.updatedAt) pm.environment.set(\"correctionUpdatedAt\", data.updatedAt);",
                   "}"
                 ]
               }
@@ -1194,7 +2179,7 @@
           ]
         },
         {
-          "name": "Logout refresh token hiện tại",
+          "name": "[GHI] Mo lai ho so REJECTED",
           "request": {
             "method": "POST",
             "header": [
@@ -1203,8 +2188,1263 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/auth/logout",
-            "description": "Logout refresh token hiện tại",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/corrections/{{rejectedUUID}}/reopen",
+            "description": "REJECTED -> DRAFT. Sau thành công tải lại chi tiết trước PATCH.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu nguồn để bổ sung hồ sơ kiểm thử\",\n  \"expectedUpdatedAt\": \"{{correctionUpdatedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"correctionUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Sua ho so dang bo sung",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/corrections/{{rejectedUUID}}",
+            "description": "Body đầy đủ theo CorrectionEditDto, không phải corrections object của import. Giữ nguyên dữ liệu đúng, chỉ thay thông tin đã đối chiếu.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu nguồn để bổ sung hồ sơ kiểm thử\",\n  \"expectedUpdatedAt\": \"{{correctionUpdatedAt}}\",\n  \"fullName\": \"{{fullName}}\",\n  \"dob\": \"{{dob}}\",\n  \"programId\": \"{{programId}}\",\n  \"namTotNghiep\": 2026,\n  \"grade\": \"Khá\",\n  \"gpa\": 3.2,\n  \"degreeType\": \"BACHELOR\",\n  \"className\": \"TEST-2026\",\n  \"soHieu\": \"TEST-{{testRunId}}-FIX\",\n  \"soVaoSo\": \"TEST/{{testRunId}}/FIX\",\n  \"issueDate\": \"{{issueDate}}\",\n  \"fullNameLatin\": \"NGUYEN VAN KIEM THU\",\n  \"majorNameEn\": \"Information Technology\",\n  \"issuePlace\": \"TP. Hồ Chí Minh\",\n  \"diplomaSignerName\": \"{{diplomaSignerName}}\",\n  \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"correctionUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Trinh duyet lai ho so da sua",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/corrections/{{rejectedUUID}}/resubmit",
+            "description": "DRAFT -> REQUESTED nếu đủ điều kiện. Tải lại updatedAt trước khi gửi; sau đó dùng approve với UUID này tại nhóm 06.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu nguồn để bổ sung hồ sơ kiểm thử\",\n  \"expectedUpdatedAt\": \"{{correctionUpdatedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"correctionUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. Sua sai va phat hanh van bang thay the",
+      "description": "Không sửa trực tiếp bản đã ký/hash bất biến. sourceUUID là văn bằng ACTIVE đã COMMITTED và chưa có thay thế/thu hồi. replacementUUID là hồ sơ MỚI được API create trả về.",
+      "item": [
+        {
+          "name": "Danh sach ho so thay the",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/replacements?stage=DRAFT&page=1&limit=20",
+            "description": "Các stage: DRAFT, REQUESTED, REJECTED, APPROVED."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tai lai van bang goc truoc khi tao thay the",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{sourceUUID}}",
+            "description": "Lưu sourceUpdatedAt mới nhất; giữ UUID gốc riêng."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "const data = pm.response.json();",
+                  "if (data.updatedAt) pm.environment.set(\"sourceUpdatedAt\", data.updatedAt);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Tao ho so thay the cho van bang goc",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/replacements/{{sourceUUID}}/create",
+            "description": "Số hiệu và số vào sổ phải mới; ngày không trước bằng gốc và không ở tương lai. Chỉ tạo hồ sơ DRAFT, chưa thay hiệu lực ngay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Sửa sai thông tin theo hồ sơ gốc đã đối chiếu\",\n  \"expectedUpdatedAt\": \"{{sourceUpdatedAt}}\",\n  \"basis\": \"Quyết định điều chỉnh số TEST/QD/2026\",\n  \"soHieu\": \"TEST-{{testRunId}}-REPL\",\n  \"soVaoSo\": \"TEST/{{testRunId}}/REPL\",\n  \"issueDate\": \"{{replacementIssueDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "const data = pm.response.json();",
+                  "if (data.uuid) pm.environment.set(\"replacementUUID\", data.uuid);",
+                  "pm.environment.unset(\"sourceUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tai lai ho so thay the sau moi thao tac",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/{{replacementUUID}}",
+            "description": "Script lưu replacementUpdatedAt. Chạy sau create, revise, submit, reopen/reject trước thao tác kế tiếp."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "const data = pm.response.json();",
+                  "if (data.updatedAt) pm.environment.set(\"replacementUpdatedAt\", data.updatedAt);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Sua noi dung ban thay the DRAFT",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/replacements/{{replacementUUID}}",
+            "description": "Không dùng endpoint sửa hồ sơ từ chối cho bằng thay thế; thay đổi lưu vào dữ liệu thay thế, không sửa snapshot bằng gốc.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu dữ liệu và căn cứ thay thế trong môi trường thử nghiệm\",\n  \"expectedUpdatedAt\": \"{{replacementUpdatedAt}}\",\n  \"fullName\": \"{{fullName}}\",\n  \"dob\": \"{{dob}}\",\n  \"programId\": \"{{programId}}\",\n  \"namTotNghiep\": 2026,\n  \"grade\": \"Khá\",\n  \"gpa\": 3.2,\n  \"degreeType\": \"BACHELOR\",\n  \"className\": \"TEST-2026\",\n  \"soHieu\": \"TEST-{{testRunId}}-REPL\",\n  \"soVaoSo\": \"TEST/{{testRunId}}/REPL\",\n  \"issueDate\": \"{{replacementIssueDate}}\",\n  \"fullNameLatin\": \"NGUYEN VAN KIEM THU\",\n  \"majorNameEn\": \"Information Technology\",\n  \"issuePlace\": \"TP. Hồ Chí Minh\",\n  \"diplomaSignerName\": \"{{diplomaSignerName}}\",\n  \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"replacementUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Trinh ban thay the",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/replacements/{{replacementUUID}}/submit",
+            "description": "DRAFT -> REQUESTED, không dùng bulk/submit cho hồ sơ thay thế. Phải tải lại updatedAt trước mỗi thao tác.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu dữ liệu và căn cứ thay thế trong môi trường thử nghiệm\",\n  \"expectedUpdatedAt\": \"{{replacementUpdatedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"replacementUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Tu choi ban thay the",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/replacements/{{replacementUUID}}/reject",
+            "description": "REQUESTED -> REJECTED; nhánh khác với approve. Phải tải lại updatedAt trước mỗi thao tác.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu dữ liệu và căn cứ thay thế trong môi trường thử nghiệm\",\n  \"expectedUpdatedAt\": \"{{replacementUpdatedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"replacementUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Mo lai ban thay the bi tu choi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/replacements/{{replacementUUID}}/reopen",
+            "description": "REJECTED -> DRAFT; sau đó sửa và trình lại. Phải tải lại updatedAt trước mỗi thao tác.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu dữ liệu và căn cứ thay thế trong môi trường thử nghiệm\",\n  \"expectedUpdatedAt\": \"{{replacementUpdatedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"replacementUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Duyet va phat hanh ban thay the",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/replacements/{{replacementUUID}}/approve",
+            "description": "REQUESTED -> APPROVED, tạo snapshot/PDF ký/outbox. Bằng gốc ngừng hiệu lực; chờ blockchain xác nhận bằng thay thế. Phải tải lại updatedAt trước mỗi thao tác.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu dữ liệu và căn cứ thay thế trong môi trường thử nghiệm\",\n  \"expectedUpdatedAt\": \"{{replacementUpdatedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"replacementUpdatedAt\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09. Tra cuu va xac thuc cong khai",
+      "description": "Không đăng nhập. Tra cứu tìm văn bằng theo thông tin cá nhân tối thiểu; xác thực đối chiếu bằng đã phát hành với blockchain/PDF. Không gửi proofString để test giao diện hiện tại.",
+      "item": [
+        {
+          "name": "Tra cuu bang thong tin toi thieu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/cert/lookup",
+            "description": "Bắt buộc họ tên + ngày sinh + ít nhất một trong MSSV/số hiệu/số vào sổ. Trả mảng, [] nếu không khớp; không phải kết luận xác thực. Chỉ bằng được phép công khai.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{fullName}}\",\n  \"dob\": \"{{dob}}\",\n  \"mssv\": \"{{studentCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tra cuu bang day du cac truong",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/cert/lookup",
+            "description": "Các trường bổ sung đều là điều kiện đối chiếu; xóa trường không có trong nguồn, không bịa quyết định. Nhập đủ nhưng sai một trường có thể trả [].",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{fullName}}\",\n  \"dob\": \"{{dob}}\",\n  \"mssv\": \"{{studentCode}}\",\n  \"soHieu\": \"TEST-{{testRunId}}-001\",\n  \"soVaoSo\": \"TEST/{{testRunId}}/001\",\n  \"className\": \"TEST-2026\",\n  \"major\": \"{{major}}\",\n  \"degreeType\": \"BACHELOR\",\n  \"namTotNghiep\": 2026,\n  \"grade\": \"Khá\",\n  \"gpa\": 3.2,\n  \"issueDate\": \"{{issueDate}}\",\n  \"decisionNo\": \"TEST/QD/2026\",\n  \"decisionDate\": \"2026-10-10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xac thuc UUID cua van bang",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/verify",
+            "description": "HTTP 2xx chưa đủ: kiểm tra isValid, verificationStatus và message. Chưa commit -> ANCHOR_PENDING; đã thu hồi/thay thế không còn hợp lệ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid\": \"{{certUUID}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xac thuc file PDF da ky",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/verify/pdf",
+            "description": "Body form-data, key=file, Type=File; chọn PDF thực tế đã tải. Không tự thêm Content-Type boundary. Tối đa 10 MB, không có trường form khác.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Chọn PDF đã tải từ GET /cert/UUID/pdf; tối đa 10 MB. Không tự đặt Content-Type."
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Doi chieu blockchain va xu ly het luot thu",
+      "description": "ADMIN/UNIVERSITY đọc/đối chiếu trong phạm vi trường; quyền thử lại kiểm tra thêm tại service. Không có thao tác xóa hoặc viết lại block.",
+      "item": [
+        {
+          "name": "Tong quan ket noi Fabric",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/overview",
+            "description": "Tổng quan đối chiếu từ DB và trạng thái mạng. Không coi chỉ mục DB là full ledger explorer."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Danh sach giao dich neo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/anchors?page=1&limit=20",
+            "description": "Chọn anchorId từ data[].id; không dùng diplomaId thay anchorId. transactionId -> txId nếu có."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Giao dich da het 10 luot thu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/anchors?page=1&limit=20&status=EXHAUSTED",
+            "description": "Chỉ chọn đúng data[].id vào anchorId và outbox.retryToken vào expectedRetryToken. Không tự tạo mã token hoặc lấy từ giao dịch khác."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Doi chieu truc tiep mot giao dich",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/anchors/{{anchorId}}/check",
+            "description": "Đánh giá MATCH/MISMATCH/PENDING/INCOMPLETE/UNAVAILABLE và lưu audit; không gửi giao dịch ghi Fabric.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Yeu cau xu ly lai giao dich het luot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/anchors/{{anchorId}}/retry",
+            "description": "Chỉ khi FAILED, outbox.exhausted=true, không bị khóa và token còn mới. Cần Fabric/outbox bật. Có thể đối soát và ghi nhận giao dịch đã có thay vì gửi trùng; không sửa snapshot/hash.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Đã kiểm tra kết nối và xử lý nguyên nhân giao dịch thất bại\",\n  \"expectedRetryToken\": \"{{expectedRetryToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"expectedRetryToken\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chi muc giao dich da commit theo khoi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/blocks?page=1&limit=10",
+            "description": "Danh sách từ DATABASE_ANCHOR_INDEX, không phải toàn bộ block của ledger."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chi tiet giao dich trong pham vi truong",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/tx/{{txId}}",
+            "description": "Lấy txId thật từ anchor COMMITTED; trả dữ liệu chỉ mục DB."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gioi han hien tai - chi tiet block chua tich hop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/explorer/blocks/{{blockNumber}}",
+            "description": "Endpoint hiện chủ động trả 503 vì chưa tích hợp chỉ mục khối; không kết luận là Fabric hỏng."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 503\", function () { pm.expect(pm.response.code).to.eql(503); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11. Nhat ky va kiem tra toan ven",
+      "description": "ADMIN hoặc UNIVERSITY. Kiểm tra/resolve có thể tạo hoặc cập nhật cảnh báo, không sửa blockchain.",
+      "item": [
+        {
+          "name": "Nhat ky hoat dong",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/audit?page=1&limit=20",
+            "description": "Có thể thêm action, result=SUCCESS|FAILED, search, from/to ISO 8601."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nhat ky mot tai khoan - admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/audit/user/{{accountId}}",
+            "description": "ADMIN, lấy accountId từ đăng nhập cán bộ hoặc auth/users."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Quet kiem tra toan ven",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/integrity/check?days=1&limit=50",
+            "description": "Có thể tạo integrity_alerts; đọc checked, mismatches, unavailable. Không có mạng thì chưa thể kết luận giả mạo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Canh bao chua xu ly",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/integrity/alerts?resolved=false",
+            "description": "Chọn alertId từ cảnh báo có thật. resolved=true để xem đã xử lý."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GHI] Xac nhan xu ly canh bao",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/integrity/alerts/{{alertId}}/resolve",
+            "description": "Ghi người/thời điểm xử lý; không tự sửa hash hoặc khôi phục bằng.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Đã đối chiếu nguồn và blockchain theo biên bản kiểm thử\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dem phuc vu chan doan toan ven",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/integrity/debug",
+            "description": "API chẩn đoán có guard ADMIN/UNIVERSITY, không dùng làm báo cáo nghiệp vụ."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12. Thao tac nhay cam - chi chon tung request",
+      "description": "Không Run Folder/Run All. Bật allowMutations=true và allowSensitiveActions=true ngay trước một request, rồi tắt cả hai. Thu hồi/đổi mật khẩu/logout tác động dữ liệu thật và có thể vô hiệu hóa token.",
+      "item": [
+        {
+          "name": "[NHAY_CAM] Thu hoi van bang dang co hieu luc",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/cert/revoke",
+            "description": "Chỉ cán bộ được quyền; chọn một bằng thử nghiệm còn hiệu lực, chưa có thay thế. Thu hồi lưu DB/outbox/sự kiện REVOKE; không xóa giao dịch ISSUE cũ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certUUID\": \"{{certUUID}}\",\n  \"reason\": \"Thu hồi văn bằng kiểm thử theo quyết định TEST/QD/2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NHAY_CAM] Refresh phien can bo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/auth/refresh",
+            "description": "Xoay vòng token, script lưu access/refresh mới. Dùng lại refresh cũ có thể thu hồi cả họ phiên; không Retry tự động.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
@@ -1213,14 +3453,29 @@
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "noauth"
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "const data = pm.response.json();",
+                  "if (data.access_token) pm.environment.set(\"accessToken\", data.access_token);",
+                  "if (data.user && data.user.id) pm.environment.set(\"accountId\", data.user.id);",
+                  "if (data.refresh_token) pm.environment.set(\"refreshToken\", data.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Đổi mật khẩu của chính cán bộ đang đăng nhập",
+          "name": "[NHAY_CAM] Doi mat khau cua can bo dang dang nhap",
           "request": {
             "method": "POST",
             "header": [
@@ -1229,8 +3484,18 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/auth/change-password/{{accountId}}",
-            "description": "Đổi mật khẩu của chính cán bộ đang đăng nhập",
+            "description": "Chỉ đổi của chính tài khoản trong JWT. oldPassword là mật khẩu rõ đang dùng, không phải password_hash. Sau đổi đăng nhập lại và sửa staffPassword ở local.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"oldPassword\": \"{{currentPassword}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
@@ -1240,10 +3505,22 @@
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Logout mọi thiết bị - thu hồi JWT hiện tại",
+          "name": "[NHAY_CAM] Doi mat khau cua admin dang dang nhap",
           "request": {
             "method": "POST",
             "header": [
@@ -1252,8 +3529,105 @@
                 "value": "application/json"
               }
             ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/auth/change-password/{{adminAccountId}}",
+            "description": "Dùng adminToken của chính adminAccountId; không dùng token cán bộ để đổi hộ admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"{{currentPassword}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NHAY_CAM] Logout phien refresh hien tai",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/auth/logout",
+            "description": "Thu hồi refresh token; muốn logout JWT mọi thiết bị dùng logout-all.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"refreshToken\");",
+                  "pm.environment.unset(\"accessToken\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NHAY_CAM] Logout moi thiet bi can bo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/auth/logout-all",
-            "description": "Logout mọi thiết bị - thu hồi JWT hiện tại",
+            "description": "Vô hiệu hóa phiên của chính tài khoản JWT hiện tại; đăng nhập lại sau khi test.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -1263,63 +3637,71 @@
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "pm.environment.unset(\"refreshToken\");",
+                  "pm.environment.unset(\"accessToken\");",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Thông tin bằng song ngữ và xem trước PDF",
+      "name": "13. Chat tro ly tren web - khong phai API Fabric",
+      "description": "Dùng webUrl localhost:3000, không dùng baseUrl localhost:3001/api. Có thể gọi dịch vụ AI tốn quota; bật cờ nhạy cảm trước. Không gửi dữ liệu cá nhân/OTP/tệp văn bằng.",
       "item": [
         {
-          "name": "Đối chiếu thông tin in bằng nháp",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/cert/{{certUUID}}/print-data",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"degreeType\": \"BACHELOR\",\n  \"majorNameEn\": \"Information Technology\",\n  \"issuePlace\": \"Hà Nội\",\n  \"diplomaSignerName\": \"Người ký trên bằng gốc\",\n  \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\",\n  \"note\": \"Đã đối chiếu văn bằng gốc; không lấy tên người ký quyết định thay thế\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Xem PDF nháp chưa ký, chưa phát hành",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/cert/{{certUUID}}/preview"
-          }
-        },
-        {
-          "name": "Bổ sung chung cho các bằng nháp",
+          "name": "[NHAY_CAM] Hoi huong dan tra cuu van bang",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/cert/bulk/print-data",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webUrl}}"
               }
             ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{webUrl}}/api/assistant",
+            "description": "PUBLIC với câu hỏi hướng dẫn; cần cấu hình trợ lý trên server và Origin trùng webUrl/NEXTAUTH_URL. Bearer NestJS không thay thế cookie NextAuth. Ngữ cảnh lỗi riêng của cán bộ cần phiên web hợp lệ; không đưa cookie vào collection chia sẻ.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"diplomaIds\": [\n    \"{{certUUID}}\"\n  ],\n  \"printData\": {\n    \"issuePlace\": \"Hà Nội\",\n    \"diplomaSignerTitle\": \"HIỆU TRƯỞNG\",\n    \"note\": \"Đã đối chiếu các bằng gốc trong nhóm; không sửa giá trị còn trống\"\n  }\n}",
+              "raw": "{\n  \"question\": \"Tôi cần nhập thông tin gì để tra cứu văn bằng?\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 2xx\", function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

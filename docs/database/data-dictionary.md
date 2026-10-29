@@ -1,5 +1,9 @@
 # Từ điển dữ liệu
 
+Xem [tác dụng và quan hệ đầy đủ của 27 bảng](./vai-tro-cac-bang-va-chuc-nang.md)
+và [API/mẫu nhập Postman](./api-test-samples.md) cho luồng hiện tại một cơ sở chính TP.HCM.
+Phần Physical schema là ảnh chụp tại lần sinh tài liệu; đối chiếu `apps/api/prisma/schema.prisma` khi cần danh sách cột mới nhất.
+
 ## Phân loại trường
 
 - **CORE**: bắt buộc để xác định hồ sơ và cấp văn bằng.
@@ -10,22 +14,22 @@
 
 ## Bảng nghiệp vụ
 
-| Bảng                 | Trường quan trọng                                           | Trường ít thiết yếu/optional                               | Ghi chú                                               |
-| -------------------- | ----------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
-| institutions         | id, code, name                                              | created_at                                                 | Một trường có thể có nhiều cơ sở                      |
-| campuses             | id, institution_id, code, is_headquarters                    | name, fabric_msp_id                                        | Hà Nội/ORG1 là trụ sở; tối đa một trụ sở mỗi trường; MSP cần unique |
-| programs             | id, institution_id, code, name                              | national_code, active                                      | Tên Excel không dùng trực tiếp làm khóa               |
-| program_aliases      | normalized_name, program_id, approved_by_id                 | original_name                                              | Bắt buộc duyệt alias typo/viết hoa                    |
-| academic_classes     | campus_id, code                                             | cohort_code                                                | Lớp là thuộc tính enrollment, không đặt trong Student |
-| students             | institution_id, student_code, full_name                     | DOB, nơi sinh, giới tính, dân tộc, quốc tịch, email, phone | MSSV unique theo trường; không phải primary key       |
-| enrollments          | student_id, program_id, campus_id                           | class_id, start/end year, cohort                           | Cho phép sinh viên có nhiều quá trình học             |
-| graduation_decisions | document_number, decision_year                              | signed_on, signer_name, source_document_id                 | Quyết định tái sử dụng cho nhiều graduation record    |
-| graduation_records   | student_id, program_id, graduation_year                     | GPA, classification, degree_type, specialization           | Có thể tồn tại dù chưa có Diploma                     |
-| diplomas             | graduation_id, campus_id, issuing_campus_id, certificate_no, registry_no, workflow/status | issued_on, replacement/revocation fields | campus_id giữ cơ sở nguồn; issuing_campus_id là trụ sở phát hành sau duyệt; cặp số unique theo institution |
-| diploma_versions     | diploma_id, version, schema_version, payload, payload_hash  | created_by_id                                              | Snapshot bất biến để xác thực                         |
-| diploma_events       | diploma_id, event_type, actor_id                            | reason, metadata                                           | Append-only event history                             |
-| blockchain_anchors   | version_id, event_type, status, payload_hash                | tx/block/MSP/error                                         | Chỉ là index kết quả anchor, không thay thế chain     |
-| outbox_events        | version_id, event_type, payload, status                     | attempts/lease/error                                       | Bảo đảm transaction DB không gọi chain trực tiếp      |
+| Bảng                 | Trường quan trọng                                                                         | Trường ít thiết yếu/optional                               | Ghi chú                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| institutions         | id, code, name                                                                            | created_at                                                 | Một trường có thể có nhiều cơ sở                                                                           |
+| campuses             | id, institution_id, code, active, is_headquarters                                         | name, fabric_msp_id                                        | Hiện dùng một cơ sở chính TP.HCM; MSP là danh tính phát hành kỹ thuật                                      |
+| programs             | id, institution_id, code, name                                                            | national_code, active                                      | Tên Excel không dùng trực tiếp làm khóa                                                                    |
+| program_aliases      | normalized_name, program_id, approved_by_id                                               | original_name                                              | Bắt buộc duyệt alias typo/viết hoa                                                                         |
+| academic_classes     | campus_id, code                                                                           | cohort_code                                                | Lớp là thuộc tính enrollment, không đặt trong Student                                                      |
+| students             | institution_id, student_code, full_name                                                   | DOB, nơi sinh, giới tính, dân tộc, quốc tịch, email, phone | MSSV unique theo trường; không phải primary key                                                            |
+| enrollments          | student_id, program_id, campus_id                                                         | class_id, start/end year, cohort                           | Cho phép sinh viên có nhiều quá trình học                                                                  |
+| graduation_decisions | document_number, decision_year                                                            | signed_on, signer_name, source_document_id                 | Quyết định tái sử dụng cho nhiều graduation record                                                         |
+| graduation_records   | student_id, program_id, graduation_year                                                   | GPA, classification, degree_type, specialization           | Có thể tồn tại dù chưa có Diploma                                                                          |
+| diplomas             | graduation_id, campus_id, issuing_campus_id, certificate_no, registry_no, workflow/status | issued_on, replacement/revocation fields                   | campus_id giữ cơ sở nguồn; issuing_campus_id là trụ sở phát hành sau duyệt; cặp số unique theo institution |
+| diploma_versions     | diploma_id, version, schema_version, payload, payload_hash                                | created_by_id                                              | Snapshot bất biến để xác thực                                                                              |
+| diploma_events       | diploma_id, event_type, actor_id                                                          | reason, metadata                                           | Append-only event history                                                                                  |
+| blockchain_anchors   | version_id, event_type, status, payload_hash                                              | tx/block/MSP/error                                         | Chỉ là index kết quả anchor, không thay thế chain                                                          |
+| outbox_events        | version_id, event_type, payload, status                                                   | attempts/lease/error                                       | Bảo đảm transaction DB không gọi chain trực tiếp                                                           |
 
 ## Bảng nhập liệu
 
@@ -38,21 +42,21 @@
 
 ## Bảng bảo mật/audit
 
-| Bảng                | Trường quan trọng                             | Quy tắc                                       |
-| ------------------- | --------------------------------------------- | --------------------------------------------- |
-| accounts            | email, password_hash, active, session_version | Không lưu mật khẩu plaintext; email lowercase |
+| Bảng                | Trường quan trọng                                         | Quy tắc                                                                   |
+| ------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| accounts            | email, password_hash, active, session_version             | Không lưu mật khẩu plaintext; email lowercase                             |
 | account_memberships | account_id, campus_id, role, active, can_approve_diplomas | Chỉ university tại trụ sở có capability mới duyệt; admin không duyệt thay |
-| refresh_sessions    | token_hash, family_id, expires_at, revoked_at | Rotation và reuse detection                   |
-| otp_challenges      | account_id, code_hash, expires_at, attempts   | Hash OTP; tối đa 5 lần                        |
-| audit_logs          | actor, action, result, target, metadata       | Append-only, không log secret/OTP             |
-| integrity_alerts    | diploma_id, type, db/fabric hash              | Unique alert đang mở                          |
+| refresh_sessions    | token_hash, family_id, expires_at, revoked_at             | Rotation và reuse detection                                               |
+| otp_challenges      | account_id, code_hash, expires_at, attempts               | Hash OTP; tối đa 5 lần                                                    |
+| audit_logs          | actor, action, result, target, metadata                   | Append-only, không log secret/OTP                                         |
+| integrity_alerts    | diploma_id, type, db/fabric hash                          | Unique alert đang mở                                                      |
 
-## Trường điều khiển luồng HCM → Hà Nội
+## Trường điều khiển luồng một cơ sở chính
 
-- campuses.is_headquarters: đánh dấu cơ sở trụ sở chính; Hà Nội/ORG1 có giá trị true, HCM/ORG2 là false.
+- campuses.is_headquarters: đánh dấu cơ sở chính có thẩm quyền. Luồng hiện tại dùng cơ sở chính TP.HCM; code ORG2 được giữ tương thích dữ liệu.
 - account_memberships.can_approve_diplomas: quyền nghiệp vụ trên membership đang hoạt động. Quyền này phải đi cùng role university tại trụ sở, không suy từ tên tài khoản hay role admin.
-- diplomas.campus_id: cơ sở lập và quản lý hồ sơ nguồn, vẫn giữ HCM/ORG2 sau phê duyệt.
-- diplomas.issuing_campus_id: cơ sở có thẩm quyền phát hành; được gắn với Hà Nội/ORG1 khi phê duyệt. Snapshot và anchor sử dụng MSP của cơ sở phát hành, không dùng MSP của cơ sở nguồn.
+- diplomas.campus_id: cơ sở lập và quản lý hồ sơ nguồn; dữ liệu lịch sử vẫn được bảo toàn.
+- diplomas.issuing_campus_id: cơ sở có thẩm quyền phát hành; hiện là cơ sở chính TP.HCM. Snapshot và anchor sử dụng MSP phát hành kỹ thuật Org1MSP, không có bước gửi sang Hà Nội.
 
 ## Mapping Excel → model
 
@@ -187,7 +191,7 @@ Lịch sử nghiệp vụ append-only
 
 ### diploma_pdf_signatures
 
-Hai chữ ký cơ sở/trụ sở và chứng thư đã dùng
+Chữ ký số và chứng thư đã dùng; PDF mới có một chữ ký, giữ nguyên chữ ký lịch sử
 
 | Cột | Kiểu | Bắt buộc | Khóa |
 |---|---|---|---|
