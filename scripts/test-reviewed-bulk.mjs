@@ -67,50 +67,44 @@ try {
           nameEn: "Rollback Fixture University",
         },
       });
-      const branch = await transaction.campus.create({
-        data: { institutionId, code: "ORG2", name: "HCM rollback fixture" },
-      });
-      const headquarters = await transaction.campus.create({
+      const campus = await transaction.campus.create({
         data: {
           institutionId,
-          code: "ORG1",
-          name: "Hanoi rollback fixture",
+          code: "ORG2",
+          name: "Main HCM rollback fixture",
           isHeadquarters: true,
-          fabricMspId: "BulkHQ_" + suffix,
+          fabricMspId: "BulkMain_" + suffix,
         },
       });
       const program = await transaction.program.create({
         data: { institutionId, code: "BULK", name: "Bulk fixture program" },
       });
-      const actors = [];
-      for (const [index, campus] of [branch, headquarters].entries()) {
-        const account = await transaction.account.create({
-          data: {
-            email: "bulk-" + suffix + "-" + index + "@example.test",
-            displayName: "Bulk fixture " + index,
-            passwordHash: "not-a-login-secret",
-          },
-        });
-        const membership = await transaction.accountMembership.create({
-          data: {
-            accountId: account.id,
-            campusId: campus.id,
-            role: "UNIVERSITY",
-            canApproveDiplomas: index === 1,
-          },
-        });
-        actors.push({
-          id: account.id,
-          email: account.email,
-          role: "university",
-          institutionId,
+      const account = await transaction.account.create({
+        data: {
+          email: "bulk-" + suffix + "@example.test",
+          displayName: "Main campus officer",
+          passwordHash: "not-a-login-secret",
+        },
+      });
+      await transaction.accountMembership.create({
+        data: {
+          accountId: account.id,
           campusId: campus.id,
-          org: campus.code,
-          isHeadquarters: campus.isHeadquarters,
-          canApproveDiplomas: membership.canApproveDiplomas,
-        });
-      }
-      const [maker, checker] = actors;
+          role: "UNIVERSITY",
+          canApproveDiplomas: true,
+        },
+      });
+      const officer = {
+        id: account.id,
+        name: account.displayName,
+        email: account.email,
+        role: "university",
+        institutionId,
+        campusId: campus.id,
+        org: campus.code,
+        isHeadquarters: true,
+        canApproveDiplomas: true,
+      };
       const scoped = new Proxy(transaction, {
         get(target, property) {
           if (property === "$transaction")
@@ -130,16 +124,16 @@ try {
           mediaType:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           storageKey: "rollback-only/" + suffix,
-          uploadedById: maker.id,
+          uploadedById: officer.id,
         },
       });
       const batch = await transaction.importBatch.create({
         data: {
           institutionId,
-          campusId: branch.id,
+          campusId: campus.id,
           documentId: document.id,
           mappingVersion: "rollback-bulk",
-          createdById: maker.id,
+          createdById: officer.id,
           totalRows: 3,
         },
       });
@@ -158,7 +152,7 @@ try {
           issuedOn: index === 2 ? "2099-01-01" : "2024-06-01",
           degreeType: "BACHELOR",
           majorNameEn: "Fixture English Major",
-          issuePlace: "Hà Nội",
+          issuePlace: "TP. Hồ Chí Minh",
           diplomaSignerName: "Confirmed diploma signer",
           diplomaSignerTitle: "HIỆU TRƯỞNG",
           certificateNo: "BULK-CERT-" + index,
@@ -176,7 +170,7 @@ try {
         });
         rowIds.push(row.id);
       }
-      const firstCommit = await registry.commit(batch.id, maker);
+      const firstCommit = await registry.commit(batch.id, officer);
       check(
         "save commits only valid reviewed rows",
         firstCommit.imported === 2 && firstCommit.conflicts === 1,
@@ -212,9 +206,9 @@ try {
         rowIds[2],
         { issuedOn: "2024-06-01" },
         "Confirmed against fixture source",
-        maker,
+        officer,
       );
-      const repairedCommit = await registry.commit(batch.id, maker);
+      const repairedCommit = await registry.commit(batch.id, officer);
       check(
         "repaired rows save without duplicating prior records",
         repairedCommit.imported === 1 &&
@@ -225,7 +219,7 @@ try {
         100,
         "",
         batch.id,
-        maker,
+        officer,
       );
       check(
         "candidate list contains only reviewed unsent records",
@@ -243,7 +237,7 @@ try {
             100,
             "0088888880",
             batch.id,
-            maker,
+            officer,
           )
         ).pagination.total === 1,
       );
@@ -251,14 +245,18 @@ try {
         "other campus cannot see request candidates",
         (
           await cert.findRequestCandidates(1, 100, "", undefined, {
-            ...maker,
-            campusId: headquarters.id,
+            ...officer,
+            campusId: randomUUID(),
           })
         ).pagination.total === 0,
       );
       await rejects(
-        "approver cannot prepare branch requests",
-        () => cert.findRequestCandidates(1, 100, "", undefined, checker),
+        "account without approval permission cannot prepare requests",
+        () =>
+          cert.findRequestCandidates(1, 100, "", undefined, {
+            ...officer,
+            canApproveDiplomas: false,
+          }),
         ForbiddenException,
       );
       const ids = candidates.data.map((record) => record.uuid);
@@ -284,7 +282,7 @@ try {
         100,
         "",
         batch.id,
-        maker,
+        officer,
       );
       check(
         "legacy drafts missing issue date cannot be selected as ready",
@@ -308,7 +306,7 @@ try {
         originalRowId,
         { issuedOn: "2024-06-01" },
         "Legacy issue date confirmed from source",
-        maker,
+        officer,
       );
       check(
         "legacy date correction retains raw source",
@@ -329,7 +327,7 @@ try {
       const submission = await cert.processBulk(
         "submit",
         ids.slice(0, 2),
-        maker,
+        officer,
       );
       check(
         "bulk submission sends every selected reviewed record",
@@ -343,10 +341,10 @@ try {
       );
       check(
         "submitted records disappear from unsent list",
-        (await cert.findRequestCandidates(1, 100, "", batch.id, maker))
+        (await cert.findRequestCandidates(1, 100, "", batch.id, officer))
           .pagination.total === 1,
       );
-      const repeated = await cert.processBulk("submit", [ids[0]], maker);
+      const repeated = await cert.processBulk("submit", [ids[0]], officer);
       check(
         "repeated submission reports a per-record conflict",
         repeated.succeeded === 0 && repeated.failed === 1,
@@ -358,29 +356,33 @@ try {
         })) === 1,
       );
       check(
-        "headquarters sees branch requests",
-        (await cert.findPendingPaginated(1, 100, "", batch.id, checker))
+        "same local officer sees their pending requests",
+        (await cert.findPendingPaginated(1, 100, "", batch.id, officer))
           .pagination.total === 2,
       );
       check(
-        "other institution never sees branch requests",
+        "other institution never sees local requests",
         (
           await cert.findPendingPaginated(1, 100, "", undefined, {
-            ...checker,
+            ...officer,
             institutionId: randomUUID(),
           })
         ).pagination.total === 0,
       );
       await rejects(
-        "branch cannot approve bulk requests",
-        () => cert.processBulk("approve", ids.slice(0, 2), maker),
+        "account without approval permission cannot approve bulk requests",
+        () =>
+          cert.processBulk("approve", ids.slice(0, 2), {
+            ...officer,
+            canApproveDiplomas: false,
+          }),
         ForbiddenException,
       );
       await rejects(
-        "admin cannot approve on behalf of headquarters",
+        "admin cannot approve on behalf of the school",
         () =>
           cert.processBulk("approve", ids.slice(0, 2), {
-            ...checker,
+            ...officer,
             role: "admin",
           }),
         ForbiddenException,
@@ -393,13 +395,17 @@ try {
             originalRowId,
             { issuedOn: "2024-07-01" },
             "Should not change submitted data",
-            maker,
+            officer,
           ),
         ConflictException,
       );
-      const approval = await cert.processBulk("approve", ids, checker);
+      const approval = await cert.processBulk(
+        "approve",
+        [...ids.slice(0, 2), randomUUID()],
+        officer,
+      );
       check(
-        "bulk approval accepts requested rows and reports the unsent row separately",
+        "bulk approval accepts requested rows and reports an unknown record separately",
         approval.succeeded === 2 && approval.failed === 1,
       );
       check(
@@ -432,7 +438,7 @@ try {
           "bulk approval creates two independently signed PDFs",
           signedDocuments.length === 2 &&
             signedDocuments.every(
-              (document) => document.signatures.length === 2,
+              (document) => document.signatures.length === 1,
             ),
         );
         for (const document of signedDocuments) {
@@ -450,18 +456,18 @@ try {
         where: { institutionId, workflowStatus: "APPROVED" },
       });
       check(
-        "headquarters issues without replacing the source campus or original issue date",
+        "same campus issues without replacing the source campus or original issue date",
         approvedRecords.every(
           (record) =>
-            record.campusId === branch.id &&
-            record.issuingCampusId === headquarters.id &&
+            record.campusId === campus.id &&
+            record.issuingCampusId === campus.id &&
             record.issuedOn.toISOString().slice(0, 10) === "2024-06-01",
         ),
       );
       const replay = await cert.processBulk(
         "approve",
         ids.slice(0, 2),
-        checker,
+        officer,
       );
       check(
         "replayed approval does not create a second anchor",
@@ -470,11 +476,11 @@ try {
             where: { diploma: { institutionId } },
           })) === 2,
       );
-      await cert.processBulk("submit", [ids[2]], maker);
+      await cert.processBulk("submit", [ids[2]], officer);
       const rejection = await cert.processBulk(
         "reject",
         [ids[0], ids[2]],
-        checker,
+        officer,
         "Source needs another check",
       );
       check(
@@ -490,14 +496,14 @@ try {
             where: { diplomaId: ids[2] },
           })) === 0,
       );
-      await transaction.diploma.update({
-        where: { id: ids[2] },
-        data: { workflowStatus: "REQUESTED", requestedById: checker.id },
-      });
-      const own = await cert.processBulk("approve", [ids[2]], checker);
       check(
-        "bulk approval cannot bypass maker-checker separation",
-        own.failed === 1,
+        "same officer prepared and approved each issued record",
+        approvedRecords.length === 2 &&
+          approvedRecords.every(
+            (record) =>
+              record.requestedById === officer.id &&
+              record.approvedById === officer.id,
+          ),
       );
       const historicalInput = {
         ...(
@@ -525,7 +531,7 @@ try {
       });
       const incompleteHistorical = await registry.commit(
         batch.id,
-        maker,
+        officer,
         "DIGITIZATION",
       );
       check(
@@ -543,11 +549,12 @@ try {
         historicalRow.id,
         { issuedOn: "2024-06-01" },
         "School confirmed date against source",
-        maker,
+        officer,
       );
       check(
         "complete digitization saves after supplementation in data review",
-        (await registry.commit(batch.id, maker, "DIGITIZATION")).diplomas === 1,
+        (await registry.commit(batch.id, officer, "DIGITIZATION")).diplomas ===
+          1,
       );
       const historical = await transaction.diploma.findFirstOrThrow({
         where: { graduation: { sourceRowId: historicalRow.id } },
@@ -555,16 +562,16 @@ try {
       check(
         "digitization can be submitted directly after saving complete data",
         historical.originType === "DIGITIZATION" &&
-          (await cert.processBulk("submit", [historical.id], maker))
+          (await cert.processBulk("submit", [historical.id], officer))
             .succeeded === 1,
       );
       const historicalApproval = await cert.processBulk(
         "approve",
         [historical.id],
-        checker,
+        officer,
       );
       check(
-        "headquarters can approve digitization after date confirmation",
+        "local officer can approve digitization after date confirmation",
         historicalApproval.succeeded === 1,
       );
       const historicalVersion =
@@ -621,7 +628,7 @@ try {
         "",
         "Kỹ sư",
         "2024-06-01",
-        "Hà Nội",
+        "TP. Hồ Chí Minh",
         "Source diploma signer",
         "HIỆU TRƯỞNG",
         "Source Recovery",
@@ -634,7 +641,7 @@ try {
           programId: program.id,
           originalName: program.name,
           normalizedName: program.name.toLowerCase(),
-          approvedById: maker.id,
+          approvedById: officer.id,
         },
       });
       const repairDocument = await transaction.sourceDocument.create({
@@ -645,16 +652,16 @@ try {
           byteSize: sourceBytes.length,
           mediaType: document.mediaType,
           storageKey: "rollback-source/" + suffix,
-          uploadedById: maker.id,
+          uploadedById: officer.id,
         },
       });
       const repairBatch = await transaction.importBatch.create({
         data: {
           institutionId,
-          campusId: branch.id,
+          campusId: campus.id,
           documentId: repairDocument.id,
           mappingVersion: "rollback-repair",
-          createdById: maker.id,
+          createdById: officer.id,
           totalRows: 1,
           importedRows: 1,
         },
@@ -687,7 +694,7 @@ try {
       } = require("../apps/api/dist/database/academic-record-writer.js");
       const repairGraduation = await writeAcademicRecord(
         transaction,
-        { institutionId, campusId: branch.id },
+        { institutionId, campusId: campus.id },
         legacyData,
         repairRow.id,
         repairDocument.id,
@@ -695,7 +702,7 @@ try {
       const repairDiploma = await transaction.diploma.create({
         data: {
           institutionId,
-          campusId: branch.id,
+          campusId: campus.id,
           graduationId: repairGraduation.id,
           certificateNo: "RECOVER-CERT",
           registryNo: "RECOVER-REG",
@@ -710,8 +717,8 @@ try {
       });
       check(
         "source recovery repairs an unsigned draft without disabling database constraints",
-        (await repairRegistry.recheck(repairBatch.id, maker)).repairedDrafts ===
-          1,
+        (await repairRegistry.recheck(repairBatch.id, officer))
+          .repairedDrafts === 1,
       );
       const recoveredRow = await transaction.importRow.findUnique({
         where: { id: repairRow.id },
@@ -728,7 +735,7 @@ try {
         recoveredRow.overrides.issuedOn === "2024-06-01",
       );
       const recoveredCandidate = (
-        await cert.findRequestCandidates(1, 100, "", repairBatch.id, maker)
+        await cert.findRequestCandidates(1, 100, "", repairBatch.id, officer)
       ).data[0];
       check(
         "recovered draft is immediately ready to send",
@@ -738,8 +745,8 @@ try {
       );
       check(
         "a second recovery does not repair or rewrite the draft again",
-        (await repairRegistry.recheck(repairBatch.id, maker)).repairedDrafts ===
-          0,
+        (await repairRegistry.recheck(repairBatch.id, officer))
+          .repairedDrafts === 0,
       );
       for (const [label, query, recordId] of [
         [

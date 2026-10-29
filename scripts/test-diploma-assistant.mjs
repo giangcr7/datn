@@ -427,7 +427,7 @@ let releases = 0;
 const dailyLimits = [];
 const route = createWebLoader({
   "next-auth": { getServerSession: async () => session },
-  "../auth/[...nextauth]/route": { authOptions: {} },
+  "@/lib/auth-options": { authOptions: {} },
   "@/lib/assistant-server": {
     ...server,
     reserveAssistantRequest: (_, dailyLimit) => {

@@ -33,10 +33,13 @@ const {
   fileHash,
   inspectPdfSignatures,
   createDiplomaPdf,
+  demoSigner,
+  signPdf,
 } = require("../apps/api/dist/signatures/pdf-signature-engine.js");
 const {
   ConflictException,
   ForbiddenException,
+  NotFoundException,
   ServiceUnavailableException,
 } = require("@nestjs/common");
 const database = new DatabaseService({
@@ -85,21 +88,13 @@ try {
           nameEn: "Thuyloi University",
         },
       });
-      const branch = await transaction.campus.create({
+      const campus = await transaction.campus.create({
         data: {
           institutionId,
           code: "ORG2",
-          name: "TP.HCM kiểm thử",
-          fabricMspId: "PdfCampus_" + suffix,
-        },
-      });
-      const headquarters = await transaction.campus.create({
-        data: {
-          institutionId,
-          code: "ORG1",
-          name: "Hà Nội kiểm thử",
+          name: "Cơ sở chính TP. Hồ Chí Minh",
           isHeadquarters: true,
-          fabricMspId: "PdfHeadquarters_" + suffix,
+          fabricMspId: "PdfMain_" + suffix,
         },
       });
       const program = await transaction.program.create({
@@ -113,36 +108,32 @@ try {
           normalizedName: program.name.toLocaleLowerCase("vi-VN"),
         },
       });
-      const actors = [];
-      for (const [index, campus] of [branch, headquarters].entries()) {
-        const account = await transaction.account.create({
-          data: {
-            email: "pdf-" + suffix + "-" + index + "@example.test",
-            displayName: index === 0 ? "Người ký TP.HCM" : "Người ký Hà Nội",
-            passwordHash: "rollback-only-no-login",
-          },
-        });
-        await transaction.accountMembership.create({
-          data: {
-            accountId: account.id,
-            campusId: campus.id,
-            role: "UNIVERSITY",
-            canApproveDiplomas: index === 1,
-          },
-        });
-        actors.push({
-          id: account.id,
-          name: account.displayName,
-          email: account.email,
-          role: "university",
-          institutionId,
+      const account = await transaction.account.create({
+        data: {
+          email: "pdf-" + suffix + "@example.test",
+          displayName: "Cán bộ TP. Hồ Chí Minh",
+          passwordHash: "rollback-only-no-login",
+        },
+      });
+      await transaction.accountMembership.create({
+        data: {
+          accountId: account.id,
           campusId: campus.id,
-          org: campus.code,
-          isHeadquarters: campus.isHeadquarters,
-          canApproveDiplomas: index === 1,
-        });
-      }
-      const [maker, checker] = actors;
+          role: "UNIVERSITY",
+          canApproveDiplomas: true,
+        },
+      });
+      const officer = {
+        id: account.id,
+        name: account.displayName,
+        email: account.email,
+        role: "university",
+        institutionId,
+        campusId: campus.id,
+        org: campus.code,
+        isHeadquarters: true,
+        canApproveDiplomas: true,
+      };
       const student = await transaction.student.create({
         data: {
           institutionId,
@@ -173,21 +164,74 @@ try {
         soVaoSo: "PDF/" + suffix,
         degreeType: "BACHELOR",
         majorNameEn: "Information Technology",
-        issuePlace: "Hà Nội",
+        issuePlace: "TP. Hồ Chí Minh",
         diplomaSignerName: "Người ký bằng kiểm thử",
         diplomaSignerTitle: "HIỆU TRƯỞNG",
       };
-      const requested = await cert.requestCert(body, maker);
+      const requested = await cert.requestCert(body, officer);
       const diploma = await transaction.diploma.findUnique({
         where: { id: requested.uuid },
         include: diplomaInclude,
       });
-      const campusDocument = diploma.signedDocuments[0];
+      check(
+        "request does not create a redundant preparer signature",
+        diploma.signedDocuments.length === 0,
+      );
+      await rejects(
+        "cannot download an unissued final PDF",
+        () => cert.downloadPdf(requested.uuid, officer),
+        NotFoundException,
+      );
+      for (const actor of [
+        { ...officer, canApproveDiplomas: false },
+        { ...officer, isHeadquarters: false },
+        { ...officer, role: "admin" },
+        { ...officer, campusId: randomUUID() },
+        { ...officer, institutionId: randomUUID() },
+      ]) {
+        await rejects(
+          "only the authorized local officer can sign issuance",
+          () => signatures.prepareFinal(transaction, diploma, actor),
+          ForbiddenException,
+        );
+      }
+      await setting("PDF_ORG2_CERT_SHA256", "0".repeat(64), () =>
+        rejects(
+          "wrong local signer fingerprint is blocked",
+          () => cert.approveCert(requested.uuid, officer),
+          ServiceUnavailableException,
+        ),
+      );
+      check(
+        "failed signing creates no PDF history, immutable version or anchor",
+        (await transaction.signedDiplomaDocument.count({
+          where: { diplomaId: requested.uuid },
+        })) === 0 &&
+          (await transaction.diplomaVersion.count({
+            where: { diplomaId: requested.uuid },
+          })) === 0,
+      );
+      await cert.approveCert(requested.uuid, officer);
+      const completed = await transaction.diploma.findUnique({
+        where: { id: requested.uuid },
+        include: diplomaInclude,
+      });
+      const document = completed.signedDocuments[0];
+      const snapshot = completed.versions[0].payload;
+      const finalPdf = await signatures.getPdf(document);
+      await rejects(
+        "signed PDF history cannot be overwritten by signing again",
+        () => signatures.prepareFinal(transaction, completed, officer),
+        ConflictException,
+      );
       if (pkiEnabled) {
         check(
-          "campus evidence records a verified TSA and good revocation status",
-          campusDocument.signatures[0].validationEvidence?.timestamp?.valid ===
-            true,
+          "local signature records a verified TSA and good revocation status",
+          document.signatures[0].validationEvidence?.timestamp?.valid ===
+            true &&
+            document.signatures[0].validationEvidence?.revocation?.every(
+              (entry) => entry.status === "GOOD",
+            ),
         );
         for (const evidence of [
           {},
@@ -199,12 +243,25 @@ try {
           },
         ]) {
           await transaction.$executeRawUnsafe("SAVEPOINT invalid_pki_evidence");
+          const pendingDocument =
+            await transaction.signedDiplomaDocument.create({
+              data: {
+                diplomaId: requested.uuid,
+                version: document.version + 1,
+                signingMode: document.signingMode,
+                payloadHash: document.payloadHash,
+                originPdfKey: document.originPdfKey,
+                originPdfHash: document.originPdfHash,
+                byteSize: document.byteSize,
+              },
+            });
           await rejects(
             "database rejects missing or incomplete PKI evidence",
             () =>
               transaction.diplomaPdfSignature.create({
                 data: {
-                  ...campusDocument.signatures[0],
+                  ...document.signatures[0],
+                  documentId: pendingDocument.id,
                   id: randomUUID(),
                   validationEvidence: evidence,
                 },
@@ -218,117 +275,8 @@ try {
             "RELEASE SAVEPOINT invalid_pki_evidence",
           );
         }
-        const legacyPending = new Proxy(transaction, {
-          get(target, property) {
-            return property === "signedDiplomaDocument"
-              ? {
-                  findUnique: async () => ({
-                    ...campusDocument,
-                    signatures: campusDocument.signatures.map((signature) => ({
-                      ...signature,
-                      validationEvidence: null,
-                    })),
-                  }),
-                }
-              : Reflect.get(target, property);
-          },
-        });
-        await rejects(
-          "legacy pending PDF must not silently downgrade PKI",
-          () => signatures.prepareFinal(legacyPending, diploma, checker),
-          ConflictException,
-        );
-        await setting("PDF_PKI_ENABLED", "false", () =>
-          rejects(
-            "PKI pending records cannot be finalized with PKI disabled",
-            () => signatures.prepareFinal(transaction, diploma, checker),
-            ServiceUnavailableException,
-          ),
-        );
       }
-      const campusPdf = await cert.downloadPdf(requested.uuid, maker, true);
-      const first = await inspectPdfSignatures(campusPdf);
-      check(
-        "request contains a real campus signature",
-        first.length === 1 &&
-          first[0].fieldName === "CampusApproval" &&
-          first[0].cryptographicallyValid,
-      );
-      check(
-        "origin PDF covers all bytes",
-        first[0].coveredBytes === campusPdf.length &&
-          fileHash(campusPdf) === campusDocument.originPdfHash,
-      );
-      await rejects(
-        "cannot download an unissued final PDF",
-        () => cert.downloadPdf(requested.uuid, maker),
-        ConflictException,
-      );
-      await rejects(
-        "campus cannot sign final issuance",
-        () => signatures.prepareFinal(transaction, diploma, maker),
-        ForbiddenException,
-      );
-      await rejects(
-        "cross-institution headquarters cannot sign",
-        () =>
-          signatures.prepareFinal(transaction, diploma, {
-            ...checker,
-            institutionId: randomUUID(),
-          }),
-        ForbiddenException,
-      );
-      const changed = { ...diploma, issuedOn: new Date("2024-10-16") };
-      await rejects(
-        "changed academic data must be reviewed and signed again",
-        () => signatures.prepareFinal(transaction, changed, checker),
-        ConflictException,
-      );
-      await setting("PDF_ORG1_CERT_SHA256", "0".repeat(64), () =>
-        rejects(
-          "wrong signer fingerprint is blocked",
-          () => signatures.prepareFinal(transaction, diploma, checker),
-          ServiceUnavailableException,
-        ),
-      );
-      const originalHeadquarters = Object.fromEntries(
-        ["CERT_PATH", "KEY_PATH", "PASSWORD", "CERT_SHA256"].map((key) => [
-          key,
-          process.env["PDF_ORG1_" + key],
-        ]),
-      );
-      try {
-        for (const key of Object.keys(originalHeadquarters))
-          process.env["PDF_ORG1_" + key] = process.env["PDF_ORG2_" + key];
-        await rejects(
-          "two organizations cannot share a signing certificate",
-          () => signatures.prepareFinal(transaction, diploma, checker),
-          ConflictException,
-        );
-      } finally {
-        for (const [key, value] of Object.entries(originalHeadquarters))
-          process.env["PDF_ORG1_" + key] = value;
-      }
-      const legacyView = new Proxy(transaction, {
-        get(target, property) {
-          return property === "signedDiplomaDocument"
-            ? { findUnique: async () => null }
-            : Reflect.get(target, property);
-        },
-      });
-      await rejects(
-        "legacy pending records need a campus signature first",
-        () => signatures.prepareFinal(legacyView, diploma, checker),
-        ConflictException,
-      );
-      await cert.approveCert(requested.uuid, checker);
-      const completed = await transaction.diploma.findUnique({
-        where: { id: requested.uuid },
-        include: diplomaInclude,
-      });
-      const document = completed.signedDocuments[0];
-      const snapshot = completed.versions[0].payload;
-      const finalPdf = await signatures.getPdf(document);
+
       check(
         "bilingual printed fields are frozen in the blockchain snapshot",
         snapshot.printedDiploma.degreeType === "BACHELOR" &&
@@ -370,12 +318,11 @@ try {
           !parsedPdf.getMetadata().keywords?.includes("DEMO"),
       );
       check(
-        "both printed signature blocks preserve readable Vietnamese",
+        "local printed signature preserves Vietnamese without a second campus",
         pageTexts.length === 1 &&
-          pageTexts[0].text.includes("ĐÃ KÝ SỐ - TRỤ SỞ HÀ NỘI") &&
-          pageTexts[0].text.includes("ĐÃ KÝ SỐ - CƠ SỞ TP. HỒ CHÍ MINH") &&
-          pageTexts[0].text.includes(maker.name) &&
-          pageTexts[0].text.includes(checker.name),
+          !pageTexts[0].text.includes("HÀ NỘI") &&
+          pageTexts[0].text.includes("ĐÃ KÝ SỐ") &&
+          pageTexts[0].text.includes(officer.name),
       );
       check(
         "face follows diploma fields rather than an internal student report",
@@ -385,30 +332,32 @@ try {
           !pageTexts[0].text.includes("MSSV"),
       );
       check(
-        "final PDF has two valid and distinct certificates",
-        actual.length === 2 &&
-          actual.every(
-            (item) => item.cryptographicallyValid && item.certificateCurrent,
-          ) &&
-          actual[0].certificateSha256 !== actual[1].certificateSha256,
+        "final PDF has one valid local certificate covering every byte",
+        actual.length === 1 &&
+          actual[0].fieldName === "CampusApproval" &&
+          actual[0].cryptographicallyValid &&
+          actual[0].certificateCurrent &&
+          actual[0].coveredBytes === finalPdf.length &&
+          document.originPdfHash === fileHash(finalPdf),
       );
       const preview = await PDF.load(
         await createDiplomaPdf(
           snapshot,
           "http://localhost:3000/verify",
           true,
-          maker.name,
+          officer.name,
           pkiEnabled,
+          true,
           true,
         ),
       );
       check(
-        "unsigned preview remains clearly marked and has two empty signature fields",
+        "unsigned local preview is marked and has one empty signature field",
         preview.extractText().length === 1 &&
           preview
             .extractText()[0]
             .text.includes("BẢN XEM TRƯỚC - CHƯA KÝ SỐ") &&
-          preview.getForm().getSignatureFields().length === 2 &&
+          preview.getForm().getSignatureFields().length === 1 &&
           preview
             .getForm()
             .getSignatureFields()
@@ -429,7 +378,7 @@ try {
           },
           "http://localhost:3000/verify",
           true,
-          maker.name,
+          officer.name,
           pkiEnabled,
         ),
       );
@@ -446,7 +395,7 @@ try {
           snapshot,
           "http://localhost:3000/verify",
           false,
-          maker.name,
+          officer.name,
           pkiEnabled,
         ),
       );
@@ -464,15 +413,15 @@ try {
         legacyLayout,
         legacyField,
         1,
-        maker.name,
+        officer.name,
         new Date(),
       );
       const legacyParsed = await PDF.load(await legacyLayout.save());
       check(
         "legacy two-page requests keep the campus signature on their original appendix",
         legacyParsed.extractText().length === 2 &&
-          !legacyParsed.extractText()[0].text.includes(maker.name) &&
-          legacyParsed.extractText()[1].text.includes(maker.name),
+          !legacyParsed.extractText()[0].text.includes(officer.name) &&
+          legacyParsed.extractText()[1].text.includes(officer.name),
       );
       check(
         "certificate layout preserves verified diploma signer data without extra labels",
@@ -484,10 +433,82 @@ try {
             certificateLayout.extractText()[0].text,
           ),
       );
+      const legacySigners = await Promise.all(
+        ["ORG2", "ORG1"].map((prefix) =>
+          demoSigner(
+            process.env["PDF_" + prefix + "_CERT_PATH"],
+            process.env["PDF_" + prefix + "_KEY_PATH"],
+            process.env["PDF_" + prefix + "_PASSWORD"],
+          ),
+        ),
+      );
+      const legacyUnsigned = await createDiplomaPdf(
+        snapshot,
+        "http://localhost:3000/verify",
+        true,
+        officer.name,
+      );
+      const legacyFirst = await signPdf(
+        legacyUnsigned,
+        legacySigners[0],
+        1,
+        "Legacy campus signer",
+      );
+      const legacyFinal = await signPdf(
+        legacyFirst.bytes,
+        legacySigners[1],
+        2,
+        "Legacy headquarters signer",
+      );
+      const legacyActual = await inspectPdfSignatures(legacyFinal.bytes);
       check(
-        "second signature preserves the entire first revision",
-        fileHash(finalPdf.subarray(0, actual[0].coveredBytes)) ===
-          fileHash(campusPdf) && actual[1].coveredBytes === finalPdf.length,
+        "historical two-signature files retain distinct valid certificates and their first revision",
+        legacyActual.length === 2 &&
+          legacyActual.every((signature) => signature.cryptographicallyValid) &&
+          legacyActual[0].certificateSha256 !==
+            legacyActual[1].certificateSha256 &&
+          fileHash(
+            legacyFinal.bytes.subarray(0, legacyActual[0].coveredBytes),
+          ) === fileHash(legacyFirst.bytes) &&
+          legacyActual[1].coveredBytes === legacyFinal.bytes.length,
+      );
+      const legacyRecords = legacyActual.map((signature, index) => ({
+        fieldName: signature.fieldName,
+        certificateSha256: signature.certificateSha256,
+        signatureOrder: index + 1,
+        actorId: randomUUID(),
+        campusId: randomUUID(),
+      }));
+      const legacySnapshot = {
+        ...snapshot,
+        pdfSignaturePolicy: "two-organizations-pades-bb-v1",
+        pdfSigningMode: "demo",
+        signedPdfHash: fileHash(legacyFinal.bytes),
+        pdfSignatures: legacyRecords,
+      };
+      const legacyDocument = {
+        signedPdfKey: "in-memory-legacy.pdf",
+        signedPdfHash: legacySnapshot.signedPdfHash,
+        originPdfHash: fileHash(legacyFirst.bytes),
+        signingMode: "demo",
+        signatures: legacyRecords,
+      };
+      const legacyVerifier = new PdfSignatureService({
+        getPdf: async () => legacyFinal.bytes,
+      });
+      check(
+        "historical two-organization policy still verifies without new two-campus issuance",
+        (await legacyVerifier.verifyStored(legacyDocument, legacySnapshot))
+          .valid,
+      );
+      check(
+        "historical certificate pins cannot be swapped",
+        !(
+          await legacyVerifier.verifyStored(legacyDocument, {
+            ...legacySnapshot,
+            pdfSignatures: [...legacyRecords].reverse(),
+          })
+        ).valid,
       );
       check(
         "final PDF hash is bound to immutable snapshot",
@@ -499,8 +520,10 @@ try {
       );
       if (pkiEnabled) {
         check(
-          "both signature evidence hashes are pinned in the snapshot",
-          snapshot.pdfSignaturePolicy === "two-organizations-pades-bt-pki-v2" &&
+          "local signature evidence hash is pinned in the snapshot",
+          snapshot.pdfSignaturePolicy ===
+            "single-campus-one-approver-pades-bt-pki-v1" &&
+            snapshot.pdfSignatures.length === 1 &&
             snapshot.pdfSignatures.every((signature) =>
               /^[0-9a-f]{64}$/.test(signature.validationEvidenceHash),
             ),
@@ -548,11 +571,14 @@ try {
         });
       }
       check(
-        "swapped certificate pins fail validation",
+        "changed signer pin fails validation",
         !(
           await signatures.verifyStored(document, {
             ...snapshot,
-            pdfSignatures: [...snapshot.pdfSignatures].reverse(),
+            pdfSignatures: snapshot.pdfSignatures.map((signature) => ({
+              ...signature,
+              actorId: randomUUID(),
+            })),
           })
         ).valid,
       );
@@ -568,7 +594,7 @@ try {
       );
       await rejects(
         "final download waits for actual blockchain commit",
-        () => cert.downloadPdf(requested.uuid, maker),
+        () => cert.downloadPdf(requested.uuid, officer),
         ConflictException,
       );
       const unregistered = new VerifyService({}, scoped, signatures);
@@ -682,5 +708,5 @@ try {
 console.log(
   "Signed PDF checks passed: " +
     checks +
-    ". Real sequential signatures, tampering, role boundaries and immutable PostgreSQL history checked. Fixtures rolled back; no ledger transaction sent.",
+    ". Single-officer signatures, tampering, role boundaries and immutable PostgreSQL history checked. Fixtures rolled back; no ledger transaction sent.",
 );

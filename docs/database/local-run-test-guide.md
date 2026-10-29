@@ -263,7 +263,9 @@ npm run db:erd -w api
 ~~~
 
 - test:database thử FK/unique/immutability/quyền runtime trong transaction; ROLLBACK fixtures, không giữ dữ liệu test.
-- test-workflow gọi service thật trên PostgreSQL: các luồng nghiệp vụ, quyền HCM/Hà Nội/admin, campus/institution, audit và import writer; fixtures rollback. Không kiểm thử Fabric thật.
+- test-workflow gọi service thật trên PostgreSQL: một cán bộ tại cơ sở chính lập, duyệt, từ chối và thu hồi; kiểm tra tài khoản thiếu quyền, admin, phạm vi campus/institution, audit và import writer. Chạy trên database kiểm thử riêng; fixtures rollback, không gửi giao dịch Fabric.
+- `node scripts/test-change-password-redirect.mjs` kiểm tra điều hướng sau đổi mật khẩu về đúng cổng Nhà trường/Admin/Sinh viên, đăng xuất trước khi chuyển trang và giữ nguyên phiên khi đổi mật khẩu thất bại; không đổi mật khẩu tài khoản thật.
+- Cấu hình NextAuth dùng chung nằm ở `apps/web/src/lib/auth-options.ts`; route đăng nhập chỉ xuất `GET`/`POST`. Chạy `npm run build -w @diploma-chain/web` để kiểm tra production, không thay bằng việc chỉ chạy development.
 - smoke-web cần build API/Web. Nếu API đang chạy: đặt $env:SMOKE_USE_RUNNING_API="true" trước node scripts/smoke-web.mjs; script dùng Next.js riêng ở cổng 3100, kiểm tra ba phiên NextAuth/quyền/menu/proxy, không tạo sinh viên/văn bằng.
 - smoke-api mở API build cổng 3101 rồi tắt; kiểm tra health/login/membership/quyền đọc/danh mục/refresh/logout. Fabric/outbox tắt, không phát hành bằng. Có ghi session/audit; reuse test có thể vô hiệu hóa phiên cũ của tài khoản bootstrap. Không chạy với tài khoản phục vụ production.
 - Chạy smoke sau build, không chạy trong lúc tạo lại dist; cổng 3101 phải trống. Smoke không thay cho test workflow đầy đủ.

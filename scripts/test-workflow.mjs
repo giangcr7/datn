@@ -56,17 +56,9 @@ try {
         data: {
           institutionId,
           code: "ORG2",
-          name: "Workflow campus",
-          fabricMspId: "WorkflowMSP_" + suffix,
-        },
-      });
-      const otherCampus = await transaction.campus.create({
-        data: {
-          institutionId,
-          code: "OTHER",
-          name: "Other fixture campus",
+          name: "Main workflow campus",
           isHeadquarters: true,
-          fabricMspId: "HeadquartersMSP_" + suffix,
+          fabricMspId: "WorkflowMSP_" + suffix,
         },
       });
       const program = await transaction.program.create({
@@ -90,7 +82,7 @@ try {
         "UNIVERSITY",
         "ADMIN",
       ].entries()) {
-        const accountCampus = index === 0 ? campus : otherCampus;
+        const accountCampus = campus;
         const account = await transaction.account.create({
           data: {
             email: "workflow-" + suffix + "-" + index + "@example.test",
@@ -103,7 +95,7 @@ try {
             accountId: account.id,
             campusId: accountCampus.id,
             role,
-            canApproveDiplomas: index === 1,
+            canApproveDiplomas: index === 0,
           },
         });
         actors.push({
@@ -118,7 +110,7 @@ try {
           membershipId: membership.id,
         });
       }
-      const [maker, checker, administrator] = actors;
+      const [officer, restricted, administrator] = actors;
       const scoped = new Proxy(transaction, {
         get(target, property) {
           if (property === "$transaction")
@@ -152,7 +144,7 @@ try {
         soVaoSo: "WF/" + suffix,
         degreeType: "BACHELOR",
         majorNameEn: "Test program",
-        issuePlace: "Hà Nội",
+        issuePlace: "TP. Hồ Chí Minh",
         diplomaSignerName: "Workflow printed signer",
         diplomaSignerTitle: "HIỆU TRƯỞNG",
       };
@@ -165,7 +157,7 @@ try {
       ])
         await expectReject(
           label,
-          () => service.requestCert({ ...body, ...values }, maker),
+          () => service.requestCert({ ...body, ...values }, officer),
           BadRequestException,
         );
       check(
@@ -176,43 +168,44 @@ try {
         "unknown MSSV must not create students",
         (await transaction.student.count({ where: { institutionId } })) === 1,
       );
-      const requested = await service.requestCert(body, maker);
-      const initial = await service.findOne(requested.uuid, maker);
+      const requested = await service.requestCert(body, officer);
+      const initial = await service.findOne(requested.uuid, officer);
       check(
         "request must remain pending without a version",
         initial.status === "PENDING" && initial.certHash === null,
       );
       await expectReject(
-        "maker cannot approve",
-        () => service.approveCert(requested.uuid, maker),
+        "account without approval permission cannot approve",
+        () => service.approveCert(requested.uuid, restricted),
         ForbiddenException,
       );
       await expectReject(
-        "admin cannot approve on behalf of headquarters",
+        "admin cannot approve on behalf of the school",
         () => service.approveCert(requested.uuid, administrator),
         ForbiddenException,
       );
       await expectReject(
-        "HCM cannot reject a request",
-        () => service.rejectCert(requested.uuid, "Forbidden rejection", maker),
+        "account without approval permission cannot reject",
+        () =>
+          service.rejectCert(requested.uuid, "Forbidden rejection", restricted),
         ForbiddenException,
       );
       check(
-        "headquarters can see branch requests",
-        (await service.findPending(checker)).some(
+        "local officer can see their own pending request",
+        (await service.findPending(officer)).some(
           (item) => item.uuid === requested.uuid,
         ),
       );
       check(
-        "another institution cannot see branch requests",
-        (await service.findPending({ ...checker, institutionId: randomUUID() }))
+        "another institution cannot see local requests",
+        (await service.findPending({ ...officer, institutionId: randomUUID() }))
           .length === 0,
       );
       await expectReject(
-        "headquarters without approval permission cannot approve",
+        "officer without approval permission cannot approve",
         () =>
           service.approveCert(requested.uuid, {
-            ...checker,
+            ...officer,
             canApproveDiplomas: false,
           }),
         ForbiddenException,
@@ -221,15 +214,17 @@ try {
         "other campus cannot read",
         () =>
           service.findOne(requested.uuid, {
-            ...maker,
-            campusId: otherCampus.id,
+            ...officer,
+            campusId: randomUUID(),
+            isHeadquarters: false,
+            canApproveDiplomas: false,
           }),
         NotFoundException,
       );
-      const approved = await service.approveCert(requested.uuid, checker);
+      const approved = await service.approveCert(requested.uuid, officer);
       check(
-        "headquarters signs for a branch without changing origin",
-        approved.issuerMspId === otherCampus.fabricMspId &&
+        "same officer issues at the main campus without changing origin",
+        approved.issuerMspId === campus.fabricMspId &&
           (
             await transaction.diploma.findUnique({
               where: { id: requested.uuid },
@@ -237,15 +232,15 @@ try {
           ).campusId === campus.id,
       );
       check(
-        "issuing campus is persisted separately",
+        "issuing campus is the same main campus",
         (
           await transaction.diploma.findUnique({
             where: { id: requested.uuid },
           })
-        ).issuingCampusId === otherCampus.id,
+        ).issuingCampusId === campus.id,
       );
       check(
-        "outbox uses headquarters identity",
+        "outbox uses main campus identity",
         (
           await transaction.outboxEvent.findFirst({
             where: {
@@ -253,7 +248,7 @@ try {
               eventType: "ISSUE",
             },
           })
-        ).payload.issuerMspId === otherCampus.fabricMspId,
+        ).payload.issuerMspId === campus.fabricMspId,
       );
       check(
         "approval is not a blockchain commit",
@@ -261,7 +256,7 @@ try {
       );
       await expectReject(
         "cannot approve twice",
-        () => service.approveCert(requested.uuid, checker),
+        () => service.approveCert(requested.uuid, officer),
         ConflictException,
       );
       check(
@@ -285,7 +280,7 @@ try {
       await service.revoke(
         requested.uuid,
         "Rollback-only test revocation",
-        checker,
+        officer,
       );
       check(
         "revocation keeps the original issuing MSP",
@@ -296,7 +291,7 @@ try {
               eventType: "REVOKE",
             },
           })
-        ).payload.issuerMspId === otherCampus.fabricMspId,
+        ).payload.issuerMspId === campus.fabricMspId,
       );
       const revokedProof = await verify.verify({ certUUID: requested.uuid });
       check(
@@ -336,6 +331,7 @@ try {
           programId: program.id,
           graduationYear: 2024,
           classification: "GOOD",
+          degreeType: "BACHELOR",
         },
       });
       const draft = await transaction.diploma.create({
@@ -345,39 +341,44 @@ try {
           graduationId: graduation.id,
           certificateNo: "DRAFT-" + suffix,
           registryNo: "DRAFT/" + suffix,
+          issuedOn: new Date("2024-10-15"),
+          majorNameEn: "Workflow Program",
+          issuePlace: "TP. Hồ Chí Minh",
+          diplomaSignerName: "Workflow printed signer",
+          diplomaSignerTitle: "HIỆU TRƯỞNG",
         },
       });
       await expectReject(
-        "draft date before birth",
-        () => service.submitDraft(draft.id, "2000-01-01", maker),
+        "submission cannot override reviewed issue date",
+        () => service.submitDraft(draft.id, "2000-01-01", officer),
         BadRequestException,
       );
       await expectReject(
-        "draft date before graduation",
-        () => service.submitDraft(draft.id, "2023-12-31", maker),
+        "submission cannot override reviewed issue year",
+        () => service.submitDraft(draft.id, "2023-12-31", officer),
         BadRequestException,
       );
-      await service.submitDraft(draft.id, "2024-10-15", maker);
-      await service.rejectCert(draft.id, "Rollback-only reject", checker);
-      const rejected = await service.findOne(draft.id, maker);
+      await service.submitDraft(draft.id, undefined, officer);
+      await service.rejectCert(draft.id, "Rollback-only reject", officer);
+      const rejected = await service.findOne(draft.id, officer);
       check(
         "reject does not issue a version",
         rejected.status === "REJECTED" && rejected.certHash === null,
       );
-      const accounts = await auth.findAllUsers(checker);
+      const accounts = await auth.findAllUsers(officer);
       check(
         "account list is institution scoped",
         accounts.length === 3 &&
           accounts.every((item) => item.email.includes(suffix)),
       );
-      const events = await audit.findAll(checker);
+      const events = await audit.findAll(officer);
       check(
         "audit list is institution scoped",
         events.data.length >= 5 &&
           events.data.every((item) => item.institutionId === institutionId),
       );
-      const unrelatedAudit = await audit.findByUser(maker.id, {
-        ...checker,
+      const unrelatedAudit = await audit.findByUser(officer.id, {
+        ...officer,
         institutionId: randomUUID(),
       });
       check(

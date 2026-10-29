@@ -366,7 +366,7 @@ const api = compile(route, {
       throw new Error("POST lookup must not require login");
     },
   },
-  "../auth/[...nextauth]/route": { authOptions: {} },
+  "@/lib/auth-options": { authOptions: {} },
 });
 const request = (value) =>
   new Request("http://localhost/api/search", {

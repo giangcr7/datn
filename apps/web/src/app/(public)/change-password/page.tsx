@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Form, Input, Button, Alert } from "antd";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import styles from "@/styles/public-pages.module.css";
 
 function ChangePasswordContent() {
@@ -10,6 +10,11 @@ function ChangePasswordContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const loginType = ["student", "university", "admin"].includes(role || "")
+    ? `type=${role}&`
+    : "";
 
   const handleSubmit = async (values: any) => {
     if (values.newPassword !== values.confirmPassword) {
@@ -32,7 +37,7 @@ function ChangePasswordContent() {
         setSuccess(true);
         setTimeout(async () => {
           await signOut({ redirect: false });
-          router.push("/login?type=student&msg=changed");
+          router.push(`/login?${loginType}msg=changed`);
         }, 1500);
       } else {
         setError(data.error);
