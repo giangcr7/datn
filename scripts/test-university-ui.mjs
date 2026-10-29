@@ -53,7 +53,8 @@ for (const [section, href] of [
   check(
     "school masthead retained: " + section,
     html.includes("TRƯỜNG ĐẠI HỌC THỦY LỢI") &&
-      html.includes("HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG"),
+      !html.includes("HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG") &&
+      !html.includes("Hệ thống quản lý và xác thực văn bằng"),
   );
   check(
     "guide resolves correctly: " + section,
@@ -116,7 +117,7 @@ const officer = {
   role: "university",
   isHeadquarters: true,
   canApproveDiplomas: true,
-  campusName: "Cơ sở chính",
+  campusName: "Cơ sở chính TP. Hồ Chí Minh",
 };
 const adminHtml = markup(
   load("app/(admin)/AdminShell.tsx").default,
@@ -141,6 +142,24 @@ check(
   "staff main and menu toggle accessible",
   adminHtml.includes('id="workspace-content"') &&
     adminHtml.includes('aria-label="Thu gọn menu"'),
+);
+check(
+  "staff role and campus captions removed without changing menus",
+  !adminHtml.includes("CÁN BỘ · DUYỆT VÀ PHÁT HÀNH") &&
+    !adminHtml.includes(officer.campusName),
+);
+const dashboardHtml = markup(
+  load("app/(admin)/dashboard/DashboardClient.tsx").default,
+  { user: officer, initialOverview: null, loadError: false },
+);
+check(
+  "dashboard role and campus captions removed",
+  !dashboardHtml.includes("CÁN BỘ · DUYỆT VÀ PHÁT HÀNH") &&
+    !dashboardHtml.includes(officer.campusName),
+);
+check(
+  "dashboard still shows task destinations",
+  dashboardHtml.includes("/import") && dashboardHtml.includes("/explorer"),
 );
 pathname = "/users";
 check(

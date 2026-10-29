@@ -109,7 +109,7 @@ async function cookie(role) {
         role,
         isHeadquarters: true,
         canApproveDiplomas: true,
-        campusName: "Cơ sở chính",
+        campusName: "Cơ sở chính TP. Hồ Chí Minh",
         mssv: "UI0001",
         mustChangePassword: false,
         accessToken: "isolated-ui-token",
@@ -247,6 +247,22 @@ try {
     );
     check("school identity: " + path, html.includes("TRƯỜNG ĐẠI HỌC THỦY LỢI"));
     check("expected heading: " + path, html.includes(heading));
+    const visibleHtml = html
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
+    check(
+      "removed captions are not rendered: " + path,
+      ![
+        "CÁN BỘ · DUYỆT VÀ PHÁT HÀNH",
+        "Cơ sở chính TP. Hồ Chí Minh",
+        "HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG",
+        "Hệ thống quản lý và xác thực văn bằng",
+        "Tra cứu thông tin và kiểm tra tình trạng văn bằng tốt nghiệp",
+        "Xác thực bằng tệp PDF hoặc mã QR mà không cần đăng nhập",
+        "Tìm văn bằng bằng họ tên, ngày sinh và số định danh",
+        "Không gửi thông tin cá nhân, mật khẩu, OTP hoặc tệp văn bằng",
+      ].some((caption) => visibleHtml.includes(caption)),
+    );
     check(
       "one main landmark: " + path,
       (html.match(/<main[ >]/g) || []).length === 1,

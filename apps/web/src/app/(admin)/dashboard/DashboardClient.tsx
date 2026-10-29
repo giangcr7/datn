@@ -72,11 +72,7 @@ export default function DashboardClient({
     <div className="workspace-page">
       <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
         <div>
-          <Tag color={workspace.color}>{workspace.roleLabel}</Tag>
           <PageTitle>Tổng quan</PageTitle>
-          <Paragraph type="secondary" style={{ marginBottom: 4 }}>
-            {workspace.title} · {user.campusName || workspace.scope}
-          </Paragraph>
           <Text type="secondary">
             Cập nhật: {dashboardTime(data?.generatedAt)} (giờ Việt Nam)
           </Text>

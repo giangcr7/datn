@@ -49,10 +49,6 @@ export default function HomePage() {
           <section className={styles.introduction} aria-labelledby="home-title">
             <h1 id="home-title">Cổng tra cứu và xác thực văn bằng</h1>
             <span className={styles.headingRule} aria-hidden="true" />
-            <p>
-              Tra cứu thông tin và kiểm tra tình trạng văn bằng tốt nghiệp do
-              nhà trường quản lý.
-            </p>
           </section>
 
           <section className={styles.services} aria-label="Chức năng công khai">
@@ -67,10 +63,6 @@ export default function HomePage() {
                   <p>Kiểm tra văn bằng được cung cấp</p>
                 </div>
               </div>
-              <p className={styles.serviceDescription}>
-                Xác thực bằng tệp PDF hoặc mã QR mà không cần đăng nhập. Xem kết
-                quả kiểm tra và tình trạng văn bằng trong hệ thống.
-              </p>
               <div className={styles.methods} aria-label="Hình thức xác thực">
                 <span>
                   <FilePdfOutlined aria-hidden="true" /> Tệp PDF văn bằng
@@ -96,10 +88,6 @@ export default function HomePage() {
                   <p>Tìm kiếm thông tin văn bằng</p>
                 </div>
               </div>
-              <p className={styles.serviceDescription}>
-                Tìm văn bằng bằng họ tên, ngày sinh và số định danh, trong phạm
-                vi được nhà trường cho phép tra cứu.
-              </p>
               <p className={styles.searchNote}>
                 Thông tin tra cứu không thay thế kết quả xác thực tệp văn bằng.
               </p>

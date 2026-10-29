@@ -10,6 +10,7 @@ Tài liệu này là baseline để triển khai dài hạn. Mô hình mới kh�
 - [Từ điển dữ liệu](./data-dictionary.md)
 - [Quy trình nhập sổ gốc](./import-guide.md)
 - [Runbook triển khai/rollback](./runbook.md)
+- [Xóa dữ liệu PostgreSQL và blockchain an toàn](./xoa-du-lieu-va-blockchain.md)
 - [Điều kiện nghiệm thu production](./production-gates.md)
 - [Luồng hiện tại: một cơ sở TP.HCM, một cán bộ duyệt](./single-campus-workflow.md)
 - [Luồng hai cơ sở trước đây (lịch sử)](./luong-ha-noi-blockchain.md)

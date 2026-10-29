@@ -133,6 +133,17 @@ check(
   links[0].href === "#noi-dung" &&
     html.includes('<main id="noi-dung" tabindex="-1"'),
 );
+check(
+  "requested introduction removed",
+  !text(html).includes(
+    "Tra cứu thông tin và kiểm tra tình trạng văn bằng tốt nghiệp do nhà trường quản lý.",
+  ),
+);
+check(
+  "removed utility labels leave no empty strip",
+  !text(html).includes("HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG") &&
+    !text(html).includes("Văn bằng tốt nghiệp"),
+);
 check("guide has three steps", html.split("<li>").length === 4);
 check(
   "guidance expands without JavaScript",
@@ -143,12 +154,12 @@ check(
   text(html).includes("mã QR không thay thế việc kiểm tra nội dung tệp PDF"),
 );
 check(
-  "search respects disclosure policy",
-  text(html).includes("trong phạm vi được nhà trường cho phép tra cứu"),
+  "requested lookup description removed",
+  !text(html).includes("trong phạm vi được nhà trường cho phép tra cứu"),
 );
 check(
-  "only verification promises no login",
-  text(html).includes(
+  "requested verification description removed",
+  !text(html).includes(
     "Xác thực bằng tệp PDF hoặc mã QR mà không cần đăng nhập",
   ),
 );
@@ -225,8 +236,9 @@ check(
   html.includes('aria-current="page"'),
 );
 check(
-  "the institutional masthead identifies the management system",
-  text(html).includes("Hệ thống quản lý và xác thực văn bằng"),
+  "the masthead retains school identity without the removed subtitle",
+  text(html).includes("TRƯỜNG ĐẠI HỌC THỦY LỢI") &&
+    !text(html).includes("Hệ thống quản lý và xác thực văn bằng"),
 );
 check(
   "the page has no promotional slogan",
@@ -263,8 +275,8 @@ if (process.env.HOMEPAGE_TEST_BASE_URL) {
   );
   check("production contains the new action", home.includes("Xác thực ngay"));
   check(
-    "production contains the institutional utility bar",
-    home.includes("HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG"),
+    "production does not retain the removed utility bar",
+    !home.includes("HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG"),
   );
   check(
     "production does not serve the previous promotional design",

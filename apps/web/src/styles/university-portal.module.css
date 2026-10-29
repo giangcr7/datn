@@ -60,23 +60,8 @@
 }
 
 .header {
-  background: #ffffff;
-}
-
-.utilityBar {
   border-top: 3px solid var(--home-blue);
-  border-bottom: 1px solid #e8edf3;
-  color: var(--home-muted);
-  background: #f6f8fb;
-}
-
-.utilityInner {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding-block: 7px;
-  font-size: 11px;
-  letter-spacing: 0.02em;
+  background: #ffffff;
 }
 
 .headerInner {
@@ -99,11 +84,6 @@
   object-fit: contain;
 }
 
-.brandText {
-  display: grid;
-  gap: 7px;
-}
-
 .brandText strong {
   color: var(--home-blue);
   font-family: var(--school-font);
@@ -111,11 +91,6 @@
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1.5;
-}
-
-.brandText > span {
-  color: var(--home-ink);
-  font-size: 14px;
 }
 
 .navigation {
@@ -183,14 +158,6 @@
   background: var(--home-gold);
 }
 
-.introduction p {
-  max-width: 680px;
-  margin-inline: auto;
-  color: var(--home-muted);
-  font-size: 15px;
-  line-height: 1.75;
-}
-
 .services {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -232,12 +199,6 @@
   margin-top: 4px;
   color: var(--home-muted);
   font-size: 13px;
-}
-
-.serviceDescription {
-  padding-top: 18px;
-  font-size: 14px;
-  line-height: 1.8;
 }
 
 .methods {
@@ -512,12 +473,6 @@
   .container {
     width: calc(100% - 32px);
   }
-  .utilityInner {
-    font-size: 10px;
-  }
-  .utilityInner > span:last-child {
-    display: none;
-  }
   .headerInner {
     min-height: 100px;
     padding-block: 20px;
@@ -529,14 +484,8 @@
     width: 52px;
     height: 52px;
   }
-  .brandText {
-    gap: 5px;
-  }
   .brandText strong {
     font-size: 19px;
-  }
-  .brandText > span {
-    font-size: 12px;
   }
   .navigationDetail,
   .navigationInner > .homeLink {
@@ -563,9 +512,6 @@
   }
   .introduction h1 {
     font-size: 25px;
-  }
-  .introduction p {
-    font-size: 14px;
   }
   .services,
   .informationGrid {
@@ -628,23 +574,12 @@
   height: 42px;
 }
 
-.brandCompact .brandText {
-  gap: 2px;
-}
-
 .brandCompact .brandText strong {
   font-size: 17px;
-}
-
-.brandCompact .brandText > span {
-  font-size: 12px;
 }
 
 @media (max-width: 640px) {
   .brandCompact .brandText strong {
     font-size: 13px;
-  }
-  .brandCompact .brandText > span {
-    display: none;
   }
 }

@@ -6,7 +6,6 @@ import {
   Menu,
   Dropdown,
   Avatar,
-  Tag,
   Button,
   Space,
   Modal,
@@ -152,12 +151,6 @@ export default function AdminShell({
           />
           {!collapsed && <span>QUẢN LÝ VĂN BẰNG</span>}
         </Link>
-        {!collapsed && (
-          <div className={styles.scope}>
-            <Tag color={workspace.color}>{workspace.roleLabel}</Tag>
-            <p>{user.campusName || "Toàn hệ thống"}</p>
-          </div>
-        )}
         <Menu
           mode="inline"
           selectedKeys={[pathname]}

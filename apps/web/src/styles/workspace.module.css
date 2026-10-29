@@ -50,18 +50,6 @@
   object-fit: contain;
 }
 
-.scope {
-  margin: 16px 16px 10px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--school-border);
-  color: var(--school-muted);
-  font-size: 12px;
-}
-
-.scope p {
-  margin: 6px 0 0;
-}
-
 .sidebar .menu {
   border-inline-end: 0;
   background: transparent;

@@ -115,7 +115,13 @@ export default function DiplomaAssistant() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const currentQuestion = question.trim();
-    if (!currentQuestion || currentQuestion.length > 800 || loading) return;
+    if (
+      !currentQuestion ||
+      currentQuestion.length > 800 ||
+      loading ||
+      (controller.current && !controller.current.signal.aborted)
+    )
+      return;
     cancel();
     const requestId = sequence.current;
     const activeController = new AbortController();
@@ -159,7 +165,10 @@ export default function DiplomaAssistant() {
           : "Không thể kết nối trợ lý. Vui lòng thử lại.",
       );
     } finally {
-      if (sequence.current === requestId) setLoading(false);
+      if (sequence.current === requestId) {
+        controller.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -210,10 +219,6 @@ export default function DiplomaAssistant() {
         <div className={styles.panel}>
           <div className={styles.notice}>
             <strong>Hướng dẫn sử dụng và giải thích lỗi hồ sơ</strong>
-            <p>
-              Không gửi thông tin cá nhân, mật khẩu, OTP hoặc tệp văn bằng. Trợ
-              lý không xác thực hay phê duyệt văn bằng.
-            </p>
             <details>
               <summary>Quyền riêng tư</summary>
               <p>
@@ -337,11 +342,26 @@ export default function DiplomaAssistant() {
               showCount
               autoSize={{ minRows: 2, maxRows: 5 }}
               onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={(event) => {
+                if (
+                  event.key !== "Enter" ||
+                  event.shiftKey ||
+                  event.ctrlKey ||
+                  event.altKey ||
+                  event.metaKey ||
+                  event.nativeEvent.isComposing ||
+                  event.nativeEvent.keyCode === 229
+                )
+                  return;
+                event.preventDefault();
+                if (!event.repeat && !loading)
+                  event.currentTarget.form?.requestSubmit();
+              }}
               placeholder="Ví dụ: Tra cứu văn bằng cần nhập những gì?"
               disabled={loading}
             />
             <div className={styles.actions}>
-              <span>Tối đa 800 ký tự · Không gửi tệp</span>
+              <span>Enter để gửi · Shift+Enter để xuống dòng</span>
               {loading ? (
                 <Button onClick={cancel}>Dừng trả lời</Button>
               ) : (

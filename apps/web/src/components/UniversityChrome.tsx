@@ -23,7 +23,6 @@ export function UniversityBrand({ compact = false }: { compact?: boolean }) {
       />
       <span className={styles.brandText}>
         <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
-        <span>Hệ thống quản lý và xác thực văn bằng</span>
       </span>
     </Link>
   );
@@ -31,17 +30,9 @@ export function UniversityBrand({ compact = false }: { compact?: boolean }) {
 
 export function UniversityMasthead() {
   return (
-    <>
-      <div className={styles.utilityBar}>
-        <div className={styles.container + " " + styles.utilityInner}>
-          <span>HỆ THỐNG THÔNG TIN NHÀ TRƯỜNG</span>
-          <span>Văn bằng tốt nghiệp</span>
-        </div>
-      </div>
-      <div className={styles.container + " " + styles.headerInner}>
-        <UniversityBrand />
-      </div>
-    </>
+    <div className={styles.container + " " + styles.headerInner}>
+      <UniversityBrand />
+    </div>
   );
 }
 
@@ -100,7 +91,6 @@ export function UniversityFooter({ home = false }: { home?: boolean }) {
       <div className={styles.container + " " + styles.footerInner}>
         <div>
           <strong>TRƯỜNG ĐẠI HỌC THỦY LỢI</strong>
-          <p>Hệ thống quản lý và xác thực văn bằng</p>
           <p className={styles.technologyNote}>
             Ứng dụng blockchain trong quản lý và xác thực văn bằng.
           </p>
