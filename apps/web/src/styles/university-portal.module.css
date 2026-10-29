@@ -8,7 +8,7 @@
   min-height: 100vh;
   color: var(--home-ink);
   background: var(--school-background, #f5f7fa);
-  font-family: "Segoe UI", sans-serif;
+  font-family: var(--school-font);
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -106,11 +106,11 @@
 
 .brandText strong {
   color: var(--home-blue);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 27px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
 .brandText > span {
@@ -167,7 +167,7 @@
 
 .introduction h1 {
   color: var(--home-navy);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 30px;
   font-weight: 700;
   line-height: 1.4;
@@ -336,7 +336,7 @@
   padding-bottom: 12px;
   border-bottom: 1px solid var(--home-border);
   color: var(--home-navy);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 21px;
   font-weight: 700;
   line-height: 1.5;
@@ -456,7 +456,7 @@
 }
 
 .footer strong {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 16px;
   line-height: 1.6;
 }

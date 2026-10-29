@@ -21,12 +21,24 @@
   box-sizing: border-box;
 }
 
+:root {
+  --school-font: var(--font-roboto), "Roboto", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 body {
   margin: 0;
   padding: 0;
   color: var(--school-ink);
   background: var(--school-background);
-  font-family: "Segoe UI", sans-serif;
+  font-family: var(--school-font);
+  font-synthesis: none;
   line-height: 1.6;
 }
 
@@ -66,10 +78,10 @@ h1.page-title,
 h2.page-title {
   margin: 0 0 16px;
   color: var(--school-navy);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 28px;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 

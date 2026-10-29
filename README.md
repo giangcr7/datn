@@ -31,6 +31,7 @@ Kiểm thử trang chủ và CSS: `node scripts/test-homepage.mjs`. Để kiểm
 
 ## Giao diện thống nhất
 
+- Toàn web dùng Roboto tự lưu tại `apps/web/src/fonts/roboto`, gồm chữ thường/nghiêng và trọng lượng 100-900; tiêu đề, biểu mẫu, menu, bảng và Ant Design cùng một bộ font. Font giữ nguyên tập ký tự tiếng Việt và bảng định vị dấu; không tải từ Google Fonts lúc build hoặc khi người dùng mở trang. Không thay bằng bản chỉ có Latin. Kiểm thử glyph/dấu và cấu hình bằng `node scripts/test-vietnamese-typography.mjs`; kiểm thử HTTP bên dưới kiểm tra thêm các tệp font thực sự được phục vụ.
 - Các trang công khai, đăng nhập, kích hoạt và đổi mật khẩu dùng chung đầu trang, điều hướng và chân trang theo mẫu trang chủ. Không sao chép thêm logo/đầu trang vào từng màn hình.
 - Bảng màu đặt tại `apps/web/src/lib/school-theme.ts`; root layout xuất các biến `--school-*`, Ant Design dùng cùng bộ theme. CSS chung tại `apps/web/src/styles`; nền sáng, xanh nhà trường, điểm nhấn vàng, khối trắng có viền và góc bo nhỏ. Không thay màu cảnh báo, lỗi hay trạng thái nghiệp vụ thành màu thương hiệu.
 - Màn hình nghiệp vụ dùng `workspace-page` và `PageTitle`; nội dung tab con dùng `workspace-section` và tiêu đề cấp hai. Giữ nguyên menu theo quyền, luồng phê duyệt, tra cứu và xác thực. Tailwind được cấu hình qua PostCSS để các lớp bố cục thực sự có CSS; không nạp Preflight nhằm giữ mẫu trang chủ đã duyệt.

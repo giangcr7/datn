@@ -26,7 +26,7 @@ export const schoolTheme: ThemeConfig = {
     borderRadiusLG: 4,
     controlHeight: 36,
     controlHeightLG: 44,
-    fontFamily: "'Segoe UI', sans-serif",
+    fontFamily: 'var(--font-roboto), "Roboto", sans-serif',
   },
   components: {
     Button: {

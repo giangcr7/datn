@@ -5,7 +5,7 @@
   --lookup-border: var(--school-border, #d9e0e8);
   --lookup-gold: var(--school-gold, #bc9850);
   color: #25384c;
-  font-family: "Segoe UI", sans-serif;
+  font-family: var(--school-font);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -55,7 +55,7 @@
 }
 .introduction h1 {
   color: var(--lookup-navy);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 30px;
   font-weight: 700;
   line-height: 1.4;
@@ -93,7 +93,7 @@
 .formHeading h2,
 .results h2 {
   color: var(--lookup-navy);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 22px;
 }
 .formHeading > span {
@@ -149,7 +149,7 @@
   display: block;
   width: 100%;
   min-width: 0;
-  height: 44px;
+  min-height: 44px;
   padding: 10px 12px;
   border: 1px solid #b8c5d5;
   border-radius: 3px;
@@ -157,6 +157,7 @@
   background: #fff;
   font: inherit;
   font-size: 14px;
+  line-height: 1.6;
 }
 .field input::placeholder {
   color: #738194;

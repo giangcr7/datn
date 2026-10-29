@@ -39,7 +39,7 @@
   border-bottom: 1px solid var(--school-border);
   color: var(--school-primary);
   text-decoration: none;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--school-font);
   font-size: 15px;
   font-weight: 700;
   line-height: 1.5;

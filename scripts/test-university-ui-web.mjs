@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import {
   cp,
@@ -322,6 +322,8 @@ try {
   for (const marker of [
     "--school-primary",
     "--school-gold",
+    "--font-roboto",
+    "--school-font",
     ".workspace-page",
     ".page-title",
     "grid-template-columns",
@@ -331,6 +333,35 @@ try {
   check(
     "school palette survives compilation",
     allCss.includes("var(--school-primary)"),
+  );
+  check(
+    "no legacy fonts remain in compiled web styles",
+    !/Segoe UI|Georgia|Times New Roman/.test(allCss),
+  );
+  const fontUrls = new Set(
+    Array.from(allCss.matchAll(/url\(([^)]+)\)/g), (match) =>
+      match[1].replace(/^['"]|['"]$/g, ""),
+    ).filter((href) => /\.(?:ttf|woff2?)(?:[?#]|$)/.test(href)),
+  );
+  check(
+    "Roboto normal and italic fonts are emitted locally",
+    fontUrls.size >= 2 && [...fontUrls].every((href) => !/^https?:/.test(href)),
+  );
+  const expectedFonts = new Set([
+    "d7598e12c5dbef095ff8272cfc55da0250bd07fbdecbac8a530b9b277872a134",
+    "9725a847af6b460ffca162ae66d20dad48b01876137947180b42d7dcd7887182",
+  ]);
+  const servedFonts = new Set();
+  for (const href of fontUrls) {
+    const response = await fetch(new URL(href, base));
+    check("compiled local font returns HTTP 200", response.ok);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    if (expectedFonts.has(hash)) servedFonts.add(hash);
+  }
+  check(
+    "full Vietnamese font binaries served without subsetting",
+    servedFonts.size === expectedFonts.size,
   );
   console.log(
     "Isolated university web checks passed: " +
