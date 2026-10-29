@@ -95,6 +95,15 @@ Hướng dẫn demo từng bước, file Excel giả cần chọn và kết qu�
 
 Luồng nghiệp vụ hiện tại: TP.HCM rà soát → cán bộ duyệt và ký → Fabric commit. Chi tiết migration, tài khoản và tương thích lịch sử: `docs/database/single-campus-workflow.md`. Tài liệu/kịch bản Hà Nội cũ chỉ mô tả luồng lịch sử, không dùng để phát hành mới.
 
+## Đối chiếu dữ liệu trùng khi nhập hồ sơ
+
+- Tại **Hồ sơ cấp văn bằng → Kiểm tra dữ liệu → Bổ sung**, phần **Đối chiếu hồ sơ trùng** hiển thị trường trùng, giá trị, tên file, sheet và số dòng; bảng hai cột phân biệt trường gây trùng với các thông tin khác nhau.
+- Có thể mở dòng liên quan để rà soát hoặc mở văn bằng đã tồn tại trong **Sổ văn bằng**. Khi đang sửa mà chưa lưu, hệ thống yêu cầu xác nhận trước khi chuyển dòng; bản đã ký/phát hành chỉ được xem đối chiếu.
+- MSSV trùng là cảnh báo cần xác nhận, không tự gộp người học hoặc văn bằng. Trùng số hiệu/số vào sổ trong đợt nhập hoặc trong dữ liệu của trường là lỗi chặn lưu hồ sơ mới, kể cả số thuộc văn bằng đã thu hồi/thay thế.
+- Lưu đối soát sẽ kiểm tra lại cả dòng hiện tại và các dòng liên quan theo giá trị trước/sau sửa. Nút kiểm tra lại đọc dữ liệu đã hiệu chỉnh, không khôi phục cảnh báo trùng theo giá trị Excel cũ; file nguồn và văn bằng đã ký được giữ nguyên.
+- API đối chiếu yêu cầu cán bộ có quyền tại cơ sở chính, giới hạn theo trường/cơ sở và phân trang. Số trùng ngoài phạm vi cơ sở chỉ hiện cảnh báo, không trả thông tin cá nhân. Phản hồi không lưu cache; không gửi dữ liệu so sánh sang AI.
+- Kiểm thử không ghi database: tại thư mục `apps/api` chạy `npm test -- --runInBand --no-cache registry-parser.spec.ts registry-import.service.spec.ts registry-duplicates.spec.ts registry-duplicate-review.spec.ts`; tại gốc chạy `node scripts/test-registry-duplicates.mjs` và `node scripts/test-registry-review.mjs`.
+
 ## Giữ thư mục đề tài sạch
 
 - Quy tắc làm việc và dọn file tạm nằm trong `AGENTS.md`. Ảnh rà soát, log kiểm thử và script dùng một lần phải đặt trong thư mục tạm của hệ điều hành, dọn trong `finally` sau khi thực thi; không để phát sinh thư mục rác ở gốc dự án.

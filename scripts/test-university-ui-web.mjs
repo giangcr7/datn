@@ -35,6 +35,19 @@ const backend = createServer((request, response) => {
   if (request.method !== "GET") {
     response.statusCode = 405;
     response.end(JSON.stringify({ message: "Read-only isolated UI fixture" }));
+  } else if (
+    request.url?.startsWith("/imports/") &&
+    request.url.includes("/duplicates?")
+  ) {
+    assert.equal(request.headers.authorization, "Bearer isolated-ui-token");
+    response.end(
+      JSON.stringify({
+        current: { id: "row-fixture" },
+        matches: [],
+        total: 0,
+        forwardedQuery: new URL(request.url, "http://fixture.invalid").search,
+      }),
+    );
   } else if (request.url === "/auth/users") response.end("[]");
   else if (request.url?.startsWith("/students"))
     response.end(JSON.stringify({ data: [] }));
@@ -251,6 +264,29 @@ try {
     for (const href of css) stylesheets.add(href.replaceAll("&amp;", "&"));
     console.log("PASS " + path);
   }
+  const duplicatePath =
+    "/api/imports/11111111-1111-4111-8111-111111111111/rows/22222222-2222-4222-8222-222222222222/duplicates?page=2&limit=5";
+  check(
+    "duplicate proxy requires authentication",
+    (await fetch(base + duplicatePath)).status === 401,
+  );
+  const duplicateResponse = await fetch(base + duplicatePath, {
+    headers: { cookie: officer },
+  });
+  const duplicateBody = await duplicateResponse.json();
+  check(
+    "duplicate proxy forwards read-only comparison",
+    duplicateResponse.status === 200 &&
+      duplicateBody.current.id === "row-fixture",
+  );
+  check(
+    "duplicate proxy preserves pagination",
+    duplicateBody.forwardedQuery === "?page=2&limit=5",
+  );
+  check(
+    "duplicate comparison is not cached",
+    duplicateResponse.headers.get("Cache-Control") === "private, no-store",
+  );
   const assistantPost = (body, session, origin = base) =>
     fetch(base + "/api/assistant", {
       method: "POST",

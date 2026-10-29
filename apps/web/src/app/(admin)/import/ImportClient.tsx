@@ -1,11 +1,13 @@
 "use client";
 
 import PageTitle from "@/components/PageTitle";
+import RegistryDuplicatePanel from "@/components/RegistryDuplicatePanel";
 import { openRegistryAssistant } from "@/lib/diploma-assistant";
 import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
+  ConfigProvider,
   Input,
   InputNumber,
   Modal,
@@ -27,6 +29,7 @@ import {
   EditOutlined,
 } from "@ant-design/icons";
 import {
+  canEditRegistryRow,
   openRegistryIssues,
   registryBatchSummaryText,
   registryIssueText,
@@ -64,6 +67,10 @@ export default function ImportClient({
   const [reviewRow, setReviewRow] = useState<any>(null),
     [corrections, setCorrections] = useState("{}"),
     [note, setNote] = useState("");
+  const [savedCorrections, setSavedCorrections] = useState("{}");
+  const [duplicateRevision, setDuplicateRevision] = useState(0);
+  const dirtyReview = corrections !== savedCorrections || !!note.trim();
+  const readOnlyReview = !!reviewRow && !canEditRegistryRow(reviewRow);
   async function refreshBatches() {
     const result = await api("/api/imports?limit=100");
     setBatches(result.data);
@@ -119,7 +126,84 @@ export default function ImportClient({
       setBusy(false);
     }
   }
+  function openReview(row: any) {
+    setReviewRow(row);
+    const diploma = row.graduation?.diplomas?.[0];
+    const serialized = JSON.stringify(
+      row.status === "IMPORTED"
+        ? {
+            ...row.normalizedData,
+            ...row.overrides,
+            ...Object.fromEntries(
+              Object.entries(diploma?.printedDiploma || {}).filter(
+                ([, value]) =>
+                  value !== null && value !== undefined && value !== "",
+              ),
+            ),
+            degreeType:
+              diploma?.degreeType ||
+              row.overrides?.degreeType ||
+              row.normalizedData.degreeType,
+            issuedOn:
+              diploma?.issueDate ||
+              row.overrides?.issuedOn ||
+              row.normalizedData.issuedOn ||
+              "",
+          }
+        : { ...row.normalizedData, ...row.overrides },
+      null,
+      2,
+    );
+    setCorrections(serialized);
+    setSavedCorrections(serialized);
+    setNote("");
+  }
+  async function loadRelatedRow(id: string) {
+    setBusy(true);
+    try {
+      const result = await api(
+        "/api/imports/" +
+          batchId +
+          "/rows?rowId=" +
+          encodeURIComponent(id) +
+          "&limit=1",
+      );
+      if (!result.data[0])
+        throw new Error("Không tìm thấy dòng liên quan trong đợt nhập.");
+      openReview(result.data[0]);
+    } catch (error: any) {
+      message.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function openRelatedRow(id: string) {
+    if (busy) return;
+    if (dirtyReview) {
+      Modal.confirm({
+        title: "Chuyển sang dòng liên quan?",
+        content:
+          "Thay đổi chưa lưu của dòng hiện tại sẽ bị bỏ qua. Anh có thể ở lại để lưu trước khi chuyển.",
+        okText: "Bỏ thay đổi và chuyển",
+        cancelText: "Ở lại",
+        onOk: () => loadRelatedRow(id),
+      });
+    } else void loadRelatedRow(id);
+  }
+  function closeReview() {
+    if (busy) return;
+    if (dirtyReview)
+      Modal.confirm({
+        title: "Đóng khi chưa lưu thay đổi?",
+        content: "Các thông tin chưa lưu sẽ không được áp dụng.",
+        okText: "Bỏ thay đổi và đóng",
+        cancelText: "Tiếp tục chỉnh sửa",
+        onOk: () => setReviewRow(null),
+      });
+    else setReviewRow(null);
+  }
   async function review() {
+    if (busy || readOnlyReview) return;
     setBusy(true);
     try {
       const values = JSON.parse(corrections);
@@ -147,7 +231,16 @@ export default function ImportClient({
           body: JSON.stringify({ corrections: changes, note }),
         },
       );
+      setDuplicateRevision((value) => value + 1);
+      setSavedCorrections(corrections);
+      setNote("");
       if (!result.ready) {
+        setReviewRow({
+          ...reviewRow,
+          status: "NEEDS_REVIEW",
+          overrides: values,
+          issues: result.issues,
+        });
         message.error(
           "Dữ liệu vẫn còn lỗi: " +
             result.issues
@@ -519,53 +612,8 @@ export default function ImportClient({
               render: (_: any, row: any) => (
                 <Button
                   icon={<EditOutlined />}
-                  disabled={
-                    row.status === "SKIPPED" ||
-                    (row.status === "IMPORTED" &&
-                      (!row.graduation?.diplomas?.length ||
-                        row.graduation.diplomas.some(
-                          (diploma: any) =>
-                            diploma.workflowStatus !== "DRAFT" ||
-                            diploma.status !== "DRAFT" ||
-                            diploma.pdfSignatureCount > 0,
-                        )))
-                  }
-                  onClick={() => {
-                    setReviewRow(row);
-                    const diploma = row.graduation?.diplomas?.[0];
-                    setCorrections(
-                      JSON.stringify(
-                        row.status === "IMPORTED"
-                          ? {
-                              ...row.normalizedData,
-                              ...row.overrides,
-                              ...Object.fromEntries(
-                                Object.entries(
-                                  diploma?.printedDiploma || {},
-                                ).filter(
-                                  ([, value]) =>
-                                    value !== null &&
-                                    value !== undefined &&
-                                    value !== "",
-                                ),
-                              ),
-                              degreeType:
-                                diploma?.degreeType ||
-                                row.overrides?.degreeType ||
-                                row.normalizedData.degreeType,
-                              issuedOn:
-                                diploma?.issueDate ||
-                                row.overrides?.issuedOn ||
-                                row.normalizedData.issuedOn ||
-                                "",
-                            }
-                          : { ...row.normalizedData, ...row.overrides },
-                        null,
-                        2,
-                      ),
-                    );
-                    setNote("");
-                  }}
+                  disabled={!canEditRegistryRow(row)}
+                  onClick={() => openReview(row)}
                 >
                   {row.status === "IMPORTED" ? "Kiểm tra thông tin" : "Bổ sung"}
                 </Button>
@@ -584,7 +632,12 @@ export default function ImportClient({
             : "Kiểm tra dữ liệu"
         }
         open={!!reviewRow}
-        onCancel={() => setReviewRow(null)}
+        onCancel={closeReview}
+        closable={!busy}
+        maskClosable={!busy}
+        keyboard={!busy}
+        okButtonProps={{ disabled: readOnlyReview || !note.trim() }}
+        cancelButtonProps={{ disabled: busy }}
         onOk={review}
         okText="Kiểm tra và lưu đối soát"
         confirmLoading={busy}
@@ -594,9 +647,11 @@ export default function ImportClient({
           type="warning"
           showIcon
           title={
-            reviewRow?.status === "IMPORTED"
-              ? "Chỉ sửa thông tin cấp bằng của hồ sơ nháp chưa ký, chưa phát hành."
-              : "Chỉ điều chỉnh khi có căn cứ hồ sơ. File nguồn luôn được giữ nguyên."
+            readOnlyReview
+              ? "Hồ sơ này chỉ được xem đối chiếu; không chỉnh sửa dữ liệu đã lưu hoặc văn bằng đã ký, phát hành."
+              : reviewRow?.status === "IMPORTED"
+                ? "Chỉ sửa thông tin cấp bằng của hồ sơ nháp chưa ký, chưa phát hành."
+                : "Chỉ điều chỉnh khi có căn cứ hồ sơ. File nguồn luôn được giữ nguyên."
           }
           className="mb-3"
         />
@@ -609,62 +664,203 @@ export default function ImportClient({
               }),
             )
           : openRegistryIssues(reviewRow?.issues)
-        ).map((issue: any) => (
-          <div key={issue.id}>
+        ).map((issue: any, index: number) => (
+          <div key={issue.id ?? issue.code + ":" + index}>
             <Tag color={issue.severity === "ERROR" ? "red" : "orange"}>
               {issue.severity === "ERROR" ? "Cần sửa" : "Lưu ý"}
             </Tag>
             {registryIssueText(issue)}
           </div>
         ))}
-        <div className="grid md:grid-cols-2 gap-4 mt-4">
-          {reviewRow?.status !== "IMPORTED" && (
-            <>
-              {[
-                ["studentCode", "Mã sinh viên"],
-                ["fullName", "Họ và tên"],
-                ["birthPlace", "Nơi sinh"],
-                ["ethnicity", "Dân tộc"],
-                ["nationality", "Quốc tịch"],
-                ["classCode", "Lớp"],
-                ["cohortCode", "Khóa học"],
-                ["specialization", "Chuyên ngành"],
-                ["certificateNo", "Số hiệu văn bằng"],
-                ["registryNo", "Số vào sổ"],
-                ["decisionNumber", "Số quyết định"],
-                ["signerName", "Người ký quyết định"],
-              ].map(([field, label]) => (
-                <label key={field} className="flex flex-col gap-1">
-                  <span>{label}</span>
-                  <Input
-                    value={correctionValues[field] || ""}
-                    onChange={(event) =>
-                      changeCorrection(field, event.target.value)
+        {reviewRow && (
+          <RegistryDuplicatePanel
+            key={batchId + ":" + reviewRow.id}
+            batchId={batchId}
+            rowId={reviewRow.id}
+            revision={duplicateRevision}
+            dirty={corrections !== savedCorrections}
+            onOpenRow={openRelatedRow}
+          />
+        )}
+        <ConfigProvider componentDisabled={busy || readOnlyReview}>
+          <div className="grid md:grid-cols-2 gap-4 mt-4">
+            {reviewRow?.status !== "IMPORTED" && (
+              <>
+                {[
+                  ["studentCode", "Mã sinh viên"],
+                  ["fullName", "Họ và tên"],
+                  ["birthPlace", "Nơi sinh"],
+                  ["ethnicity", "Dân tộc"],
+                  ["nationality", "Quốc tịch"],
+                  ["classCode", "Lớp"],
+                  ["cohortCode", "Khóa học"],
+                  ["specialization", "Chuyên ngành"],
+                  ["certificateNo", "Số hiệu văn bằng"],
+                  ["registryNo", "Số vào sổ"],
+                  ["decisionNumber", "Số quyết định"],
+                  ["signerName", "Người ký quyết định"],
+                ].map(([field, label]) => (
+                  <label key={field} className="flex flex-col gap-1">
+                    <span>{label}</span>
+                    <Input
+                      value={correctionValues[field] || ""}
+                      onChange={(event) =>
+                        changeCorrection(field, event.target.value)
+                      }
+                    />
+                  </label>
+                ))}
+                <label className="flex flex-col gap-1">
+                  <span>Giới tính</span>
+                  <Select
+                    allowClear
+                    value={correctionValues.gender || undefined}
+                    options={[
+                      { value: "MALE", label: "Nam" },
+                      { value: "FEMALE", label: "Nữ" },
+                      { value: "OTHER", label: "Khác" },
+                    ]}
+                    onChange={(value) =>
+                      changeCorrection("gender", value || null)
                     }
                   />
                 </label>
-              ))}
-              <label className="flex flex-col gap-1">
-                <span>Giới tính</span>
-                <Select
-                  allowClear
-                  value={correctionValues.gender || undefined}
-                  options={[
-                    { value: "MALE", label: "Nam" },
-                    { value: "FEMALE", label: "Nữ" },
-                    { value: "OTHER", label: "Khác" },
-                  ]}
-                  onChange={(value) =>
-                    changeCorrection("gender", value || null)
+                <label className="flex flex-col gap-1">
+                  <span>Loại bằng</span>
+                  <Select
+                    allowClear
+                    value={correctionValues.degreeType || undefined}
+                    placeholder="Không suy loại bằng từ tên ngành"
+                    options={[
+                      { value: "BACHELOR", label: "Bằng cử nhân" },
+                      { value: "ENGINEER", label: "Bằng kỹ sư" },
+                      { value: "MASTER", label: "Bằng thạc sĩ" },
+                      { value: "DOCTOR", label: "Bằng tiến sĩ" },
+                      { value: "OTHER", label: "Loại khác" },
+                    ]}
+                    onChange={(value) =>
+                      changeCorrection("degreeType", value || null)
+                    }
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span>Ngành đã xác nhận</span>
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    value={correctionValues.programId || undefined}
+                    options={programs.map((program) => ({
+                      value: program.id,
+                      label: program.name + " (" + program.code + ")",
+                    }))}
+                    onChange={(value) => {
+                      const program = programs.find(
+                        (item) => item.id === value,
+                      );
+                      setCorrections(
+                        JSON.stringify({
+                          ...correctionValues,
+                          programId: value,
+                          majorNameEn: program?.nameEn || null,
+                        }),
+                      );
+                    }}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span>Năm tốt nghiệp</span>
+                  <InputNumber
+                    className="w-full"
+                    min={1900}
+                    max={new Date().getFullYear()}
+                    value={correctionValues.graduationYear}
+                    onChange={(value) =>
+                      changeCorrection("graduationYear", value)
+                    }
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span>Xếp loại theo hồ sơ</span>
+                  <Select
+                    value={correctionValues.classification || undefined}
+                    options={[
+                      { value: "AVERAGE", label: "Trung bình" },
+                      { value: "AVERAGE_GOOD", label: "Trung bình khá" },
+                      { value: "GOOD", label: "Khá" },
+                      { value: "VERY_GOOD", label: "Giỏi" },
+                      { value: "EXCELLENT", label: "Xuất sắc" },
+                    ]}
+                    onChange={(value) =>
+                      changeCorrection("classification", value)
+                    }
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span>Thang điểm</span>
+                  <Select
+                    value={correctionValues.gpaScale}
+                    options={[
+                      { value: 4, label: "Hệ 4" },
+                      { value: 10, label: "Hệ 10" },
+                    ]}
+                    onChange={(value) => changeCorrection("gpaScale", value)}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span>GPA (để trống nếu nguồn không có)</span>
+                  <InputNumber
+                    className="w-full"
+                    min={0}
+                    max={correctionValues.gpaScale || 4}
+                    value={correctionValues.gpa}
+                    onChange={(value) => changeCorrection("gpa", value)}
+                  />
+                </label>
+              </>
+            )}
+            {(reviewRow?.status === "IMPORTED"
+              ? [["issuedOn", "Ngày cấp thực tế đã đối chiếu"]]
+              : [
+                  ["dateOfBirth", "Ngày sinh"],
+                  ["decisionDate", "Ngày ký quyết định"],
+                  ["issuedOn", "Ngày cấp thực tế đã đối chiếu"],
+                ]
+            ).map(([field, label]) => (
+              <label key={field} className="flex flex-col gap-1">
+                <span>{label}</span>
+                <Input
+                  type="date"
+                  value={correctionValues[field] || ""}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) =>
+                    changeCorrection(field, event.target.value || null)
                   }
                 />
               </label>
+            ))}
+            {[
+              ["fullNameLatin", "Họ tên trang tiếng Anh", 255],
+              ["majorNameEn", "Tên ngành tiếng Anh", 255],
+              ["issuePlace", "Nơi cấp trên bằng", 120],
+              ["diplomaSignerName", "Người ký trên bằng", 255],
+              ["diplomaSignerTitle", "Chức danh người ký bằng", 120],
+            ].map(([field, label, maximum]) => (
+              <label key={String(field)} className="flex flex-col gap-1">
+                <span>{label}</span>
+                <Input
+                  value={correctionValues[String(field)] || ""}
+                  maxLength={Number(maximum)}
+                  onChange={(event) =>
+                    changeCorrection(String(field), event.target.value || null)
+                  }
+                />
+              </label>
+            ))}
+            {reviewRow?.status === "IMPORTED" && (
               <label className="flex flex-col gap-1">
                 <span>Loại bằng</span>
                 <Select
-                  allowClear
                   value={correctionValues.degreeType || undefined}
-                  placeholder="Không suy loại bằng từ tên ngành"
                   options={[
                     { value: "BACHELOR", label: "Bằng cử nhân" },
                     { value: "ENGINEER", label: "Bằng kỹ sư" },
@@ -672,146 +868,19 @@ export default function ImportClient({
                     { value: "DOCTOR", label: "Bằng tiến sĩ" },
                     { value: "OTHER", label: "Loại khác" },
                   ]}
-                  onChange={(value) =>
-                    changeCorrection("degreeType", value || null)
-                  }
+                  onChange={(value) => changeCorrection("degreeType", value)}
                 />
               </label>
-              <label className="flex flex-col gap-1">
-                <span>Ngành đã xác nhận</span>
-                <Select
-                  showSearch
-                  optionFilterProp="label"
-                  value={correctionValues.programId || undefined}
-                  options={programs.map((program) => ({
-                    value: program.id,
-                    label: program.name + " (" + program.code + ")",
-                  }))}
-                  onChange={(value) => {
-                    const program = programs.find((item) => item.id === value);
-                    setCorrections(
-                      JSON.stringify({
-                        ...correctionValues,
-                        programId: value,
-                        majorNameEn: program?.nameEn || null,
-                      }),
-                    );
-                  }}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span>Năm tốt nghiệp</span>
-                <InputNumber
-                  className="w-full"
-                  min={1900}
-                  max={new Date().getFullYear()}
-                  value={correctionValues.graduationYear}
-                  onChange={(value) =>
-                    changeCorrection("graduationYear", value)
-                  }
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span>Xếp loại theo hồ sơ</span>
-                <Select
-                  value={correctionValues.classification || undefined}
-                  options={[
-                    { value: "AVERAGE", label: "Trung bình" },
-                    { value: "AVERAGE_GOOD", label: "Trung bình khá" },
-                    { value: "GOOD", label: "Khá" },
-                    { value: "VERY_GOOD", label: "Giỏi" },
-                    { value: "EXCELLENT", label: "Xuất sắc" },
-                  ]}
-                  onChange={(value) =>
-                    changeCorrection("classification", value)
-                  }
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span>Thang điểm</span>
-                <Select
-                  value={correctionValues.gpaScale}
-                  options={[
-                    { value: 4, label: "Hệ 4" },
-                    { value: 10, label: "Hệ 10" },
-                  ]}
-                  onChange={(value) => changeCorrection("gpaScale", value)}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span>GPA (để trống nếu nguồn không có)</span>
-                <InputNumber
-                  className="w-full"
-                  min={0}
-                  max={correctionValues.gpaScale || 4}
-                  value={correctionValues.gpa}
-                  onChange={(value) => changeCorrection("gpa", value)}
-                />
-              </label>
-            </>
-          )}
-          {(reviewRow?.status === "IMPORTED"
-            ? [["issuedOn", "Ngày cấp thực tế đã đối chiếu"]]
-            : [
-                ["dateOfBirth", "Ngày sinh"],
-                ["decisionDate", "Ngày ký quyết định"],
-                ["issuedOn", "Ngày cấp thực tế đã đối chiếu"],
-              ]
-          ).map(([field, label]) => (
-            <label key={field} className="flex flex-col gap-1">
-              <span>{label}</span>
-              <Input
-                type="date"
-                value={correctionValues[field] || ""}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(event) =>
-                  changeCorrection(field, event.target.value || null)
-                }
-              />
-            </label>
-          ))}
-          {[
-            ["fullNameLatin", "Họ tên trang tiếng Anh", 255],
-            ["majorNameEn", "Tên ngành tiếng Anh", 255],
-            ["issuePlace", "Nơi cấp trên bằng", 120],
-            ["diplomaSignerName", "Người ký trên bằng", 255],
-            ["diplomaSignerTitle", "Chức danh người ký bằng", 120],
-          ].map(([field, label, maximum]) => (
-            <label key={String(field)} className="flex flex-col gap-1">
-              <span>{label}</span>
-              <Input
-                value={correctionValues[String(field)] || ""}
-                maxLength={Number(maximum)}
-                onChange={(event) =>
-                  changeCorrection(String(field), event.target.value || null)
-                }
-              />
-            </label>
-          ))}
-          {reviewRow?.status === "IMPORTED" && (
-            <label className="flex flex-col gap-1">
-              <span>Loại bằng</span>
-              <Select
-                value={correctionValues.degreeType || undefined}
-                options={[
-                  { value: "BACHELOR", label: "Bằng cử nhân" },
-                  { value: "ENGINEER", label: "Bằng kỹ sư" },
-                  { value: "MASTER", label: "Bằng thạc sĩ" },
-                  { value: "DOCTOR", label: "Bằng tiến sĩ" },
-                  { value: "OTHER", label: "Loại khác" },
-                ]}
-                onChange={(value) => changeCorrection("degreeType", value)}
-              />
-            </label>
-          )}
-        </div>
-        <Input.TextArea
-          rows={3}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Ghi rõ nguồn đối chiếu/lý do xác nhận (bắt buộc)"
-          className="mt-3"
-        />
+            )}
+          </div>
+          <Input.TextArea
+            rows={3}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Ghi rõ nguồn đối chiếu/lý do xác nhận (bắt buộc)"
+            className="mt-3"
+          />
+        </ConfigProvider>
       </Modal>
     </div>
   );

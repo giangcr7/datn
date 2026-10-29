@@ -37,6 +37,16 @@ import {
   diplomaProjection,
 } from '../database/diploma-projection';
 import { reviewedDiplomaErrors } from '../cert/reviewed-diploma';
+import {
+  registryDuplicateFields,
+  registryDuplicateValue,
+  registryEffectiveData,
+  isRegistryDuplicateIssue,
+} from './registry-duplicates';
+import {
+  registryDuplicateState,
+  refreshRegistryDuplicates,
+} from './registry-duplicate-data';
 
 const printFields = [
   'degreeType',
@@ -162,7 +172,10 @@ export class RegistryImportService {
           field: 'certificateNo',
           code: 'EXISTING_CERTIFICATE_NO',
           severity: 'ERROR',
-          message: 'Số hiệu đã có trong database',
+          message:
+            'Số hiệu văn bằng "' +
+            row.normalizedData.certificateNo +
+            '" đã có trong hệ thống. Mở đối chiếu hồ sơ trùng để kiểm tra.',
         });
       if (
         row.normalizedData.registryNo &&
@@ -172,7 +185,10 @@ export class RegistryImportService {
           field: 'registryNo',
           code: 'EXISTING_REGISTRY_NO',
           severity: 'ERROR',
-          message: 'Số vào sổ đã có trong database',
+          message:
+            'Số vào sổ "' +
+            row.normalizedData.registryNo +
+            '" đã có trong hệ thống. Mở đối chiếu hồ sơ trùng để kiểm tra.',
         });
     }
     return {
@@ -472,6 +488,220 @@ export class RegistryImportService {
       limit,
     };
   }
+  async duplicates(
+    batchId: string,
+    rowId: string,
+    actor: AuthActor,
+    page = 1,
+    limit = 5,
+  ) {
+    this.staff(actor);
+    const paging = pagination(page, limit);
+    const batch = await this.database.importBatch.findFirst({
+      where: { id: batchId, ...this.scope(actor) },
+      include: { document: { select: { fileName: true } } },
+    });
+    if (!batch) throw new NotFoundException();
+    const state = await registryDuplicateState(
+      this.database,
+      batchId,
+      actor.institutionId,
+    );
+    const row = state.rows.find((item) => item.id === rowId);
+    if (!row) throw new NotFoundException();
+    const input = registryEffectiveData(row);
+    const programs = await this.database.program.findMany({
+      where: { institutionId: actor.institutionId },
+      select: { id: true, name: true },
+    });
+    const programNames = new Map(
+      programs.map((program) => [program.id, program.name]),
+    );
+    const values = (data: RegistryInput) =>
+      Object.fromEntries(
+        [
+          'studentCode',
+          'fullName',
+          'dateOfBirth',
+          'classCode',
+          'programId',
+          'programOriginal',
+          'graduationYear',
+          'classification',
+          'certificateNo',
+          'registryNo',
+        ].map((field) => [
+          field,
+          field === 'programOriginal'
+            ? programNames.get(data.programId || '') ||
+              data.programOriginal ||
+              null
+            : (data[field] ?? null),
+        ]),
+      );
+    const related = state.lookup(row).filter((group) => group.matches.length);
+    const matches: {
+      key: string;
+      kind: 'row' | 'diploma';
+      id: string;
+      sheetName?: string;
+      rowNumber?: number;
+      status: string;
+      workflowStatus?: string;
+      diplomaStatus?: string;
+      values: Record<string, unknown>;
+      matchedFields: string[];
+    }[] = [];
+    const relatedFields = new Map<string, string[]>();
+    for (const group of related)
+      for (const peer of group.matches) {
+        const fields = relatedFields.get(peer.id) || [];
+        fields.push(group.field);
+        relatedFields.set(peer.id, fields);
+      }
+    for (const peer of state.rows) {
+      const fields = relatedFields.get(peer.id) || [];
+      if (fields.length)
+        matches.push({
+          key: 'row:' + peer.id,
+          kind: 'row',
+          id: peer.id,
+          sheetName: peer.sheetName,
+          rowNumber: peer.rowNumber,
+          status: peer.status,
+          values: values(registryEffectiveData(peer)),
+          matchedFields: fields,
+        });
+    }
+    const stored = state.diplomas.filter(
+      (diploma) =>
+        diploma.graduation.sourceRowId !== row.id &&
+        registryDuplicateFields.some(
+          ({ field }) =>
+            field !== 'studentCode' &&
+            registryDuplicateValue(input, field) &&
+            registryDuplicateValue(input, field) === diploma[field],
+        ),
+    );
+    const visible = stored.filter(
+      (diploma) => diploma.campusId === actor.campusId,
+    );
+    const details = visible.length
+      ? await this.database.diploma.findMany({
+          where: {
+            id: { in: visible.map((diploma) => diploma.id) },
+            institutionId: actor.institutionId,
+            campusId: actor.campusId,
+          },
+          select: {
+            id: true,
+            certificateNo: true,
+            registryNo: true,
+            status: true,
+            workflowStatus: true,
+            graduation: {
+              select: {
+                sourceRowId: true,
+                graduationYear: true,
+                classification: true,
+                student: {
+                  select: {
+                    studentCode: true,
+                    fullName: true,
+                    dateOfBirth: true,
+                  },
+                },
+                program: { select: { id: true, name: true } },
+                enrollment: {
+                  select: { academicClass: { select: { code: true } } },
+                },
+              },
+            },
+          },
+        })
+      : [];
+    for (const diploma of details) {
+      const linked = matches.find(
+        (match) =>
+          match.kind === 'row' &&
+          match.id === diploma.graduation.sourceRowId &&
+          (['certificateNo', 'registryNo'] as const).every(
+            (field) => match.values[field] === diploma[field],
+          ),
+      );
+      if (linked) {
+        linked.workflowStatus = diploma.workflowStatus;
+        linked.diplomaStatus = diploma.status;
+        continue;
+      }
+      const graduation = diploma.graduation;
+      matches.push({
+        key: 'diploma:' + diploma.id,
+        kind: 'diploma',
+        id: diploma.id,
+        status: diploma.status,
+        workflowStatus: diploma.workflowStatus,
+        matchedFields: registryDuplicateFields
+          .filter(
+            ({ field }) =>
+              field !== 'studentCode' &&
+              registryDuplicateValue(input, field) &&
+              registryDuplicateValue(input, field) === diploma[field],
+          )
+          .map((item) => item.field),
+        values: {
+          ...graduation.student,
+          dateOfBirth: dateOnly(graduation.student.dateOfBirth),
+          programId: graduation.program.id,
+          programOriginal: graduation.program.name,
+          classCode: graduation.enrollment?.academicClass?.code ?? null,
+          graduationYear: graduation.graduationYear,
+          classification: graduation.classification,
+          certificateNo: diploma.certificateNo,
+          registryNo: diploma.registryNo,
+        },
+      });
+    }
+    const restricted = stored.filter(
+      (diploma) => diploma.campusId !== actor.campusId,
+    );
+    return {
+      current: {
+        id: row.id,
+        sheetName: row.sheetName,
+        rowNumber: row.rowNumber,
+        status: row.status,
+        fileName: batch.document.fileName,
+        values: values(input),
+      },
+      matches: matches.slice(paging.skip, paging.skip + paging.take),
+      total: matches.length,
+      page,
+      limit,
+      restrictedCount: restricted.length,
+      fields: registryDuplicateFields.flatMap(({ field, label }) => {
+        const count = matches.filter((match) =>
+          match.matchedFields.includes(field),
+        ).length;
+        const hidden = restricted.some(
+          (diploma) =>
+            field !== 'studentCode' &&
+            registryDuplicateValue(input, field) === diploma[field],
+        );
+        return count || hidden
+          ? [
+              {
+                field,
+                label,
+                value: registryDuplicateValue(input, field),
+                count,
+                restricted: hidden,
+              },
+            ]
+          : [];
+      }),
+    };
+  }
   async review(
     batchId: string,
     rowId: string,
@@ -498,6 +728,7 @@ export class RegistryImportService {
     }
     await this.assertPrintCatalog(actor);
     return this.database.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM import_batches WHERE id = ${batchId}::uuid AND institution_id = ${actor.institutionId}::uuid AND campus_id = ${actor.campusId}::uuid FOR UPDATE`;
       await transaction.$queryRaw`SELECT id FROM import_rows WHERE id = ${rowId}::uuid FOR UPDATE`;
       const row = await transaction.importRow.findFirst({
         where: { id: rowId, batchId, batch: this.scope(actor) },
@@ -630,6 +861,7 @@ export class RegistryImportService {
         throw new ConflictException(
           'Dòng đã xử lý; không sửa ngược nguồn đã import',
         );
+      const previousInput = registryEffectiveData(row);
       const overrides = {
         ...((row.overrides as object) || {}),
         ...corrections,
@@ -646,44 +878,7 @@ export class RegistryImportService {
         }))
       )
         throw new BadRequestException('Ngành không thuộc trường');
-      for (const field of ['certificateNo', 'registryNo'] as const)
-        if (input[field]) {
-          if (
-            await transaction.diploma.findFirst({
-              where: {
-                institutionId: actor.institutionId,
-                [field]: input[field],
-              },
-            })
-          )
-            issues.push({
-              field,
-              code: 'EXISTING_NUMBER',
-              severity: 'ERROR',
-              message: 'Số văn bằng đã tồn tại',
-            });
-          const siblings = await transaction.importRow.findMany({
-            where: { batchId, id: { not: rowId }, status: { not: 'SKIPPED' } },
-            select: { normalizedData: true, overrides: true },
-          });
-          if (
-            siblings.some(
-              (item) =>
-                (
-                  ({
-                    ...(item.normalizedData as object),
-                    ...((item.overrides as object) || {}),
-                  }) as any
-                )[field] === input[field],
-            )
-          )
-            issues.push({
-              field,
-              code: 'DUPLICATE_NUMBER',
-              severity: 'ERROR',
-              message: 'Số văn bằng trùng trong batch',
-            });
-        }
+
       await transaction.validationIssue.updateMany({
         where: { rowId, resolvedAt: null },
         data: { resolvedAt: new Date() },
@@ -692,7 +887,7 @@ export class RegistryImportService {
         await transaction.validationIssue.createMany({
           data: issues.map((issue) => ({ ...issue, rowId })),
         });
-      const ready = !issues.some((issue) => issue.severity === 'ERROR');
+      let ready = !issues.some((issue) => issue.severity === 'ERROR');
       await transaction.importRow.update({
         where: { id: rowId },
         data: {
@@ -702,6 +897,19 @@ export class RegistryImportService {
           status: ready ? 'READY' : 'NEEDS_REVIEW',
         },
       });
+      const relatedResults = await refreshRegistryDuplicates(
+        transaction,
+        batchId,
+        actor.institutionId,
+        { rowId, previous: previousInput },
+      );
+      const checked = relatedResults.get(rowId);
+      if (!checked)
+        throw new ConflictException(
+          'Không thể kiểm tra trạng thái dòng hiện tại',
+        );
+      ready = checked.ready;
+      issues.splice(0, issues.length, ...checked.issues);
       await transaction.auditLog.create({
         data: {
           institutionId: actor.institutionId,
@@ -710,7 +918,12 @@ export class RegistryImportService {
           action: 'REVIEW_IMPORT_ROW',
           target: rowId,
           result: 'SUCCESS',
-          metadata: jsonData({ note, corrections, ready }),
+          metadata: jsonData({
+            note,
+            corrections,
+            ready,
+            recheckedRowIds: [...relatedResults.keys()],
+          }),
         },
       });
       return { success: true, ready, issues };
@@ -754,6 +967,7 @@ export class RegistryImportService {
       protectedRows = 0;
     for (const candidate of rows) {
       await this.database.$transaction(async (transaction) => {
+        await transaction.$queryRaw`SELECT id FROM import_batches WHERE id = ${batchId}::uuid AND institution_id = ${actor.institutionId}::uuid AND campus_id = ${actor.campusId}::uuid FOR UPDATE`;
         await transaction.$queryRaw`SELECT id FROM import_rows WHERE id = ${candidate.id}::uuid FOR UPDATE`;
         const row = await transaction.importRow.findUniqueOrThrow({
           where: { id: candidate.id },
@@ -812,12 +1026,18 @@ export class RegistryImportService {
           if (!row.reviewedAt)
             issues.push(
               ...fresh.issues.filter(
-                (issue) => !validationCodes.has(issue.code),
+                (issue) =>
+                  !validationCodes.has(issue.code) &&
+                  !isRegistryDuplicateIssue(issue),
               ),
             );
           issues.push(
             ...row.issues
-              .filter((issue) => issue.code === 'COMMIT_CONFLICT')
+              .filter(
+                (issue) =>
+                  issue.code === 'COMMIT_CONFLICT' ||
+                  isRegistryDuplicateIssue(issue),
+              )
               .map(({ field, code, severity, message }) => ({
                 field,
                 code,
@@ -922,6 +1142,14 @@ export class RegistryImportService {
           });
       });
     }
+    await this.database.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM import_batches WHERE id = ${batchId}::uuid AND institution_id = ${actor.institutionId}::uuid AND campus_id = ${actor.campusId}::uuid FOR UPDATE`;
+      await refreshRegistryDuplicates(
+        transaction,
+        batchId,
+        actor.institutionId,
+      );
+    });
     const [readyRows, needsReviewRows] = await Promise.all([
       this.database.importRow.count({ where: { batchId, status: 'READY' } }),
       this.database.importRow.count({
@@ -981,12 +1209,27 @@ export class RegistryImportService {
       where: { batchId, status: 'READY' },
       take: 6000,
     });
+    const checked = rows.length
+      ? await this.database.$transaction(async (transaction) => {
+          await transaction.$queryRaw`SELECT id FROM import_batches WHERE id = ${batchId}::uuid AND institution_id = ${actor.institutionId}::uuid AND campus_id = ${actor.campusId}::uuid FOR UPDATE`;
+          return refreshRegistryDuplicates(
+            transaction,
+            batchId,
+            actor.institutionId,
+          );
+        })
+      : new Map<string, { ready: boolean }>();
     let imported = 0,
       conflicts = 0,
       diplomas = 0;
     for (const candidate of rows) {
+      if (!checked.get(candidate.id)?.ready) {
+        conflicts++;
+        continue;
+      }
       try {
         const result = await this.database.$transaction(async (transaction) => {
+          await transaction.$queryRaw`SELECT id FROM import_batches WHERE id = ${batchId}::uuid AND institution_id = ${actor.institutionId}::uuid AND campus_id = ${actor.campusId}::uuid FOR UPDATE`;
           await transaction.$queryRaw`SELECT id FROM import_rows WHERE id = ${candidate.id}::uuid FOR UPDATE`;
           const row = await transaction.importRow.findUniqueOrThrow({
             where: { id: candidate.id },

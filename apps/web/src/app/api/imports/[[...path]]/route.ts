@@ -41,7 +41,9 @@ async function proxy(req: Request, context: Context) {
       body,
       session.accessToken,
     );
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message },

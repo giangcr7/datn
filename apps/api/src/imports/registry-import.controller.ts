@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -14,6 +15,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import type { AuthActor } from '../auth/auth-actor';
 import { RegistryImportService } from './registry-import.service';
 import {
   RegistryImportDto,
@@ -57,6 +59,17 @@ export class RegistryImportController {
     @Query('rowId', new ParseUUIDPipe({ optional: true })) rowId?: string,
   ) {
     return this.service.rows(batchId, req.user, +page, +limit, status, rowId);
+  }
+  @Get(':batchId/rows/:rowId/duplicates')
+  @Header('Cache-Control', 'private, no-store')
+  duplicates(
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @Param('rowId', new ParseUUIDPipe()) rowId: string,
+    @Req() req: { user: AuthActor },
+    @Query('page') page = '1',
+    @Query('limit') limit = '5',
+  ) {
+    return this.service.duplicates(batchId, rowId, req.user, +page, +limit);
   }
   @Patch(':batchId/rows/:rowId') review(
     @Param('batchId', new ParseUUIDPipe()) batchId: string,

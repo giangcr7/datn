@@ -26,6 +26,9 @@ describe('Registry import origin and issuance state', () => {
   function setup() {
     const row = {
       id: 'row-1',
+      sheetName: '2025',
+      rowNumber: 2,
+      issues: [],
       status: 'READY',
       overrides: null,
       normalizedData: {
@@ -51,11 +54,19 @@ describe('Registry import origin and issuance state', () => {
       $queryRaw: jest.fn(),
       importRow: {
         findUniqueOrThrow: jest.fn().mockResolvedValue(row),
+        findMany: jest.fn().mockResolvedValue([row]),
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
-      validationIssue: { create: jest.fn() },
-      diploma: { create: jest.fn().mockResolvedValue({ id: 'diploma-1' }) },
+      validationIssue: {
+        create: jest.fn(),
+        createMany: jest.fn(),
+        updateMany: jest.fn(),
+      },
+      diploma: {
+        create: jest.fn().mockResolvedValue({ id: 'diploma-1' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       diplomaEvent: { create: jest.fn() },
       auditLog: { create: jest.fn() },
       blockchainAnchor: { create: jest.fn() },
@@ -90,6 +101,7 @@ describe('Registry import origin and issuance state', () => {
     return {
       database,
       transaction,
+      row,
       service: new RegistryImportService(
         database as unknown as DatabaseService,
         {} as DocumentStorageService,
@@ -123,6 +135,32 @@ describe('Registry import origin and issuance state', () => {
       expect(transaction.blockchainAnchor.create).not.toHaveBeenCalled();
     },
   );
+  it('revalidates a legacy READY row and blocks a number already stored before writing academic data', async () => {
+    const { service, transaction, row } = setup();
+    transaction.diploma.findMany.mockResolvedValue([
+      {
+        id: 'existing',
+        campusId: maker.campusId,
+        certificateNo: row.normalizedData.certificateNo,
+        registryNo: 'OTHER',
+        graduation: { sourceRowId: 'other-row' },
+      },
+    ]);
+    expect(await service.commit('batch-1', maker)).toMatchObject({
+      imported: 0,
+      conflicts: 1,
+      diplomas: 0,
+    });
+    expect(academicWriter.writeAcademicRecord).not.toHaveBeenCalled();
+    expect(transaction.diploma.create).not.toHaveBeenCalled();
+    expect(transaction.importRow.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: { in: [row.id] },
+        status: { notIn: ['IMPORTED', 'SKIPPED'] },
+      },
+      data: { status: 'NEEDS_REVIEW' },
+    });
+  });
   it('rejects an unknown import mode before reading or changing data', async () => {
     const { service, database } = setup();
     await expect(
@@ -318,6 +356,7 @@ describe('Registry source print-data recovery', () => {
       signed?: boolean;
       missingDate?: boolean;
       invalidIdentity?: boolean;
+      duplicateSource?: boolean;
     } = {},
   ) {
     const wb = new ExcelJS.Workbook();
@@ -376,6 +415,8 @@ describe('Registry source print-data recovery', () => {
       'Nguyen An',
       complete.majorNameEn,
     ]);
+    if (options.duplicateSource)
+      sheet.addRow((sheet.getRow(2).values as ExcelJS.CellValue[]).slice(1));
     const row = {
       id: 'row-1',
       sheetName: '2025',
@@ -422,7 +463,21 @@ describe('Registry source print-data recovery', () => {
     const transaction = {
       $queryRaw: jest.fn(),
       importRow: {
-        findUniqueOrThrow: jest.fn().mockResolvedValue(row),
+        updateMany: jest.fn().mockImplementation(async ({ data }) => {
+          Object.assign(row, data);
+          return { count: 1 };
+        }),
+        findMany: jest
+          .fn()
+          .mockImplementation(async () => [
+            { ...row, issues: row.issues.filter((issue) => !issue.resolvedAt) },
+          ]),
+        findUniqueOrThrow: jest
+          .fn()
+          .mockImplementation(async () => ({
+            ...row,
+            issues: row.issues.filter((issue) => !issue.resolvedAt),
+          })),
         update: jest
           .fn()
           .mockImplementation(async ({ data }) => Object.assign(row, data)),
@@ -430,7 +485,9 @@ describe('Registry source print-data recovery', () => {
       diploma: {
         findMany: jest
           .fn()
-          .mockResolvedValue(options.imported ? [diploma] : []),
+          .mockImplementation(async ({ select }) =>
+            select ? [] : options.imported ? [diploma] : [],
+          ),
         update: jest
           .fn()
           .mockImplementation(async ({ data }) => Object.assign(diploma, data)),
@@ -442,7 +499,26 @@ describe('Registry source print-data recovery', () => {
             Object.assign(diploma.graduation, data),
           ),
       },
-      validationIssue: { updateMany: jest.fn(), createMany: jest.fn() },
+      validationIssue: {
+        updateMany: jest.fn().mockImplementation(async ({ where, data }) => {
+          for (const issue of row.issues)
+            if (
+              (!where.id || where.id.in.includes(issue.id)) &&
+              !issue.resolvedAt
+            )
+              Object.assign(issue, data);
+          return { count: 1 };
+        }),
+        createMany: jest.fn().mockImplementation(async ({ data }) => {
+          for (const issue of data)
+            row.issues.push({
+              ...issue,
+              id: 'issue-' + row.issues.length,
+              resolvedAt: null,
+            });
+          return { count: data.length };
+        }),
+      },
       diplomaEvent: { create: jest.fn() },
     };
     const database = {
@@ -575,6 +651,31 @@ describe('Registry source print-data recovery', () => {
         }),
       ]),
     });
+  });
+  it('does not resurrect duplicate warnings from original workbook values after corrections', async () => {
+    const { service, row, transaction } = await setup({
+      duplicateSource: true,
+    });
+    row.overrides = {
+      studentCode: '0099999999',
+      certificateNo: 'CORRECTED',
+      registryNo: 'CORRECTED-REG',
+    };
+    expect(await service.recheck('batch-1', maker)).toMatchObject({
+      readyRows: 1,
+      needsReviewRows: 0,
+    });
+    expect(row.overrides).toMatchObject({ certificateNo: 'CORRECTED' });
+    for (const [query] of transaction.validationIssue.createMany.mock.calls)
+      expect(query.data).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: expect.stringMatching(
+              /^(REPEATED_STUDENT_CODE|DUPLICATE_CERTIFICATE_NO|DUPLICATE_REGISTRY_NO)$/,
+            ),
+          }),
+        ]),
+      );
   });
   it('does not mark a source missing its issue date ready', async () => {
     const { service, row, transaction } = await setup({ missingDate: true });

@@ -9,6 +9,10 @@ import {
   parseDateOnly,
 } from '../database/data-utils';
 import { AcademicInput } from '../database/academic-record-writer';
+import {
+  registryDuplicateIndex,
+  registryDuplicateIssues,
+} from './registry-duplicates';
 
 export const REGISTRY_MAPPING_VERSION = 'tlu-register-v1';
 export interface RegistryInput extends Omit<AcademicInput, 'programId'> {
@@ -606,35 +610,8 @@ export async function parseRegistryWorkbook(
     throw new BadRequestException(
       'Không có sheet sổ gốc 2020–2025 được hỗ trợ',
     );
-  for (const [field, code] of [
-    ['studentCode', 'REPEATED_STUDENT_CODE'],
-    ['certificateNo', 'DUPLICATE_CERTIFICATE_NO'],
-    ['registryNo', 'DUPLICATE_REGISTRY_NO'],
-  ] as const) {
-    const groups = new Map<string, ParsedRow[]>();
-    for (const row of rows) {
-      const value = row.normalizedData[field];
-      if (!value || (field === 'studentCode' && !/^\d{10}$/.test(value)))
-        continue;
-      const group = groups.get(value) || [];
-      group.push(row);
-      groups.set(value, group);
-    }
-    for (const group of groups.values())
-      if (group.length > 1)
-        for (const row of group)
-          row.issues.push({
-            field,
-            code,
-            severity: field === 'studentCode' ? 'WARNING' : 'ERROR',
-            message:
-              'Trùng với ' +
-              group
-                .filter((item) => item !== row)
-                .map((item) => item.sheetName + '!' + item.rowNumber)
-                .join(', ') +
-              '; cần xác nhận, không gộp tự động',
-          });
-  }
+  const duplicates = registryDuplicateIndex(rows);
+  for (const row of rows)
+    row.issues.push(...registryDuplicateIssues(row, duplicates));
   return rows;
 }
