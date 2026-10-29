@@ -1,0 +1,280 @@
+{
+  "sourceFile": "26.4 Sổ gốc - DEMO đầy đủ thông tin.xlsx",
+  "sourceSheet": "2025",
+  "sourceRows": [8, 9, 10],
+  "rowLimit": 3,
+  "sheetName": "2025",
+  "programs": [
+    {
+      "name": "Kỹ thuật xây dựng",
+      "id": "manual-civil-program",
+      "nameEn": "Civil Engineering"
+    },
+    {
+      "name": "Kế toán",
+      "id": "manual-accounting-program",
+      "nameEn": "Accounting"
+    }
+  ],
+  "cases": [
+    {
+      "id": "01_hop_le",
+      "title": "Nhập, duyệt và phát hành hợp lệ",
+      "file": "01_hop_le.xlsx",
+      "caseNumber": 1,
+      "rowCount": 3,
+      "mutations": [],
+      "expectedCodes": [[], [], []]
+    },
+    {
+      "id": "02_thieu_bat_buoc",
+      "title": "Thiếu hoặc sai thông tin bắt buộc",
+      "file": "02_thieu_bat_buoc.xlsx",
+      "caseNumber": 2,
+      "rowCount": 3,
+      "mutations": [
+        [0, "B", "123"],
+        [1, "C", null],
+        [1, "D", null],
+        [2, "E", null]
+      ],
+      "expectedCodes": [
+        ["INVALID_STUDENT_CODE"],
+        ["INVALID_NAME"],
+        ["INVALID_BIRTH_DATE"]
+      ]
+    },
+    {
+      "id": "03_nganh_chua_anh_xa",
+      "title": "Ngành chưa được ánh xạ",
+      "file": "03_nganh_chua_anh_xa.xlsx",
+      "caseNumber": 3,
+      "rowCount": 2,
+      "mutations": [[0, "L", "Ngành kiểm thử chưa ánh xạ"]],
+      "expectedCodes": [["UNMAPPED_PROGRAM"], []]
+    },
+    {
+      "id": "04_ngay_khong_hop_le",
+      "title": "Ngày cấp, ngày quyết định không hợp lệ",
+      "file": "04_ngay_khong_hop_le.xlsx",
+      "caseNumber": 4,
+      "rowCount": 3,
+      "mutations": [
+        [0, "T", "2099-01-01"],
+        [1, "T", "2019-01-01"],
+        [2, "R", "2099-01-01"]
+      ],
+      "expectedCodes": [
+        ["INVALID_DOCUMENT_DATE"],
+        ["INVALID_DOCUMENT_DATE"],
+        ["INVALID_DOCUMENT_DATE"]
+      ]
+    },
+    {
+      "id": "05_diem_va_xep_loai",
+      "title": "Điểm và xếp loại không hợp lệ",
+      "file": "05_diem_va_xep_loai.xlsx",
+      "caseNumber": 5,
+      "rowCount": 3,
+      "mutations": [
+        [0, "Z", 5],
+        [1, "M", "KHONG_HOP_LE"],
+        [2, "Z", -1]
+      ],
+      "expectedCodes": [
+        ["INVALID_GPA"],
+        ["INVALID_CLASSIFICATION"],
+        ["INVALID_GPA"]
+      ]
+    },
+    {
+      "id": "06_thieu_thong_tin_in_bang",
+      "title": "Thiếu thông tin in bằng",
+      "file": "06_thieu_thong_tin_in_bang.xlsx",
+      "caseNumber": 6,
+      "rowCount": 3,
+      "mutations": [
+        [0, "T", null],
+        [1, "S", null],
+        [2, "V", null]
+      ],
+      "expectedCodes": [
+        ["ISSUE_DATE_NOT_IN_SOURCE"],
+        ["MISSING_PRINT_FIELD"],
+        ["MISSING_PRINT_FIELD"]
+      ]
+    },
+    {
+      "id": "07_trung_mssv",
+      "title": "Trùng MSSV trong cùng file",
+      "file": "07_trung_mssv.xlsx",
+      "caseNumber": 7,
+      "rowCount": 3,
+      "mutations": [
+        [
+          1,
+          "B",
+          {
+            "fromRow": 0,
+            "column": "B"
+          }
+        ]
+      ],
+      "expectedCodes": [
+        ["REPEATED_STUDENT_CODE"],
+        ["REPEATED_STUDENT_CODE"],
+        []
+      ]
+    },
+    {
+      "id": "08_trung_so_hieu",
+      "title": "Trùng số hiệu trong cùng file",
+      "file": "08_trung_so_hieu.xlsx",
+      "caseNumber": 8,
+      "rowCount": 3,
+      "mutations": [
+        [
+          1,
+          "P",
+          {
+            "fromRow": 0,
+            "column": "P"
+          }
+        ]
+      ],
+      "expectedCodes": [
+        ["DUPLICATE_CERTIFICATE_NO"],
+        ["DUPLICATE_CERTIFICATE_NO"],
+        []
+      ]
+    },
+    {
+      "id": "09_trung_so_vao_so",
+      "title": "Trùng số vào sổ trong cùng file",
+      "file": "09_trung_so_vao_so.xlsx",
+      "caseNumber": 9,
+      "rowCount": 3,
+      "mutations": [
+        [
+          1,
+          "O",
+          {
+            "fromRow": 0,
+            "column": "O"
+          }
+        ]
+      ],
+      "expectedCodes": [
+        ["DUPLICATE_REGISTRY_NO"],
+        ["DUPLICATE_REGISTRY_NO"],
+        []
+      ]
+    },
+    {
+      "id": "10_du_lieu_nen_trung_csdl",
+      "title": "Dữ liệu nền để thử trùng CSDL",
+      "file": "10_du_lieu_nen_trung_csdl.xlsx",
+      "caseNumber": 10,
+      "rowCount": 2,
+      "mutations": [],
+      "expectedCodes": [[], []]
+    },
+    {
+      "id": "11_trung_csdl",
+      "title": "Trùng số với hồ sơ đã lưu",
+      "file": "11_trung_csdl.xlsx",
+      "caseNumber": 11,
+      "rowCount": 3,
+      "mutations": [
+        [
+          0,
+          "P",
+          {
+            "fromCase": "10_du_lieu_nen_trung_csdl",
+            "fromRow": 0,
+            "column": "P"
+          }
+        ],
+        [
+          0,
+          "O",
+          {
+            "fromCase": "10_du_lieu_nen_trung_csdl",
+            "fromRow": 0,
+            "column": "O"
+          }
+        ],
+        [
+          1,
+          "P",
+          {
+            "fromCase": "10_du_lieu_nen_trung_csdl",
+            "fromRow": 1,
+            "column": "P"
+          }
+        ],
+        [
+          2,
+          "O",
+          {
+            "fromCase": "10_du_lieu_nen_trung_csdl",
+            "fromRow": 1,
+            "column": "O"
+          }
+        ]
+      ],
+      "expectedCodes": [[], [], []],
+      "databasePrerequisite": "10_du_lieu_nen_trung_csdl",
+      "expectedStoredCodes": [
+        ["EXISTING_CERTIFICATE_NO", "EXISTING_REGISTRY_NO"],
+        ["EXISTING_CERTIFICATE_NO"],
+        ["EXISTING_REGISTRY_NO"]
+      ]
+    },
+    {
+      "id": "12_tu_choi_va_bo_sung",
+      "title": "Từ chối và bổ sung hồ sơ",
+      "file": "12_tu_choi_va_bo_sung.xlsx",
+      "caseNumber": 12,
+      "rowCount": 2,
+      "mutations": [],
+      "expectedCodes": [[], []]
+    },
+    {
+      "id": "13_sua_sai_va_thay_the",
+      "title": "Sửa sai và phát hành thay thế",
+      "file": "13_sua_sai_va_thay_the.xlsx",
+      "caseNumber": 13,
+      "rowCount": 2,
+      "mutations": [],
+      "expectedCodes": [[], []]
+    },
+    {
+      "id": "14_thu_hoi",
+      "title": "Thu hồi văn bằng",
+      "file": "14_thu_hoi.xlsx",
+      "caseNumber": 14,
+      "rowCount": 2,
+      "mutations": [],
+      "expectedCodes": [[], []]
+    },
+    {
+      "id": "15_doi_chieu_va_thu_lai_blockchain",
+      "title": "Đối chiếu và thử lại giao dịch",
+      "file": "15_doi_chieu_va_thu_lai_blockchain.xlsx",
+      "caseNumber": 15,
+      "rowCount": 2,
+      "mutations": [],
+      "expectedCodes": [[], []]
+    },
+    {
+      "id": "16_tra_cuu_va_xac_thuc",
+      "title": "Tra cứu và xác thực PDF/QR",
+      "file": "16_tra_cuu_va_xac_thuc.xlsx",
+      "caseNumber": 16,
+      "rowCount": 2,
+      "mutations": [],
+      "expectedCodes": [[], []]
+    }
+  ]
+}
