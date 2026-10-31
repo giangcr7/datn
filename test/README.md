@@ -2,6 +2,12 @@
 
 Thư mục này có **16 file Excel, tổng cộng 41 hồ sơ**, mỗi file chỉ 2–3 dòng sinh viên. Dùng từng file để thử đúng một nhóm tình huống, không nhập cả thư mục cùng lúc.
 
+## Bộ kiểm thử lần 2
+
+Bộ mới nằm trong [lan-2](./lan-2/README.md): 16 file, mỗi file 2–3 dòng, lấy hồ sơ khác từ nguồn và dùng MSSV/số hiệu/số vào sổ riêng. Bộ lần 1 trong thư mục này được giữ nguyên; không cần xóa dữ liệu lần 1 để dùng bộ mới.
+
+Kiểm tra riêng bộ lần 2 bằng `node scripts/test-manual-fixtures.mjs test/lan-2/cases.json`.
+
 ## Cách sử dụng
 
 1. Dùng môi trường kiểm thử riêng, đăng nhập tài khoản **Nhà trường/cán bộ có quyền nhập và duyệt**. Tài khoản Admin không thay người duyệt.

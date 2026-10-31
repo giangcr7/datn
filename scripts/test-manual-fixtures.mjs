@@ -5,9 +5,13 @@ import ExcelJS from "exceljs";
 import { tsImport } from "tsx/esm/api";
 
 const root = new URL("../", import.meta.url);
-const config = JSON.parse(
-  await readFile(new URL("test/cases.json", root), "utf8"),
+assert(
+  process.argv.length <= 3,
+  "Usage: node scripts/test-manual-fixtures.mjs [test/path/cases.json]",
 );
+const configUrl = new URL(process.argv[2] || "test/cases.json", root);
+const fixtureDirectory = new URL("./", configUrl);
+const config = JSON.parse(await readFile(configUrl, "utf8"));
 const options = {
   parentURL: import.meta.url,
   tsconfig: fileURLToPath(new URL("apps/api/tsconfig.json", root)),
@@ -30,6 +34,42 @@ const programs = new Map(
 const namesEn = new Map(config.programs.map((item) => [item.id, item.nameEn]));
 const parsedCases = new Map();
 const workbooks = new Map();
+const sourceWorkbook = config.sourceColumns ? new ExcelJS.Workbook() : null;
+if (sourceWorkbook)
+  await sourceWorkbook.xlsx.load(
+    await readFile(new URL(config.sourceFile, root)),
+  );
+const sourceSheet = sourceWorkbook?.getWorksheet(config.sourceSheet);
+const previousIdentifiers = new Map(
+  ["B", "O", "P"].map((column) => [column, new Set()]),
+);
+if (config.previousFixtureDirectory) {
+  const previousDirectory = new URL(
+    config.previousFixtureDirectory + "/",
+    fixtureDirectory,
+  );
+  const previousConfig = JSON.parse(
+    await readFile(new URL("cases.json", previousDirectory), "utf8"),
+  );
+  assert(
+    !config.sourceRows.some((row) => previousConfig.sourceRows.includes(row)),
+    "New suite must use different source records",
+  );
+  for (const previousCase of previousConfig.cases) {
+    const previousWorkbook = new ExcelJS.Workbook();
+    await previousWorkbook.xlsx.load(
+      await readFile(new URL(previousCase.file, previousDirectory)),
+    );
+    const previousSheet = previousWorkbook.getWorksheet(
+      previousConfig.sheetName,
+    );
+    for (let index = 0; index < previousCase.rowCount; index++)
+      for (const column of previousIdentifiers.keys())
+        previousIdentifiers
+          .get(column)
+          .add(previousSheet.getCell(column + (index + 2)).value);
+  }
+}
 let checks = 0;
 let records = 0;
 function equal(actual, expected, label) {
@@ -53,9 +93,15 @@ function expectedIdentifier(testCase, index, column) {
   }
   const caseNo = String(testCase.caseNumber).padStart(2, "0");
   const recordNo = String(index + 1).padStart(3, "0");
-  if (column === "B") return "99" + caseNo + String(index + 1).padStart(6, "0");
-  if (column === "O") return "TEST/" + caseNo + "/" + recordNo;
-  return "TEST-" + caseNo + "-" + recordNo;
+  if (column === "B")
+    return (
+      (config.identifierPrefix || "99") +
+      caseNo +
+      String(index + 1).padStart(6, "0")
+    );
+  if (column === "O")
+    return (config.documentPrefix || "TEST") + "/" + caseNo + "/" + recordNo;
+  return (config.documentPrefix || "TEST") + "-" + caseNo + "-" + recordNo;
 }
 
 for (const testCase of config.cases) {
@@ -67,13 +113,13 @@ for (const testCase of config.cases) {
   );
   let buffer;
   try {
-    buffer = await readFile(new URL("test/" + testCase.file, root));
+    buffer = await readFile(new URL(testCase.file, fixtureDirectory));
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
     throw new Error(
-      "Missing local fixture: test/" +
-        testCase.file +
-        ". See test/README.md; private Excel files are not published to Git.",
+      "Missing local fixture: " +
+        fileURLToPath(new URL(testCase.file, fixtureDirectory)) +
+        ". See the suite README.md; private Excel files are not published to Git.",
     );
   }
   const workbook = new ExcelJS.Workbook();
@@ -110,6 +156,17 @@ for (const testCase of config.cases) {
         "string",
         testCase.id + ": identifier kept as text",
       );
+      if (
+        config.previousFixtureDirectory &&
+        (column !== "B" || /^\d{10}$/.test(cell.value))
+      )
+        equal(
+          previousIdentifiers.get(column).has(cell.value),
+          false,
+          testCase.id +
+            ": no identifier collision with previous suite at " +
+            cell.address,
+        );
     }
     for (const column of ["E", "R", "T"]) {
       const cell = sheet.getCell(column + (index + 2));
@@ -119,6 +176,34 @@ for (const testCase of config.cases) {
           true,
           testCase.id + ": typed date at " + cell.address,
         );
+    }
+    if (sourceSheet) {
+      equal(config.sourceColumns.length, 28, "complete source-column mapping");
+      const sourceRow = config.sourceRows[index];
+      equal(
+        Number.isInteger(sourceRow) && sourceRow > 7,
+        true,
+        "explicit source data row",
+      );
+      for (let column = 1; column <= 28; column++) {
+        const cell = sheet.getRow(index + 2).getCell(column);
+        const letter = cell.address.replace(/\d+$/, "");
+        if (
+          ["A", "B", "O", "P"].includes(letter) ||
+          testCase.mutations.some(
+            ([row, field]) => row === index && field === letter,
+          )
+        )
+          continue;
+        const sourceColumn = config.sourceColumns[column - 1];
+        equal(
+          cell.value,
+          sourceColumn === null
+            ? null
+            : sourceSheet.getCell(sourceRow, sourceColumn).value,
+          testCase.id + ": original source value at " + cell.address,
+        );
+      }
     }
   }
   const rows = await parseRegistryWorkbook(buffer, programs, namesEn);
