@@ -5,10 +5,22 @@ import { CorrectionController } from './correction.controller';
 import { CorrectionService } from './correction.service';
 import { ReplacementController } from './replacement.controller';
 import { ReplacementService } from './replacement.service';
+import { IssuanceBatchController } from './issuance-batch.controller';
+import { IssuanceBatchService } from './issuance-batch.service';
 
 @Module({
-  controllers: [CorrectionController, ReplacementController, CertController],
-  providers: [CertService, CorrectionService, ReplacementService],
+  controllers: [
+    IssuanceBatchController,
+    CorrectionController,
+    ReplacementController,
+    CertController,
+  ],
+  providers: [
+    CertService,
+    CorrectionService,
+    ReplacementService,
+    IssuanceBatchService,
+  ],
   exports: [CertService],
 })
 export class CertModule {}

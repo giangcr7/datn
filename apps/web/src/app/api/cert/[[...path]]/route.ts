@@ -14,11 +14,14 @@ async function proxy(req: Request, context: Context) {
     );
   const segments = (await context.params).path || [];
   if (
-    ["corrections", "replacements"].includes(segments[0]) &&
+    ["corrections", "replacements", "issuance-batches"].includes(segments[0]) &&
     getWorkspaceKind(session.user) !== "approver"
   )
     return NextResponse.json(
-      { success: false, error: "Không có quyền xử lý hồ sơ bị từ chối" },
+      {
+        success: false,
+        error: "Không có quyền xử lý nghiệp vụ hồ sơ văn bằng",
+      },
       { status: 403 },
     );
   if (segments.some((segment) => !/^[a-zA-Z0-9-]+$/.test(segment)))
@@ -81,6 +84,7 @@ async function proxy(req: Request, context: Context) {
     );
     return NextResponse.json(
       Array.isArray(result) ? { success: true, data: result } : result,
+      { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error: any) {
     return NextResponse.json(

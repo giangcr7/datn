@@ -1,8 +1,8 @@
 # Tác dụng các bảng trong CSDL DiplomaChain
 
-Đối chiếu ngày **29/10/2026** với `apps/api/prisma/schema.prisma` và các service hiện hành.
+Đối chiếu ngày **03/11/2026** với `apps/api/prisma/schema.prisma` và các service hiện hành.
 Hệ thống dùng **PostgreSQL cho nghiệp vụ**, kho tệp cho Excel/PDF và **Hyperledger Fabric cho bằng chứng blockchain**.
-Có **27 bảng ứng dụng** trong Prisma; `_prisma_migrations` là bảng quản lý migration của Prisma, không phải bảng nghiệp vụ thứ 28.
+Có **28 bảng ứng dụng** trong Prisma; `_prisma_migrations` là bảng quản lý migration của Prisma, không phải bảng nghiệp vụ thứ 29.
 Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quyền duyệt và phát hành**; không chuyển hồ sơ sang Hà Nội.
 
 ## 1. Danh mục nhà trường: 5 bảng
@@ -24,7 +24,7 @@ Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quy�
 | `graduation_decisions` | Quyết định công nhận tốt nghiệp, số quyết định, ngày ký và người ký quyết định.                                              | `document_number, decision_year, signed_on, signer_name, source_document_id`.             | Chứng cứ nguồn cho kết quả tốt nghiệp. Người ký quyết định không mặc nhiên là người ký văn bằng. |
 | `graduation_records`   | Kết quả tốt nghiệp theo sinh viên/ngành/năm: GPA, thang điểm, xếp loại, loại bằng. Có thể tồn tại khi chưa cấp văn bằng.     | `student_id, program_id, enrollment_id, decision_id, source_row_id, graduation_year`.     | Kiểm tra điều kiện, tạo hồ sơ cấp bằng, liên kết quyết định và dòng Excel nguồn.                 |
 
-## 3. Văn bằng, PDF và blockchain: 7 bảng
+## 3. Đợt cấp, văn bằng, PDF và blockchain: 8 bảng
 
 | Bảng                       | Tác dụng trong đề tài                                                                                                                             | Trường, quan hệ cần nhớ                                                                                                 | Chức năng sử dụng                                                            |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -35,6 +35,9 @@ Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quy�
 | `diploma_events`           | Lịch sử nghiệp vụ của từng văn bằng, ví dụ lập, duyệt, từ chối, mở lại, thu hồi, đề nghị thay thế, thử lại giao dịch.                             | `diploma_id, event_type, actor_id, reason, metadata, created_at`.                                                       | Tab lịch sử và truy vết xử lý hồ sơ.                                         |
 | `blockchain_anchors`       | Chỉ mục cục bộ của lần neo dữ liệu lên Fabric: trạng thái, hash, mã giao dịch, số khối và lỗi gần nhất. **Không phải sổ cái blockchain**.         | `version_id, event_type, status, transaction_id, block_number, payload_hash`.                                           | Đối chiếu blockchain, hiển thị chờ/đã ghi/thất bại.                          |
 | `outbox_events`            | Hàng đợi tin cậy chuyển sự kiện ISSUE/REVOKE từ transaction PostgreSQL sang Fabric; lưu lượt thử, lịch chạy, khóa xử lý và lỗi.                   | `version_id, event_type, payload, status, attempts, available_at, locked_until, lock_token`.                            | Đồng bộ blockchain bất đồng bộ và xử lý giao dịch hết lượt thử.              |
+| `diploma_issuance_batches` | Đợt cấp văn bằng theo quyết định tốt nghiệp; gom hồ sơ và theo dõi kiểm tra, duyệt, chờ blockchain, đã phát hành. | `institution_id, campus_id, decision_id, graduation_year, program_id, code, name, created_by_id`; được `diplomas.issuance_batch_id` tham chiếu. | Hồ sơ cấp văn bằng → Đợt cấp văn bằng; không phải đợt nhập Excel hay block blockchain. |
+
+Đợt cấp văn bằng dùng thêm bảng `diploma_issuance_batches`: lưu mã/tên đợt, trường/cơ sở, quyết định, năm tốt nghiệp, ngành tùy chọn, người lập và thời gian. Cột `diplomas.issuance_batch_id` gắn một văn bằng vào tối đa một đợt. Dùng để gom bản nháp, kiểm tra toàn đợt và theo dõi kết quả phát hành, không phải đợt import hay block blockchain. [Chi tiết](./issuance-batches.md).
 
 ## 4. Nhập Excel và kiểm tra dữ liệu: 4 bảng
 

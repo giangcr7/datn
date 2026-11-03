@@ -339,6 +339,19 @@ export class CorrectionService {
         );
         const before = diplomaProjection(record);
         const graduation = record.graduation;
+        if (record.issuanceBatchId) {
+          const batch =
+            await transaction.diplomaIssuanceBatch.findUniqueOrThrow({
+              where: { id: record.issuanceBatchId },
+            });
+          if (
+            body.namTotNghiep !== batch.graduationYear ||
+            (batch.programId && body.programId !== batch.programId)
+          )
+            throw new ConflictException(
+              'Hãy gỡ bản nháp khỏi đợt cấp văn bằng trước khi đổi năm tốt nghiệp hoặc ngành không phù hợp đợt.',
+            );
+        }
         await transaction.$queryRaw`SELECT id FROM graduation_records WHERE id = ${graduation.id}::uuid FOR UPDATE`;
         await transaction.$queryRaw`SELECT id FROM students WHERE id = ${graduation.studentId}::uuid FOR UPDATE`;
         const fullName = normalizeText(body.fullName);

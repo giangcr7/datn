@@ -86,6 +86,12 @@ export function getWorkspace(user?: WorkspaceUser | null): {
           description: "Nhập hồ sơ, kiểm tra dữ liệu, duyệt và phát hành.",
           children: [
             {
+              path: "/diploma-records/batches",
+              label: "Đợt cấp văn bằng",
+              description:
+                "Gom hồ sơ theo quyết định tốt nghiệp, kiểm tra và theo dõi phát hành từng đợt.",
+            },
+            {
               path: "/students",
               label: "Hồ sơ sinh viên",
               description: "Quản lý và đối soát thông tin sinh viên.",

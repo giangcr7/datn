@@ -99,6 +99,7 @@ model Institution {
   documents      SourceDocument[]
   imports        ImportBatch[]
   auditLogs      AuditLog[]
+  issuanceBatches DiplomaIssuanceBatch[]
 
   @@map("institutions")
 }
@@ -120,6 +121,7 @@ model Campus {
   diplomas      Diploma[]           @relation("OriginCampus")
   issuedDiplomas Diploma[]          @relation("IssuingCampus")
   pdfSignatures DiplomaPdfSignature[]
+  issuanceBatches DiplomaIssuanceBatch[]
 
   @@unique([institutionId, code])
   @@index([institutionId])
@@ -139,6 +141,7 @@ model Program {
   aliases       ProgramAlias[]
   enrollments   Enrollment[]
   graduations   GraduationRecord[]
+  issuanceBatches DiplomaIssuanceBatch[]
 
   @@unique([institutionId, code])
   @@unique([institutionId, name])
@@ -231,6 +234,7 @@ model GraduationDecision {
   institution      Institution        @relation(fields: [institutionId], references: [id], onDelete: Restrict)
   sourceDocument   SourceDocument?    @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   graduations      GraduationRecord[]
+  issuanceBatches  DiplomaIssuanceBatch[]
 
   @@unique([institutionId, documentNumber, decisionYear])
   @@map("graduation_decisions")
@@ -264,12 +268,37 @@ model GraduationRecord {
   @@map("graduation_records")
 }
 
+model DiplomaIssuanceBatch {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String   @map("institution_id") @db.Uuid
+  campusId       String   @map("campus_id") @db.Uuid
+  decisionId     String   @map("decision_id") @db.Uuid
+  programId      String?  @map("program_id") @db.Uuid
+  code           String   @db.VarChar(60)
+  name           String   @db.VarChar(255)
+  graduationYear Int      @map("graduation_year") @db.SmallInt
+  createdById    String   @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  institution    Institution @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  campus         Campus @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  decision       GraduationDecision @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  program        Program? @relation(fields: [programId], references: [id], onDelete: Restrict)
+  createdBy      Account @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  diplomas       Diploma[]
+
+  @@unique([institutionId, code])
+  @@index([institutionId, campusId, createdAt])
+  @@map("diploma_issuance_batches")
+}
+
 model Diploma {
   id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   institutionId  String           @map("institution_id") @db.Uuid
   campusId       String           @map("campus_id") @db.Uuid
   issuingCampusId String?          @map("issuing_campus_id") @db.Uuid
   graduationId   String           @map("graduation_id") @db.Uuid
+  issuanceBatchId String?         @map("issuance_batch_id") @db.Uuid
+  issuanceBatch  DiplomaIssuanceBatch? @relation(fields: [issuanceBatchId], references: [id], onDelete: Restrict)
   certificateNo  String           @map("certificate_no") @db.VarChar(120)
   registryNo     String           @map("registry_no") @db.VarChar(180)
   issuedOn       DateTime?        @map("issued_on") @db.Date
@@ -312,6 +341,7 @@ model Diploma {
   @@index([institutionId, workflowStatus, createdAt])
   @@index([issuingCampusId])
   @@index([graduationId])
+  @@index([issuanceBatchId])
   @@map("diplomas")
 }
 
@@ -523,6 +553,7 @@ model Account {
   approvedAliases    ProgramAlias[]
   auditLogs          AuditLog[]
   resolvedAlerts     IntegrityAlert[]
+  issuanceBatches    DiplomaIssuanceBatch[]
 
   @@map("accounts")
 }

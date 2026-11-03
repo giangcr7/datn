@@ -32,6 +32,7 @@ import {
 } from '../database/diploma-hash';
 import { writeAcademicRecord } from '../database/academic-record-writer';
 import { reviewedDiplomaErrors } from './reviewed-diploma';
+import { issuanceBatchRow, issuanceReviewToken } from './issuance-batch-state';
 import { isUUID } from 'class-validator';
 import { PdfSignatureService } from '../signatures/pdf-signature.service';
 import { DIPLOMA_PRINT_TEMPLATE } from '../database/diploma-print-data';
@@ -712,6 +713,7 @@ export class CertService {
     ip?: string,
     expectedUpdatedAt?: string,
     handlingNote?: string,
+    batchGuard?: { id: string; updatedAt: string; reviewToken: string },
   ) {
     this.approver(actor);
     return this.database.$transaction(async (transaction) => {
@@ -741,6 +743,23 @@ export class CertService {
         throw new NotFoundException(
           'Không tìm thấy văn bằng trong phạm vi quyền',
         );
+      if (
+        batchGuard &&
+        (diploma.issuanceBatchId !== batchGuard.id ||
+          diploma.updatedAt.getTime() !== Date.parse(batchGuard.updatedAt) ||
+          issuanceReviewToken(diploma) !== batchGuard.reviewToken)
+      )
+        throw new ConflictException(
+          'Hồ sơ hoặc đợt cấp bằng đã thay đổi sau khi kiểm tra. Hãy tải lại trước khi duyệt.',
+        );
+      if (batchGuard) {
+        const checked = issuanceBatchRow(diploma);
+        if (!checked.ready)
+          throw new ConflictException(
+            checked.checkErrors.join('; ') ||
+              'Hồ sơ không còn đủ điều kiện duyệt theo đợt',
+          );
+      }
       if (diploma.workflowStatus === 'DRAFT' && diploma.events?.length)
         throw new ConflictException(
           'Hồ sơ đang bổ sung sau từ chối phải được trình duyệt lại trước khi ký',
@@ -820,6 +839,10 @@ export class CertService {
           data: { diplomaId: uuid, actorId: actor.id, eventType: 'REQUESTED' },
         });
       }
+      if (batchGuard && issuanceReviewToken(diploma) !== batchGuard.reviewToken)
+        throw new ConflictException(
+          'Thông tin liên quan đã thay đổi trong lúc duyệt. Hãy kiểm tra lại đợt trước khi ký.',
+        );
       const preparedPdf = this.pdfSignatures
         ? await this.pdfSignatures.prepareFinal(transaction, diploma, actor)
         : null;
