@@ -23,6 +23,7 @@ import { RegistryImportModule } from './imports/registry-import.module';
 import { PdfSignatureModule } from './signatures/pdf-signature.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ReportsModule } from './reports/reports.module';
+import { ChangeRequestModule } from './requests/change-request.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { ReportsModule } from './reports/reports.module';
     CatalogModule,
     DashboardModule,
     ReportsModule,
+    ChangeRequestModule,
     IntegrityModule,
     HealthModule,
     ExplorerModule,

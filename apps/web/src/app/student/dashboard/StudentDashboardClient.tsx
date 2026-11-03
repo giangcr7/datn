@@ -73,6 +73,9 @@ export default function StudentDashboardClient({ initialCertificates }: Props) {
       <div className="min-w-0">
         <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
           <PageTitle>Văn bằng của tôi</PageTitle>
+          <Button onClick={() => router.push("/student/requests")}>
+            Yêu cầu chỉnh sửa
+          </Button>
           <Button onClick={() => router.push("/student/profile")}>
             Tài khoản
           </Button>

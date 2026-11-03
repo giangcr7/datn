@@ -15,6 +15,7 @@ import {
   LogoutOutlined,
   UserOutlined,
   SearchOutlined,
+  FormOutlined,
 } from "@ant-design/icons";
 
 const { Content } = Layout;
@@ -38,6 +39,11 @@ export default function StudentShell({
       key: "/student/profile",
       icon: <UserOutlined />,
       label: "Hồ sơ của tôi",
+    },
+    {
+      key: "/student/requests",
+      icon: <FormOutlined />,
+      label: "Yêu cầu chỉnh sửa",
     },
     {
       key: "/verify",

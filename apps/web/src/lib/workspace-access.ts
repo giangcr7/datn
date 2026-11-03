@@ -86,6 +86,11 @@ export function getWorkspace(user?: WorkspaceUser | null): {
           description: "Nhập hồ sơ, kiểm tra dữ liệu, duyệt và phát hành.",
           children: [
             {
+              path: "/diploma-records/requests",
+              label: "Yêu cầu chỉnh sửa",
+              description: "Tiếp nhận đề nghị của sinh viên và theo dõi xử lý thay thế.",
+            },
+            {
               path: "/diploma-records/batches",
               label: "Đợt cấp văn bằng",
               description:
@@ -164,6 +169,11 @@ export function getWorkspace(user?: WorkspaceUser | null): {
         path: "/student/profile",
         label: "Hồ sơ của tôi",
         description: "Xem thông tin tài khoản sinh viên.",
+      },
+      {
+        path: "/student/requests",
+        label: "Yêu cầu chỉnh sửa",
+        description: "Gửi đề nghị chỉnh sửa và theo dõi phản hồi nhà trường.",
       },
     ] satisfies WorkspaceLink[],
   };

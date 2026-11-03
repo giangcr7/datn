@@ -334,6 +334,8 @@ model Diploma {
   events         DiplomaEvent[]
   alerts         IntegrityAlert[]
   signedDocuments SignedDiplomaDocument[]
+  changeRequests DiplomaChangeRequest[] @relation("ChangeRequestSource")
+  resolvedRequests DiplomaChangeRequest[] @relation("ChangeRequestResolution")
 
   @@unique([institutionId, certificateNo])
   @@unique([institutionId, registryNo])
@@ -554,6 +556,8 @@ model Account {
   auditLogs          AuditLog[]
   resolvedAlerts     IntegrityAlert[]
   issuanceBatches    DiplomaIssuanceBatch[]
+  changeRequests DiplomaChangeRequest[]
+  changeRequestEvents DiplomaChangeRequestEvent[]
 
   @@map("accounts")
 }
@@ -669,6 +673,42 @@ model OutboxEvent {
   @@unique([versionId, eventType])
   @@index([status, availableAt, lockedUntil])
   @@map("outbox_events")
+}
+
+model DiplomaChangeRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diplomaId String @map("diploma_id") @db.Uuid
+  requesterId String @map("requester_id") @db.Uuid
+  status String @default("PENDING") @db.VarChar(30)
+  changes Json @db.JsonB
+  reason String @db.Text
+  revision Int @default(1)
+  resolvedDiplomaId String? @map("resolved_diploma_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  diploma Diploma @relation("ChangeRequestSource", fields: [diplomaId], references: [id], onDelete: Restrict)
+  requester Account @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  resolvedDiploma Diploma? @relation("ChangeRequestResolution", fields: [resolvedDiplomaId], references: [id], onDelete: Restrict)
+  events DiplomaChangeRequestEvent[]
+
+  @@index([diplomaId, status])
+  @@index([requesterId, updatedAt])
+  @@map("diploma_change_requests")
+}
+
+model DiplomaChangeRequestEvent {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestId String @map("request_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  status String @db.VarChar(30)
+  note String @db.Text
+  revision Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  request DiplomaChangeRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  actor Account @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([requestId, revision])
+  @@map("diploma_change_request_events")
 }
 
 model LegacyIdMap {

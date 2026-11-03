@@ -11,6 +11,7 @@ export const activityLabels: Record<string, string> = {
   RECHECK_REGISTRY_PRINT_DATA: "Kiểm tra lại dữ liệu",
   COMMIT_IMPORT_ROW: "Lưu hồ sơ đã rà soát",
   REQUEST_CERT: "Lập hồ sơ cấp văn bằng",
+  DIPLOMA_CHANGE_REQUEST: "Xử lý yêu cầu chỉnh sửa văn bằng",
   CREATE_ISSUANCE_BATCH: "Lập đợt cấp văn bằng",
   ADD_ISSUANCE_BATCH_MEMBERS: "Thêm hồ sơ vào đợt cấp văn bằng",
   REMOVE_ISSUANCE_BATCH_MEMBERS: "Gỡ hồ sơ khỏi đợt cấp văn bằng",
