@@ -13,5 +13,6 @@ export interface AuthActor {
   studentId: string | null;
   mssv: string | null;
   sessionVersion: number;
+  sessionId?: string;
   mustChangePassword: boolean;
 }

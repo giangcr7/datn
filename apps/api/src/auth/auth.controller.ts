@@ -20,6 +20,7 @@ import { SendOtpDto } from '../common/dto/send-otp.dto';
 import { JwtAuthGuard } from './jwt.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
+import { AllowPasswordChange } from './decorators/allow-password-change.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -58,6 +59,7 @@ export class AuthController {
   }
 
   @Post('logout-all')
+  @AllowPasswordChange()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   logoutAll(@Req() req: any) {
@@ -65,6 +67,7 @@ export class AuthController {
   }
 
   @Post('change-password/:id')
+  @AllowPasswordChange()
   @UseGuards(JwtAuthGuard)
   @Throttle({ short: { ttl: 60000, limit: 3 } })
   changePassword(
@@ -104,6 +107,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AllowPasswordChange()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   getProfile(@Req() req: any) {

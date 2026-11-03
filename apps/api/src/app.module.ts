@@ -25,6 +25,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ReportsModule } from './reports/reports.module';
 import { ChangeRequestModule } from './requests/change-request.module';
 import { InboxModule } from './inbox/inbox.module';
+import { requestRateLimits } from './auth/rate-limit';
 
 @Module({
   imports: [
@@ -34,10 +35,11 @@ import { InboxModule } from './inbox/inbox.module';
     }),
     DatabaseModule,
     PdfSignatureModule,
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 5 },
-      { name: 'medium', ttl: 60000, limit: 60 },
-    ]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
+        requestRateLimits(config.getOrThrow<string>('JWT_SECRET')),
+    }),
     ScheduleModule.forRoot(),
     WinstonModule.forRoot(winstonConfig),
     AuthModule,

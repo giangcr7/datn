@@ -4,10 +4,8 @@ export type DiplomaVerification = {
   verificationStatus?: string;
   details?: {
     studentName?: string;
-    mssv?: string;
     major?: string;
     grade?: string;
-    gpa?: string | number | null;
     issueDate?: string | null;
     degreeType?: string | null;
     soVaoSo?: string;

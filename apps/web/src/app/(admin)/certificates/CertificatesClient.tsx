@@ -302,14 +302,10 @@ export default function CertificatesClient({
                 <tbody>
                   {[
                     ["Sinh viên", details.studentName],
-                    ["MSSV", details.mssv],
-                    ["Ngày xác thực", details.blockchainDate],
-                    [
-                      "Tx ID",
-                      details.txId
-                        ? `${details.txId.substring(0, 20)}...`
-                        : "—",
-                    ],
+                    ["Ngành đào tạo", details.major],
+                    ["Số hiệu văn bằng", details.soHieu],
+                    ["Số vào sổ", details.soVaoSo],
+                    ["Năm tốt nghiệp", details.namTotNghiep],
                   ].map(([label, value]) => (
                     <tr
                       key={label}
@@ -329,32 +325,6 @@ export default function CertificatesClient({
                       </td>
                     </tr>
                   ))}
-                  <tr style={{ borderBottom: "1px solid #f0f0f0" }}>
-                    <td style={{ padding: "6px 8px", color: "#888" }}>
-                      Hash blockchain
-                    </td>
-                    <td style={{ padding: "6px 8px" }}>
-                      <Text
-                        code
-                        copyable={{ text: details.onChainHash }}
-                        style={{ fontSize: 11 }}
-                      >
-                        {details.onChainHash?.substring(0, 20)}...
-                      </Text>
-                    </td>
-                  </tr>
-                  {!isValid && (
-                    <tr>
-                      <td style={{ padding: "6px 8px", color: "#888" }}>
-                        Hash hiện tại
-                      </td>
-                      <td style={{ padding: "6px 8px" }}>
-                        <Text code style={{ fontSize: 11, color: "#cf1322" }}>
-                          {details.currentHash?.substring(0, 20)}...
-                        </Text>
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             )}

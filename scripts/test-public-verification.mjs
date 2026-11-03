@@ -113,6 +113,7 @@ for (const text of [
   "hash",
   "blockchain",
   "TX_INTERNAL_ONLY",
+  "2051060001",
   "Org1MSP",
   hash,
 ])
@@ -189,7 +190,14 @@ check(
 );
 check(
   "staff retains QR verification sharing",
-  certificates.includes("Mã QR xác thực") &&
-    certificates.includes("<QRCode"),
+  certificates.includes("Mã QR xác thực") && certificates.includes("<QRCode"),
+);
+check(
+  "staff verification uses the public allowlist without empty technical fields",
+  !/details[.](?:mssv|gpa|txId|onChainHash|currentHash|blockchainDate)/.test(
+    certificates,
+  ) &&
+    certificates.includes("details.soHieu") &&
+    certificates.includes("details.soVaoSo"),
 );
 console.log("Public verification checks passed: " + checks);

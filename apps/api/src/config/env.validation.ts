@@ -22,6 +22,7 @@ export const envValidationSchema = Joi.object({
   STORAGE_LOCAL_ROOT: Joi.string().optional(),
   STORAGE_S3_BUCKET: Joi.string().optional(),
   WEB_URL: Joi.string().uri().default('http://localhost:3000'),
+  TRUSTED_PROXY_CIDRS: Joi.string().allow('').optional(),
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').optional(),
   PUBLIC_DIRECTORY_ENABLED: Joi.boolean().default(false),
   OUTBOX_ENABLED: Joi.boolean().default(true),

@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString, IsEmail, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsEmail } from 'class-validator';
+import { IsSafePassword } from '../../auth/password-policy';
 
 export class RegisterDto {
   @IsNotEmpty({ message: 'MSSV không được để trống' })
@@ -10,7 +11,7 @@ export class RegisterDto {
 
   @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
   @IsString({ message: 'Mật khẩu phải là chuỗi ký tự' })
-  @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
+  @IsSafePassword()
   password: string;
 
   @IsNotEmpty({ message: 'Mã xác thực OTP không được để trống' })

@@ -3,8 +3,10 @@ import { JwtAuthGuard } from './jwt.guard';
 
 @Injectable()
 export class OptionalJwtAuthGuard extends JwtAuthGuard {
-  canActivate(context: ExecutionContext) {
-    const authorization = context.switchToHttp().getRequest()
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const authorization = context
+      .switchToHttp()
+      .getRequest<{ headers: { authorization?: string } }>()
       .headers.authorization;
     return authorization ? super.canActivate(context) : true;
   }

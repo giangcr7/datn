@@ -12,9 +12,12 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session) {
+  if (!session || (session as { error?: string }).error) {
     redirect("/login");
   }
+
+  if ((session.user as { mustChangePassword?: boolean }).mustChangePassword)
+    redirect("/change-password");
 
   const kind = getWorkspaceKind(session.user as any);
   if (kind === "student") {

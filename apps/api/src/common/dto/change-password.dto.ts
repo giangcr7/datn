@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
+import { IsSafePassword } from '../../auth/password-policy';
 
 export class ChangePasswordDto {
   @IsNotEmpty({ message: 'Mật khẩu cũ không được để trống' })
@@ -7,6 +8,6 @@ export class ChangePasswordDto {
 
   @IsNotEmpty({ message: 'Mật khẩu mới không được để trống' })
   @IsString({ message: 'Mật khẩu mới phải là chuỗi ký tự' })
-  @MinLength(6, { message: 'Mật khẩu mới phải có ít nhất 6 ký tự' })
+  @IsSafePassword()
   newPassword: string;
 }

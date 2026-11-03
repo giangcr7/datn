@@ -143,12 +143,13 @@ const pdfs = [
   await exportReportPdf(register, true),
 ];
 for (const [index, bytes] of pdfs.entries()) {
-  const pdf = await getDocument({
+  const loadingTask = getDocument({
     data: new Uint8Array(bytes),
     useSystemFonts: true,
     disableFontFace: true,
-  }).promise;
+  });
   try {
+    const pdf = await loadingTask.promise;
     let text = "";
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
       const page = await pdf.getPage(pageNumber);
@@ -196,7 +197,7 @@ for (const [index, bytes] of pdfs.entries()) {
       );
     }
   } finally {
-    await pdf.destroy();
+    await loadingTask.destroy();
   }
 }
 const empty = registerDocument(metadata, []);

@@ -11,17 +11,28 @@
   },
   "devDependencies": {
     "mongodb-memory-server": "^11.3.0",
+    "pdfjs-dist": "^6.5.438",
     "prettier": "^3.7.4",
     "turbo": "^2.9.18",
     "typescript": "5.9.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13.0"
   },
   "packageManager": "npm@11.12.1",
   "workspaces": [
     "apps/*",
     "packages/*",
     "chaincode"
-  ]
+  ],
+  "overrides": {
+    "nodemailer": "^10.3.1",
+    "brace-expansion@^1.0.0": "^1.1.21",
+    "@nestjs/platform-express": {
+      "multer": "^2.5.0"
+    },
+    "@nestjs/swagger": {
+      "js-yaml": "^5.5.0"
+    }
+  }
 }

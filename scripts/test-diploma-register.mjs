@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { tsImport } from "tsx/esm/api";
-import XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const helpers = await tsImport("../apps/web/src/lib/diploma-register.ts", {
   parentURL: import.meta.url,
@@ -95,20 +95,21 @@ check(
   "omits technical identifiers and proofs",
   !JSON.stringify(rows).includes(entry.uuid) && !headers.includes("UUID"),
 );
-const sheet = XLSX.utils.aoa_to_sheet(rows);
-const book = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(book, sheet, "SoVanBang");
-const restored = XLSX.read(
-  XLSX.write(book, { bookType: "xlsx", type: "buffer" }),
-  { type: "buffer" },
-).Sheets.SoVanBang;
+const book = new ExcelJS.Workbook();
+book.addWorksheet("SoVanBang").addRows(rows);
+const restoredBook = new ExcelJS.Workbook();
+await restoredBook.xlsx.load(await book.xlsx.writeBuffer());
+const restored = restoredBook.getWorksheet("SoVanBang");
 check(
   "writes a real XLSX workbook",
-  restored.C7.v === "0012345678" && restored.K7.v === "000456",
+  restored.getCell("C7").value === "0012345678" &&
+    restored.getCell("K7").value === "000456",
 );
 check(
   "untrusted values remain text, not spreadsheet formulas",
-  restored.B7.t === "s" && !restored.B7.f && restored.B7.v === entry.fullName,
+  restored.getCell("B7").type === ExcelJS.ValueType.String &&
+    !restored.getCell("B7").formula &&
+    restored.getCell("B7").value === entry.fullName,
 );
 const emptyRows = helpers.registerSheetRows(
   [{ uuid: "empty", status: "ON_CHAIN" }],

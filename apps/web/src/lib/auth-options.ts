@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth-session-cookie";
+import { forwardedClientHeaders, requestClientHeaders } from "@/lib/client-ip";
 
 const API_URL =
   process.env.API_URL ||
@@ -15,7 +16,10 @@ async function refreshAccessToken(token: any) {
   try {
     const res = await fetch(`${API_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(await requestClientHeaders()),
+      },
       body: JSON.stringify({ refreshToken: token.refreshToken }),
     });
     const data = await res.json();
@@ -31,6 +35,7 @@ async function refreshAccessToken(token: any) {
       campusName: data.user.campusName,
       isHeadquarters: data.user.isHeadquarters,
       canApproveDiplomas: data.user.canApproveDiplomas,
+      mustChangePassword: data.user.mustChangePassword,
       accessTokenExpires: Date.now() + ACCESS_TOKEN_TTL_MS,
       error: undefined,
     };
@@ -51,7 +56,7 @@ export const authOptions: NextAuthOptions = {
         role: { label: "Role", type: "text" },
         remember: { label: "Remember me", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (
           !credentials?.email ||
           !credentials?.password ||
@@ -62,7 +67,10 @@ export const authOptions: NextAuthOptions = {
 
         const res = await fetch(`${API_URL}/auth/login`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...forwardedClientHeaders(request.headers || {}),
+          },
           body: JSON.stringify({
             email: credentials.email,
             password: credentials.password,

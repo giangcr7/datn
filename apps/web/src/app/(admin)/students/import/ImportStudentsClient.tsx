@@ -52,16 +52,28 @@ export default function ImportStudentsClient() {
     return false;
   };
 
-  const downloadTemplate = () => {
-    const XLSX = require("xlsx");
-    const ws = XLSX.utils.aoa_to_sheet([
-      ["MSSV", "Họ và tên", "Email"],
-      ["0099999981", "Sinh viên Mẫu Một", "student.one@example.com"],
-      ["0099999982", "Sinh viên Mẫu Hai", "student.two@example.com"],
-    ]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "DanhSachSinhVien");
-    XLSX.writeFile(wb, "Template_DanhSachSinhVien.xlsx");
+  const downloadTemplate = async () => {
+    let url: string | undefined;
+    try {
+      const response = await fetch("/api/students/import");
+      if (!response.ok)
+        throw new Error(
+          "Không tải được mẫu Excel. Vui lòng kiểm tra phiên đăng nhập.",
+        );
+      url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Template_DanhSachSinhVien.xlsx";
+      link.click();
+    } catch (error) {
+      setResult({
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Không tải được mẫu Excel",
+      });
+    } finally {
+      if (url) URL.revokeObjectURL(url);
+    }
   };
 
   return (

@@ -10,6 +10,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { winstonConfig } from './config/logger.config';
 import helmet from 'helmet';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { trustedProxyRanges } from './auth/rate-limit';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -17,6 +18,7 @@ async function bootstrap() {
   });
 
   app.useBodyParser('json', { limit: '8mb' });
+  app.set('trust proxy', trustedProxyRanges(process.env.TRUSTED_PROXY_CIDRS));
   app.use(helmet());
   app.setGlobalPrefix('api');
   app.enableCors({

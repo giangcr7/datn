@@ -23,6 +23,7 @@ import {
   ArrowLeftOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 const { Title, Text } = Typography;
 
@@ -61,7 +62,8 @@ export default function StudentProfileClient({ user }: Props) {
       });
       const data = await res.json();
       if (data.success) {
-        setSuccess("Đổi mật khẩu thành công!");
+        setSuccess("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.");
+        await signOut({ callbackUrl: "/login?type=student&msg=changed" });
       } else {
         setError(data.error);
       }
@@ -188,7 +190,7 @@ export default function StudentProfileClient({ user }: Props) {
                   name="newPassword"
                   rules={[
                     { required: true },
-                    { min: 6, message: "Ít nhất 6 ký tự!" },
+                    { min: 15, message: "Mật khẩu cần ít nhất 15 ký tự." },
                   ]}
                 >
                   <Input.Password

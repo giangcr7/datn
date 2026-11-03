@@ -191,8 +191,8 @@ export default function StudentRegister() {
             rules={[
               {
                 required: true,
-                min: 6,
-                message: "Mật khẩu phải có ít nhất 6 ký tự!",
+                min: 15,
+                message: "Mật khẩu cần ít nhất 15 ký tự.",
               },
             ]}
           >

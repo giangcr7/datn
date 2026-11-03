@@ -65,9 +65,6 @@ export default function DiplomaVerificationResult({
           <Descriptions.Item label="Họ và tên">
             <strong>{details.studentName || "-"}</strong>
           </Descriptions.Item>
-          <Descriptions.Item label="Mã sinh viên">
-            {details.mssv || "-"}
-          </Descriptions.Item>
           <Descriptions.Item label="Ngành đào tạo">
             {details.major || "-"}
           </Descriptions.Item>

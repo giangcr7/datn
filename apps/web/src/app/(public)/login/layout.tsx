@@ -13,6 +13,8 @@ export default async function LoginLayout({
   const error = (session as { error?: string } | null)?.error;
   const user = session?.user as WorkspaceUser | undefined;
 
+  if (!error && user?.mustChangePassword) redirect("/change-password");
+
   if (!error && user?.role === "student") {
     redirect(
       user.mustChangePassword ? "/change-password" : "/student/dashboard",

@@ -10,6 +10,7 @@ import { DatabaseService } from '../database/database.service';
 import { pagination, normalizeText } from '../database/data-utils';
 import type { AuthActor } from '../auth/auth-actor';
 import { Prisma } from '../generated/prisma/client';
+import { assertWorkbookSize } from '../imports/registry-parser';
 
 @Injectable()
 export class StudentsService {
@@ -156,7 +157,8 @@ export class StudentsService {
             email,
             displayName: name,
             // OTP activation sets the real bcrypt hash; this marker cannot authenticate.
-            passwordHash: '!pending-activation!' + randomBytes(32).toString('hex'),
+            passwordHash:
+              '!pending-activation!' + randomBytes(32).toString('hex'),
             mustChangePassword: true,
           },
         });
@@ -211,6 +213,7 @@ export class StudentsService {
       buffer[1] !== 0x4b
     )
       throw new BadRequestException('File Excel không hợp lệ');
+    assertWorkbookSize(buffer);
     const workbook = new ExcelJS.Workbook();
     try {
       await workbook.xlsx.load(buffer as any);

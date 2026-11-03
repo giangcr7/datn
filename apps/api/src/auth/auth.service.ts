@@ -14,6 +14,7 @@ import { Prisma, Role } from '../generated/prisma/client';
 import { AuditService, AuditAction } from '../audit/audit.service';
 import { NotifyService } from '../notify/notify.service';
 import { AuthActor } from './auth-actor';
+import { assertNewPassword } from './password-policy';
 
 const accountInclude = {
   student: true,
@@ -88,7 +89,7 @@ export class AuthService {
       data: {
         accountId,
         membershipId,
-        familyId: familyId as any,
+        familyId,
         tokenHash: this.tokenHash(token),
         expiresAt: new Date(Date.now() + 7 * 86400000),
         ip,
@@ -128,7 +129,6 @@ export class AuthService {
         'Email, mật khẩu hoặc cổng đăng nhập không hợp lệ',
       );
     }
-    const user = this.actor(account, membership.id);
     const session = this.newSession(
       account.id,
       membership.id,
@@ -136,6 +136,10 @@ export class AuthService {
       ip,
       userAgent,
     );
+    const user = {
+      ...this.actor(account, membership.id),
+      sessionId: session.data.familyId,
+    };
     await this.database.$transaction(async (transaction) => {
       await transaction.refreshSession.create({ data: session.data });
       await this.audit.log(
@@ -157,17 +161,26 @@ export class AuthService {
   }
 
   async validateActor(payload: AuthActor) {
-    if (!payload.id || !payload.membershipId)
+    if (!payload.id || !payload.membershipId || !payload.sessionId)
       throw new UnauthorizedException(
         'Phiên cũ đã hết hiệu lực; vui lòng đăng nhập lại',
       );
-    const account = await this.database.account.findUnique({
-      where: { id: payload.id },
-      include: accountInclude,
+    const session = await this.database.refreshSession.findFirst({
+      where: {
+        accountId: payload.id,
+        membershipId: payload.membershipId,
+        familyId: payload.sessionId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { account: { include: accountInclude } },
     });
-    if (!account || account.sessionVersion !== payload.sessionVersion)
+    if (!session || session.account.sessionVersion !== payload.sessionVersion)
       throw new UnauthorizedException('Phiên đăng nhập đã bị thu hồi');
-    return this.actor(account, payload.membershipId);
+    return {
+      ...this.actor(session.account, payload.membershipId),
+      sessionId: session.familyId,
+    };
   }
 
   async refreshAccessToken(token: string, ip?: string, userAgent?: string) {
@@ -200,7 +213,10 @@ export class AuthService {
         where: { id: current.accountId },
         include: accountInclude,
       });
-      const user = this.actor(account, current.membershipId);
+      const user = {
+        ...this.actor(account, current.membershipId),
+        sessionId: current.familyId,
+      };
       const session = this.newSession(
         current.accountId,
         current.membershipId,
@@ -229,9 +245,20 @@ export class AuthService {
   }
 
   async logout(token: string) {
-    await this.database.refreshSession.updateMany({
-      where: { tokenHash: this.tokenHash(token), revokedAt: null },
-      data: { revokedAt: new Date() },
+    await this.database.$transaction(async (transaction) => {
+      const session = await transaction.refreshSession.findUnique({
+        where: { tokenHash: this.tokenHash(token) },
+      });
+      if (!session) return;
+      await transaction.$queryRaw`SELECT id FROM accounts WHERE id = ${session.accountId}::uuid FOR UPDATE`;
+      await transaction.refreshSession.updateMany({
+        where: {
+          accountId: session.accountId,
+          familyId: session.familyId,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
     });
     return { success: true };
   }
@@ -257,6 +284,7 @@ export class AuthService {
     ip?: string,
     institutionId?: string,
   ) {
+    assertNewPassword(newPassword);
     const account = await this.database.account.findUnique({
       where: { id: accountId },
     });
@@ -352,6 +380,7 @@ export class AuthService {
     otp: string,
     ip?: string,
   ) {
+    assertNewPassword(password);
     const account = await this.activationAccount(mssv, email);
     const passwordHash = await hash(password, 12);
     const accepted = await this.database.$transaction(async (transaction) => {

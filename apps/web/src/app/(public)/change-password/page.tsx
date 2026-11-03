@@ -86,7 +86,7 @@ function ChangePasswordContent() {
             name="newPassword"
             rules={[
               { required: true, message: "Vui lòng nhập mật khẩu mới!" },
-              { min: 6, message: "Ít nhất 6 ký tự!" },
+              { min: 15, message: "Mật khẩu cần ít nhất 15 ký tự." },
             ]}
           >
             <Input.Password size="large" placeholder="Nhập mật khẩu mới" />

@@ -1,9 +1,15 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
-  "globalEnv": ["API_URL", "NEXT_PUBLIC_API_URL"],
+  "globalEnv": [
+    "API_URL",
+    "NEXT_PUBLIC_API_URL",
+    "FORWARD_CLIENT_IP",
+    "TRUSTED_PROXY_CIDRS"
+  ],
   "globalPassThroughEnv": [
     "NEXTAUTH_URL",
+    "NEXTAUTH_SECRET",
     "AI_ASSISTANT_ENABLED",
     "AI_BASE_URL",
     "AI_MODEL",
