@@ -11,7 +11,10 @@ function contains(field: Prisma.Sql, value: string) {
   return Prisma.sql`${field} ILIKE ${pattern}`;
 }
 
-export function registerQuery(institutionId: string, query: RegisterQueryDto) {
+export function registerDataset(
+  institutionId: string,
+  query: RegisterQueryDto,
+) {
   const conditions: Prisma.Sql[] = [Prisma.sql`TRUE`];
   if (query.search)
     conditions.push(
@@ -31,6 +34,7 @@ export function registerQuery(institutionId: string, query: RegisterQueryDto) {
   if (query.decision)
     conditions.push(contains(Prisma.sql`decision_no`, query.decision));
   if (query.status) conditions.push(Prisma.sql`status = ${query.status}`);
+  if (query.grade) conditions.push(Prisma.sql`grade = ${query.grade}`);
   if (query.issuedFrom)
     conditions.push(Prisma.sql`issued_on >= ${query.issuedFrom}`);
   if (query.issuedTo)
@@ -44,6 +48,13 @@ export function registerQuery(institutionId: string, query: RegisterQueryDto) {
         ${snapshotField('soHieu', Prisma.sql`diploma.certificate_no`)} AS certificate_no,
         ${snapshotField('soVaoSo', Prisma.sql`diploma.registry_no`)} AS registry_no,
         ${snapshotField('major', Prisma.sql`program.name`)} AS major,
+        ${snapshotField(
+          'grade',
+          Prisma.sql`CASE graduation.classification
+          WHEN 'EXCELLENT' THEN 'Xuất sắc' WHEN 'VERY_GOOD' THEN 'Giỏi'
+          WHEN 'GOOD' THEN 'Khá' WHEN 'AVERAGE_GOOD' THEN 'Trung bình khá'
+          WHEN 'AVERAGE' THEN 'Trung bình' END`,
+        )} AS grade,
         ${snapshotField('namTotNghiep', Prisma.sql`graduation.graduation_year::text`)} AS graduation_year,
         ${snapshotField('decisionNo', Prisma.sql`decision.document_number`)} AS decision_no,
         ${snapshotField('issueDate', Prisma.sql`to_char(diploma.issued_on, 'YYYY-MM-DD')`)} AS issued_on,
@@ -69,6 +80,12 @@ export function registerQuery(institutionId: string, query: RegisterQueryDto) {
     ), filtered AS (
       SELECT * FROM entries WHERE ${Prisma.join(conditions, ' AND ')}
     )
+  `;
+}
+
+export function registerQuery(institutionId: string, query: RegisterQueryDto) {
+  return Prisma.sql`
+    ${registerDataset(institutionId, query)}
     SELECT COUNT(*)::integer AS total,
       ARRAY(SELECT id FROM filtered ORDER BY created_at DESC, id DESC
         LIMIT ${query.limit} OFFSET ${(query.page - 1) * query.limit}) AS ids

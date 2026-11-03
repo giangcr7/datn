@@ -1,6 +1,7 @@
 "use client";
 
 import PageTitle from "@/components/PageTitle";
+import ReportsPanel from "@/components/ReportsPanel";
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -337,6 +338,7 @@ export default function DashboardClient({
         </Col>
       </Row>
 
+      <ReportsPanel />
       <Card
         title="Văn bằng ghi nhận gần đây"
         className="mb-6"

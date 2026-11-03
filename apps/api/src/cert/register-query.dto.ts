@@ -55,6 +55,10 @@ export class RegisterQueryDto {
   decision?: string;
 
   @IsOptional()
+  @IsIn(['Xuất sắc', 'Giỏi', 'Khá', 'Trung bình khá', 'Trung bình'])
+  grade?: string;
+
+  @IsOptional()
   @IsIn(['ON_CHAIN', 'REVOKED', 'REPLACED'])
   status?: 'ON_CHAIN' | 'REVOKED' | 'REPLACED';
 

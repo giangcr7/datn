@@ -22,6 +22,7 @@ import { OutboxModule } from './outbox/outbox.module';
 import { RegistryImportModule } from './imports/registry-import.module';
 import { PdfSignatureModule } from './signatures/pdf-signature.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AuditModule,
     CatalogModule,
     DashboardModule,
+    ReportsModule,
     IntegrityModule,
     HealthModule,
     ExplorerModule,

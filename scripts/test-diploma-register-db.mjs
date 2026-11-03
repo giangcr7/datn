@@ -34,6 +34,16 @@ const {
   RegisterQueryDto,
 } = require("../apps/api/dist/cert/register-query.dto.js");
 const { JwtAuthGuard } = require("../apps/api/dist/auth/jwt.guard.js");
+const {
+  ReportsService,
+} = require("../apps/api/dist/reports/reports.service.js");
+const {
+  ReportsController,
+} = require("../apps/api/dist/reports/reports.controller.js");
+const {
+  ReportExportQueryDto,
+} = require("../apps/api/dist/reports/report-query.dto.js");
+const ExcelJS = require("exceljs");
 const { Test } = require("@nestjs/testing");
 const { ValidationPipe } = require("@nestjs/common");
 const database = new DatabaseService({
@@ -168,6 +178,8 @@ try {
           fullName: "Nguyễn Văn An " + number,
           mssv: "00123456" + number,
           major: "Công nghệ thông tin (50%)",
+          grade: "Khá",
+          gpa: 2.75,
           namTotNghiep: 2024,
           decisionNo: "123/QĐ-ĐHTL",
           decisionDate: "2024-06-15",
@@ -244,6 +256,74 @@ try {
       };
       const service = new CertService(scoped);
       const dashboard = new DashboardService(scoped);
+      const reports = new ReportsService(scoped);
+      const statisticsReport = await reports.overview(
+        new RegisterQueryDto(),
+        main.actor,
+      );
+      check(
+        "report agrees with committed register, without counting older versions twice",
+        statisticsReport.summary.total === 5 &&
+          statisticsReport.summary.active === 3 &&
+          statisticsReport.summary.revoked === 1 &&
+          statisticsReport.summary.replaced === 1,
+      );
+      for (const groups of [
+        statisticsReport.byYear,
+        statisticsReport.byMajor,
+        statisticsReport.byGrade,
+        statisticsReport.byStatus,
+      ])
+        check(
+          "report group totals reconcile with summary",
+          groups.reduce((total, group) => total + group.total, 0) === 5,
+        );
+      check(
+        "report preserves missing historical grades",
+        statisticsReport.byGrade.some(
+          (group) => group.name === "Chưa ghi nhận" && group.total === 2,
+        ),
+      );
+      check(
+        "report uses signed grade, year, major and inclusive date filters",
+        (
+          await reports.overview(
+            Object.assign(new RegisterQueryDto(), {
+              grade: "Khá",
+              year: 2024,
+              major: "50%",
+              issuedFrom: "2024-06-20",
+              issuedTo: "2024-06-20",
+            }),
+            main.actor,
+          )
+        ).summary.total === 3,
+      );
+      check(
+        "report isolates other institutions",
+        (await reports.overview(new RegisterQueryDto(), foreign.actor)).summary
+          .total === 1,
+      );
+      const reportExport = await reports.export(
+        Object.assign(new ReportExportQueryDto(), {
+          kind: "register",
+          page: 99,
+          limit: 1,
+          year: 2024,
+        }),
+        main.actor,
+      );
+      const exportedBook = new ExcelJS.Workbook();
+      await exportedBook.xlsx.load(reportExport.data);
+      check(
+        "register export ignores page limits but respects year filter",
+        exportedBook.getWorksheet("SoPhatHanh").rowCount === 10,
+      );
+      check(
+        "register export includes full original transaction hashes",
+        exportedBook.getWorksheet("DoiChieuBlockchain").getCell("E8").value
+          .length === 64,
+      );
       const initialDashboard = await dashboard.overview(main.actor);
       check(
         "dashboard agrees with issued register, including revoked and replaced",
@@ -633,11 +713,17 @@ try {
 
       let httpActor = main.actor;
       const module = await Test.createTestingModule({
-        controllers: [CertController, ExplorerController, DashboardController],
+        controllers: [
+          CertController,
+          ExplorerController,
+          DashboardController,
+          ReportsController,
+        ],
         providers: [
           { provide: CertService, useValue: service },
           { provide: ExplorerService, useValue: explorer },
           { provide: DashboardService, useValue: dashboard },
+          { provide: ReportsService, useValue: reports },
         ],
       })
         .overrideGuard(JwtAuthGuard)
@@ -660,6 +746,45 @@ try {
       await app.listen(0, "127.0.0.1");
       const base = await app.getUrl();
       try {
+        const reportResponse = await fetch(
+          base + "/reports/overview?grade=" + encodeURIComponent("Khá"),
+        );
+        check(
+          "report HTTP route applies typed grade filter",
+          reportResponse.ok &&
+            (await reportResponse.json()).summary.total === 3,
+        );
+        for (const query of [
+          "format=csv",
+          "kind=all",
+          "institutionId=foreign",
+          "grade=invalid",
+          "issuedFrom=2023-02-29",
+        ])
+          check(
+            "report HTTP rejects invalid query " + query,
+            (await fetch(base + "/reports/export?" + query)).status === 400,
+          );
+        const reportDownload = await fetch(
+          base +
+            "/reports/export?kind=register&format=xlsx&year=2024&page=99&limit=1",
+        );
+        check(
+          "report download is an attachment with no-store headers",
+          reportDownload.ok &&
+            reportDownload.headers
+              .get("content-disposition")
+              .includes("attachment") &&
+            reportDownload.headers.get("cache-control").includes("no-store"),
+        );
+        const downloadBook = new ExcelJS.Workbook();
+        await downloadBook.xlsx.load(
+          Buffer.from(await reportDownload.arrayBuffer()),
+        );
+        check(
+          "HTTP register export returns every matching row, not just current page",
+          downloadBook.getWorksheet("SoPhatHanh").rowCount === 10,
+        );
         const dashboardResponse = await fetch(base + "/dashboard/overview");
         check(
           "dashboard HTTP returns scoped committed data",
@@ -741,6 +866,8 @@ try {
             (await fetch(base + "/cert/register")).status === 403,
           );
           for (const path of [
+            "/reports/overview",
+            "/reports/export?kind=register",
             "/dashboard/overview",
             "/explorer/overview",
             "/explorer/anchors",

@@ -12,6 +12,8 @@
 
 ## Menu nghiệp vụ
 
+- Báo cáo thống kê đặt tại Tổng quan; xuất sổ phát hành Excel/PDF tại Sổ văn bằng. Hướng dẫn, phạm vi snapshot và kiểm thử: [reports-and-register.md](reports-and-register.md).
+
 - Cán bộ cơ sở chính có sáu menu: Tổng quan, Hồ sơ cấp văn bằng, Sổ văn bằng, Danh mục, Nhật ký hoạt động và Đối chiếu blockchain.
 - Hồ sơ cấp văn bằng gom các đường dẫn hiện có: hồ sơ sinh viên, nhập sinh viên, kiểm tra dữ liệu, hồ sơ chờ xử lý, duyệt và phát hành. Không đổi URL cũ hoặc thêm người duyệt.
 - Danh mục cho phép thêm/cập nhật ngành song ngữ và bổ sung ánh xạ tên ngành có căn cứ. Tên chính thức được ánh xạ khi lưu ngành; không ghi đè ánh xạ đã tồn tại. Sau khi bổ sung, kiểm tra lại lô dữ liệu để áp dụng. Không sửa snapshot hoặc PDF đã ký.

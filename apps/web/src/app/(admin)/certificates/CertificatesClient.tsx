@@ -8,15 +8,13 @@ import {
   type WorkspaceUser,
 } from "@/lib/workspace-access";
 import { generateCertPDF } from "@/lib/generateCertPDF";
+import { downloadReport } from "@/lib/reports";
 import {
   describeRegisterFilters,
   emptyRegisterFilters,
   registerDate,
-  registerHeaders,
   registerParams,
-  registerSheetRows,
   registerStatuses,
-  type RegisterEntry,
   type RegisterFilters,
 } from "@/lib/diploma-register";
 import {
@@ -50,6 +48,7 @@ import {
   EyeOutlined,
   HistoryOutlined,
   FileExcelOutlined,
+  FilePdfOutlined,
 } from "@ant-design/icons";
 import QRCode from "react-qr-code";
 import Link from "next/link";
@@ -110,66 +109,19 @@ export default function CertificatesClient({
     total: 0,
   });
 
-  const exportExcel = async () => {
+  const exportRegister = async (format: "xlsx" | "pdf") => {
     if (exporting || loading || !pagination.total) return;
     setExporting(true);
     try {
-      message.loading({ content: "Đang xuất Excel...", key: "export" });
-      const allRows: RegisterEntry[] = [];
-      let currentPage = 1,
-        totalPages = 1;
-      do {
-        const response = await fetch(
-          `/api/certificates?${registerParams(appliedFilters, currentPage, 100)}`,
-          { cache: "no-store" },
-        );
-        const result = await response.json();
-        if (!response.ok || !result.success)
-          throw new Error(result.error || "Không tải được dữ liệu xuất sổ");
-        if (result.pagination.total !== pagination.total)
-          throw new Error(
-            "Dữ liệu sổ vừa thay đổi. Anh làm mới danh sách rồi xuất lại.",
-          );
-        allRows.push(...result.data);
-        totalPages = result.pagination.totalPages;
-        currentPage++;
-      } while (currentPage <= totalPages);
-      if (
-        allRows.length !== pagination.total ||
-        new Set(allRows.map((entry) => entry.uuid)).size !== allRows.length
-      )
-        throw new Error(
-          "Dữ liệu sổ vừa thay đổi. Anh làm mới danh sách rồi xuất lại.",
-        );
-      const XLSX = await import("xlsx");
-      const ws = XLSX.utils.aoa_to_sheet(
-        registerSheetRows(allRows, appliedFilters),
-      );
-      ws["!cols"] = [
-        7, 28, 18, 14, 36, 16, 10, 18, 18, 24, 28, 14, 30, 18, 18, 24, 40,
-      ].map((width) => ({ wch: width }));
-      ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: registerHeaders.length - 1 } },
-      ];
-      ws["!autofilter"] = {
-        ref: XLSX.utils.encode_range({
-          s: { r: 5, c: 0 },
-          e: { r: allRows.length + 5, c: registerHeaders.length - 1 },
-        }),
-      };
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "SoVanBang");
-      XLSX.writeFile(
-        wb,
-        `SoVanBang_${new Date().toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).replace(/\//g, "-")}.xlsx`,
-      );
-      message.success({ content: "Xuất Excel thành công!", key: "export" });
+      message.loading({ content: "Đang xuất sổ phát hành...", key: "export" });
+      await downloadReport("register", format, appliedFilters);
+      message.success({ content: "Đã xuất sổ phát hành", key: "export" });
     } catch (error) {
       message.error({
         content:
           error instanceof Error
             ? error.message
-            : "Không xuất được sổ văn bằng",
+            : "Không xuất được sổ phát hành",
         key: "export",
       });
     } finally {
@@ -943,11 +895,22 @@ export default function CertificatesClient({
               <Button
                 icon={<FileExcelOutlined />}
                 aria-label="Xuất Excel"
-                onClick={exportExcel}
+                onClick={() => void exportRegister("xlsx")}
                 loading={exporting}
                 disabled={loading || !pagination.total || !!loadError}
               >
                 Xuất Excel
+              </Button>
+            </Tooltip>
+            <Tooltip title="Xuất sổ phát hành PDF theo bộ lọc đang áp dụng">
+              <Button
+                icon={<FilePdfOutlined />}
+                aria-label="Xuất sổ PDF"
+                onClick={() => void exportRegister("pdf")}
+                loading={exporting}
+                disabled={loading || !pagination.total || !!loadError}
+              >
+                Xuất sổ PDF
               </Button>
             </Tooltip>
             <Tooltip title="Làm mới">
