@@ -2,7 +2,7 @@
 
 Đối chiếu ngày **03/11/2026** với `apps/api/prisma/schema.prisma` và các service hiện hành.
 Hệ thống dùng **PostgreSQL cho nghiệp vụ**, kho tệp cho Excel/PDF và **Hyperledger Fabric cho bằng chứng blockchain**.
-Có **28 bảng ứng dụng** trong Prisma; `_prisma_migrations` là bảng quản lý migration của Prisma, không phải bảng nghiệp vụ thứ 29.
+Có **31 bảng ứng dụng** trong Prisma; `_prisma_migrations` là bảng quản lý migration của Prisma, không phải bảng nghiệp vụ thứ 32.
 Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quyền duyệt và phát hành**; không chuyển hồ sơ sang Hà Nội.
 
 ## 1. Danh mục nhà trường: 5 bảng
@@ -24,7 +24,7 @@ Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quy�
 | `graduation_decisions` | Quyết định công nhận tốt nghiệp, số quyết định, ngày ký và người ký quyết định.                                              | `document_number, decision_year, signed_on, signer_name, source_document_id`.             | Chứng cứ nguồn cho kết quả tốt nghiệp. Người ký quyết định không mặc nhiên là người ký văn bằng. |
 | `graduation_records`   | Kết quả tốt nghiệp theo sinh viên/ngành/năm: GPA, thang điểm, xếp loại, loại bằng. Có thể tồn tại khi chưa cấp văn bằng.     | `student_id, program_id, enrollment_id, decision_id, source_row_id, graduation_year`.     | Kiểm tra điều kiện, tạo hồ sơ cấp bằng, liên kết quyết định và dòng Excel nguồn.                 |
 
-## 3. Đợt cấp, văn bằng, PDF và blockchain: 8 bảng
+## 3. Đợt cấp, văn bằng, yêu cầu chỉnh sửa, PDF và blockchain: 10 bảng
 
 | Bảng                       | Tác dụng trong đề tài                                                                                                                             | Trường, quan hệ cần nhớ                                                                                                 | Chức năng sử dụng                                                            |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -39,6 +39,11 @@ Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quy�
 
 Đợt cấp văn bằng dùng thêm bảng `diploma_issuance_batches`: lưu mã/tên đợt, trường/cơ sở, quyết định, năm tốt nghiệp, ngành tùy chọn, người lập và thời gian. Cột `diplomas.issuance_batch_id` gắn một văn bằng vào tối đa một đợt. Dùng để gom bản nháp, kiểm tra toàn đợt và theo dõi kết quả phát hành, không phải đợt import hay block blockchain. [Chi tiết](./issuance-batches.md).
 
+| Bảng | Tác dụng trong đề tài | Trường, quan hệ cần nhớ | Chức năng sử dụng |
+| --- | --- | --- | --- |
+| `diploma_change_requests` | Tiếp nhận đề nghị chỉnh sửa của sinh viên, không sửa trực tiếp văn bằng đã ký. | `diploma_id, requester_id, changes, reason, status, revision, resolved_diploma_id`. | Yêu cầu chỉnh sửa; chỉ hoàn tất với văn bằng thay thế và thu hồi bản cũ đã được blockchain xác nhận. |
+| `diploma_change_request_events` | Lịch sử phản hồi và trạng thái theo revision, chỉ được thêm. | `request_id, actor_id, status, note, revision, created_at`. | Sinh viên theo dõi phản hồi, cán bộ truy vết quá trình đối chiếu và xử lý. |
+
 ## 4. Nhập Excel và kiểm tra dữ liệu: 4 bảng
 
 | Bảng                | Tác dụng trong đề tài                                                                                    | Trường, quan hệ cần nhớ                                                                   | Chức năng sử dụng                                                                                                                             |
@@ -48,7 +53,7 @@ Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quy�
 | `import_rows`       | Mỗi dòng Excel theo sheet/số dòng; giữ dữ liệu gốc, dữ liệu chuẩn hóa và phần sửa có đối soát.           | `batch_id, sheet_name, row_number, raw_data, normalized_data, overrides, reviewed_by_id`. | So sánh trùng, sửa có lý do, nhập dòng READY. Không ghi đè dữ liệu gốc để che lỗi.                                                            |
 | `validation_issues` | Lỗi/cảnh báo gắn với dòng và trường cụ thể: thiếu thông tin, trùng dữ liệu, ngành chưa ánh xạ...         | `row_id, field, code, severity, message, resolved_at`.                                    | Tab kiểm tra dữ liệu và chỉ ra lỗi ở đâu. Chi tiết bản ghi trùng được API tính từ dữ liệu nguồn/đã lưu, không có một bảng “duplicates” riêng. |
 
-## 5. Tài khoản và an toàn hệ thống: 6 bảng
+## 5. Tài khoản và an toàn hệ thống: 7 bảng
 
 | Bảng                  | Tác dụng trong đề tài                                                                                   | Trường, quan hệ cần nhớ                                                            | Chức năng sử dụng                                                                               |
 | --------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -58,6 +63,10 @@ Mô hình hiện tại: **một cơ sở chính TP.HCM, một cán bộ có quy�
 | `otp_challenges`      | OTP kích hoạt tài khoản sinh viên, lưu hash chứ không lưu OTP rõ.                                       | `account_id, code_hash, expires_at, consumed_at, attempts`.                        | Gửi OTP, kiểm tra OTP khi đăng ký/kích hoạt.                                                    |
 | `audit_logs`          | Nhật ký hoạt động toàn hệ thống: ai làm gì, đối tượng, kết quả, IP và metadata.                         | `institution_id, actor_id, actor_email, action, target, result, metadata`.         | Menu Nhật ký hoạt động; khác với `diploma_events` chỉ theo một văn bằng.                        |
 | `integrity_alerts`    | Cảnh báo phát hiện chênh lệch dữ liệu/hash giữa PostgreSQL và Fabric; lưu người và ghi chú xử lý.       | `diploma_id, type, database_hash, fabric_hash, resolved_at, resolved_by_id`.       | Kiểm tra toàn vẹn, xử lý cảnh báo. Đánh dấu đã xử lý không tự sửa blockchain.                   |
+
+| Bảng | Tác dụng trong đề tài | Trường, quan hệ cần nhớ | Chức năng sử dụng |
+| --- | --- | --- | --- |
+| `inbox_receipts` | Ghi nhận phiên bản nhóm thông báo đã đọc, riêng từng membership. | Khóa `membership_id + key`, `fingerprint, read_at`; không lưu PII của văn bằng. | Chuông thông báo; công việc mới làm nhóm trở lại chưa đọc, không thay đổi nghiệp vụ. |
 
 ## 6. Chuyển đổi dữ liệu cũ: 1 bảng
 
@@ -110,6 +119,8 @@ Văn bằng đã phát hành phải xử lý bằng thu hồi hoặc thay thế,
 ## 10. Tài liệu đi kèm
 
 - [Link API, quyền và mẫu nhập Postman](./api-test-samples.md).
+- [Yêu cầu chỉnh sửa: luồng, bảng và API](./student-change-requests.md).
+- [Thông báo công việc: cách dùng và API](./work-inbox.md).
 - [Collection Postman có mẫu sẵn](./api-test-samples.postman_collection.json).
 - [Từ điển cột chi tiết](./data-dictionary.md) và [luồng một cơ sở](./single-campus-workflow.md).
 

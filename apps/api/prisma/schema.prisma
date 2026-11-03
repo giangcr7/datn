@@ -573,6 +573,7 @@ model AccountMembership {
   account   Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
   campus    Campus           @relation(fields: [campusId], references: [id], onDelete: Restrict)
   sessions  RefreshSession[]
+  inboxReceipts InboxReceipt[]
 
   @@unique([accountId, campusId, role])
   @@index([campusId, role])
@@ -709,6 +710,17 @@ model DiplomaChangeRequestEvent {
 
   @@unique([requestId, revision])
   @@map("diploma_change_request_events")
+}
+
+model InboxReceipt {
+  membershipId String @map("membership_id") @db.Uuid
+  key String @db.VarChar(80)
+  fingerprint String @db.Char(64)
+  readAt DateTime @default(now()) @map("read_at") @db.Timestamptz(3)
+  membership AccountMembership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@id([membershipId, key])
+  @@map("inbox_receipts")
 }
 
 model LegacyIdMap {

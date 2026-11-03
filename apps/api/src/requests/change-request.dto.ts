@@ -44,7 +44,7 @@ export class CreateChangeRequestDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(4)
-  @ArrayUnique((item: RequestedChangeDto) => item.field)
+  @ArrayUnique((item: RequestedChangeDto | null) => item?.field)
   @ValidateNested({ each: true })
   @Type(() => RequestedChangeDto)
   changes!: RequestedChangeDto[];

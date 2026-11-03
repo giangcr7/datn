@@ -47,13 +47,15 @@ const date = (value: string) => new Date(value).toLocaleString("vi-VN");
 
 export default function ChangeRequestsWorkspace({
   student,
+  initialStatus,
 }: {
   student: boolean;
+  initialStatus?: string;
 }) {
   const [records, setRecords] = useState<DiplomaChangeRequest[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>();
+  const [status, setStatus] = useState<string | undefined>(initialStatus);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<DiplomaChangeRequest | null>(null);
@@ -460,6 +462,9 @@ export default function ChangeRequestsWorkspace({
         onOk={() => void createRequest().catch(() => undefined)}
         confirmLoading={saving}
         okText="Gửi yêu cầu"
+        okButtonProps={{
+          disabled: eligible.every((item) => !!item.activeRequestId),
+        }}
         cancelText="Hủy"
         width={620}
       >

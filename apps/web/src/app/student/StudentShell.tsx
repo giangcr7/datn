@@ -9,6 +9,7 @@ import {
   UniversityFooter,
 } from "@/components/UniversityChrome";
 import styles from "@/styles/workspace.module.css";
+import NotificationBell from "@/components/NotificationBell";
 import portalStyles from "@/styles/university-portal.module.css";
 import {
   DashboardOutlined,
@@ -76,14 +77,17 @@ export default function StudentShell({
       <header className={styles.studentHeader}>
         <UniversityMasthead />
         <nav className={styles.studentNav} aria-label="Điều hướng sinh viên">
-          <Menu
-            theme="dark"
-            mode="horizontal"
-            selectedKeys={[pathname]}
-            items={menuItems}
-            onClick={handleMenuClick}
-            className={styles.studentMenu}
-          />
+          <div className={styles.studentNavInner}>
+            <Menu
+              theme="dark"
+              mode="horizontal"
+              selectedKeys={[pathname]}
+              items={menuItems}
+              onClick={handleMenuClick}
+              className={styles.studentMenu}
+            />
+            <NotificationBell inverse />
+          </div>
         </nav>
       </header>
       <Content id="student-content" tabIndex={-1} className={styles.content}>

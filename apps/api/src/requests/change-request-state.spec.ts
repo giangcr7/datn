@@ -72,6 +72,8 @@ describe('student correction request state', () => {
     ).toHaveLength(0);
     for (const extra of [
       { changes: [] },
+      { changes: [null] },
+      { changes: [{}] },
       { changes: [body.changes[0], body.changes[0]] },
       { changes: [{ field: 'status', value: 'APPROVED' }] },
       { changes: [{ field: 'major', value: ' '.repeat(3) }] },

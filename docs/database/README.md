@@ -4,7 +4,9 @@ Tài liệu này là baseline để triển khai dài hạn. Mô hình mới kh�
 
 ## Bộ tài liệu
 
-- [Tác dụng và quan hệ của 28 bảng hiện tại](./vai-tro-cac-bang-va-chuc-nang.md)
+- [Tác dụng và quan hệ của 31 bảng hiện tại](./vai-tro-cac-bang-va-chuc-nang.md)
+- [Yêu cầu chỉnh sửa của sinh viên](./student-change-requests.md)
+- [Thông báo công việc và trạng thái đã đọc](./work-inbox.md)
 - [Đợt cấp văn bằng theo quyết định tốt nghiệp](./issuance-batches.md)
 - [Báo cáo thống kê và xuất sổ phát hành](./reports-and-register.md)
 - [Link API, quyền và mẫu nhập để test Postman](./api-test-samples.md)
@@ -41,4 +43,4 @@ Luồng hiện tại dùng một cơ sở chính TP.HCM và một cán bộ duy�
 - [ERD nghiệp vụ](./erd-core.svg) và [ERD đầy đủ](./erd-full.svg).
 - [Ràng buộc vật lý](./constraints.md) và [kết quả đọc Excel](./excel-findings.md).
 - ERD sinh từ PostgreSQL catalog đã migrate: 27 bảng, 263 cột và 68 khóa ngoại vật lý, gồm `signed_diploma_documents` và `diploma_pdf_signatures.validation_evidence`. SVG/Mermaid hiển thị quan hệ đơn cột để tránh lặp scope; DBML và constraints.md chứa cả composite FK.
-- Các sơ đồ/chi tiết vật lý là ảnh chụp tại lần sinh tài liệu, không phải trạng thái dữ liệu runtime. Schema hiện hành có thêm `diploma_issuance_batches` và liên kết đợt trên văn bằng; xem tài liệu 28 bảng và hướng dẫn đợt cấp văn bằng. Luồng hiện tại dùng cơ sở chính TP.HCM và danh tính phát hành kỹ thuật `Org1MSP`, không phải issuer Hà Nội. Production vẫn cần gate cutover riêng.
+- Các sơ đồ/chi tiết vật lý là ảnh chụp tại lần sinh tài liệu, không phải trạng thái dữ liệu runtime. Schema hiện hành có thêm `diploma_issuance_batches`, `diploma_change_requests`, `diploma_change_request_events` và `inbox_receipts`; xem tài liệu 31 bảng cùng các hướng dẫn nghiệp vụ tương ứng. Luồng hiện tại dùng cơ sở chính TP.HCM và danh tính phát hành kỹ thuật `Org1MSP`, không phải issuer Hà Nội. Production vẫn cần gate cutover riêng.

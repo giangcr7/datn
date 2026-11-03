@@ -35,6 +35,7 @@ import { signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { UniversityBrand } from "@/components/UniversityChrome";
+import NotificationBell from "@/components/NotificationBell";
 import styles from "@/styles/workspace.module.css";
 import {
   canAccessWorkspacePath,
@@ -175,6 +176,7 @@ export default function AdminShell({
             <UniversityBrand compact />
           </div>
           <Space size="middle" wrap>
+            <NotificationBell />
             <Link
               href="/verify"
               target="_blank"

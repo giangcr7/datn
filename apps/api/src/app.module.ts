@@ -24,6 +24,7 @@ import { PdfSignatureModule } from './signatures/pdf-signature.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ReportsModule } from './reports/reports.module';
 import { ChangeRequestModule } from './requests/change-request.module';
+import { InboxModule } from './inbox/inbox.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ChangeRequestModule } from './requests/change-request.module';
     DashboardModule,
     ReportsModule,
     ChangeRequestModule,
+    InboxModule,
     IntegrityModule,
     HealthModule,
     ExplorerModule,

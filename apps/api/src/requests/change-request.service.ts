@@ -98,16 +98,14 @@ export class ChangeRequestService {
     };
     return this.database.$transaction(
       async (transaction) => {
-        const [total, records] = await Promise.all([
-          transaction.diplomaChangeRequest.count({ where }),
-          transaction.diplomaChangeRequest.findMany({
-            where,
-            orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-            skip: (query.page - 1) * query.limit,
-            take: query.limit,
-            include: requestInclude,
-          }),
-        ]);
+        const total = await transaction.diplomaChangeRequest.count({ where });
+        const records = await transaction.diplomaChangeRequest.findMany({
+          where,
+          orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+          include: requestInclude,
+        });
         return {
           data: records.map((record) => this.view(record)),
           total,

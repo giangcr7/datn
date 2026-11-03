@@ -1,9 +1,12 @@
 # Từ điển dữ liệu
 
-Xem [tác dụng và quan hệ đầy đủ của 28 bảng](./vai-tro-cac-bang-va-chuc-nang.md)
+Xem [tác dụng và quan hệ đầy đủ của 31 bảng](./vai-tro-cac-bang-va-chuc-nang.md)
 và [API/mẫu nhập Postman](./api-test-samples.md) cho luồng hiện tại một cơ sở chính TP.HCM.
 Phần Physical schema là ảnh chụp tại lần sinh tài liệu; đối chiếu `apps/api/prisma/schema.prisma` khi cần danh sách cột mới nhất.
 Đợt cấp văn bằng bổ sung bảng `diploma_issuance_batches` và cột `diplomas.issuance_batch_id`; xem [nghiệp vụ và ràng buộc](./issuance-batches.md).
+Yêu cầu chỉnh sửa bổ sung `diploma_change_requests`, `diploma_change_request_events`;
+thông báo bổ sung `inbox_receipts`. Xem [yêu cầu chỉnh sửa](./student-change-requests.md)
+và [thông báo công việc](./work-inbox.md) cho các cột, phân quyền và API mới.
 
 ## Phân loại trường
 

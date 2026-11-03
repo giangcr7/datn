@@ -132,6 +132,8 @@ const server = spawn(
   [
     join(root, "node_modules/next/dist/bin/next"),
     "start",
+    "--hostname",
+    "127.0.0.1",
     "--port",
     String(port),
   ],
@@ -320,6 +322,19 @@ try {
           call.body.changes[0].value === "Nguyễn Văn Đúng",
       ),
     );
+    await page
+      .getByRole("button", { name: "Gửi yêu cầu", exact: true })
+      .click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByText("Gửi yêu cầu chỉnh sửa", { exact: true }).waitFor();
+    check(
+      "cannot submit when every eligible diploma already has an open request",
+      await dialog
+        .getByRole("button", { name: "Gửi yêu cầu", exact: true })
+        .isDisabled(),
+    );
+    await dialog.getByRole("button", { name: "Hủy", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
     await page.getByRole("button", { name: "Chi tiết", exact: true }).click();
     const drawer = page.getByRole("dialog");
     await drawer.getByText("Nguyễn Văn Đúng", { exact: true }).waitFor();
