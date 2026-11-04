@@ -1,0 +1,1935 @@
+{
+  "createdAt": "2026-11-04T16:22:45.148Z",
+  "entries": [
+    {
+      "path": ".data/backups/reset-20261029052049-5684f0/configuration-and-wallet.tar.gz",
+      "role": "Retained historical evidence",
+      "kind": "unreadable-retained-backup",
+      "protection": "Existing ACL denies reading; content and permissions preserved"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/ordererOrg/ca-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/ordererOrg/msp/keystore/3168399929efcbd25bb92169eab556d5f9e4dffd7ea4597e0554f0263a3c7e6b_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/ordererOrg/msp/keystore/e0f5a06a87206d813b5a39030699f6e22b7dd969bfa932bb04ea67eb61b18c7f_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/ordererOrg/msp/keystore/IssuerRevocationPrivateKey",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/ordererOrg/tls-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "b4ca43b5e24adf5d6cbb0f9a2d7dc5988d955e57c9edbe821b0a0bd8b1e6c54a",
+      "expiresAt": "2027-10-08T11:57:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org1/ca-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org1/msp/keystore/894ee18f06814cd16f12c138a51b27e84c2b4466dc19a9566161634308b5fac4_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org1/msp/keystore/eca2cab389d94565546ecccfe563da51da6e613e9b05b6e8a18ddd8d5de882b7_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org1/msp/keystore/IssuerRevocationPrivateKey",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org1/tls-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "458602b32f4dd5637b0b1fcffede18a251faf288ce2386cbce285d14751539c4",
+      "expiresAt": "2027-10-08T11:57:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org2/ca-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org2/msp/keystore/2099805895a8fb875a8ad8e68730f3802113f5ae39f172cff513325522113b11_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org2/msp/keystore/2e23450f75477746fac5a38c5e4300617884b1c1d1db6424d47e8b7bec31758d_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org2/msp/keystore/IssuerRevocationPrivateKey",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/fabric-ca/org2/tls-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "384ad567b8363fa5152f6bb1d71bd64e3629bf26d1d9c45e428474a3bf29322f",
+      "expiresAt": "2027-10-08T11:57:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/fabric-ca-client-config.yaml",
+      "role": "Fabric node / enrollment",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/msp/keystore/38f945c313889946f6b855426960c1b35d750d63461802315b704b04a12ae2f0_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "6eda067ca9650b15a6075ebbf839499b306b53c5088c047b00232d917a41d872",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/keystore/2d1ce0fad522459548b6135fa79b1294e01d96e3eb12910bca3f1e15c4967c3b_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/signcerts/orderer.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "867f005fd0629234a72dc31aa7dffa633f05f19e78431510b799d95fcb7ce277",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/keystore/a34da851f8319fcd9086463f83a8407da61c34e23881c529668df32bee8ada08_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "5245085018c101a62f985379def090fbb3114a6edf730b2c59767881f7325b3c",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "5245085018c101a62f985379def090fbb3114a6edf730b2c59767881f7325b3c",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/keystore/d98d01376c7ef8c2bcbe1d330224fe31b495c0351680af4bbe0da5cc138b800f_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/signcerts/orderer2.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "da24c93501d44cc39c95a3851cf005f1dcbe7bda4f6aa748dc5ee7c3625cdf61",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/keystore/5d40a09862d46936b2c41e60783e2ad51646321a8ab9b851f776d000b6614573_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "8f3fd309ab58d63c8f5bb7b1a1a9f4c4ee7b5e2084c4ce8e3a6b11967ed68b80",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "8f3fd309ab58d63c8f5bb7b1a1a9f4c4ee7b5e2084c4ce8e3a6b11967ed68b80",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/keystore/5fa50a8fd501c407fc58e709b1158cea221cf5399858f96c0ae576642b586c0c_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/signcerts/orderer3.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "80d359522ec2416e8d5bec927328ffca382323cbbd7759fe324446cbec574b75",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/keystore/4e946b9b1b618c62deccd911ac9c9623246867f2afedf9402350fb2282fa1408_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "859f56156a441be3021f2cd578311ce0743a6f14476ec05aac49d8f74432ebab",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "859f56156a441be3021f2cd578311ce0743a6f14476ec05aac49d8f74432ebab",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/keystore/90e7f2934865d45ac2d23724c657cc56bdd20a69bdf50269959050daeca2f646_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/signcerts/orderer4.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "bbfe4a52bde5c32eb60726da0f008daacc028c124c69c6ccd31f2400f9eb8cee",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/keystore/edd596d3c1505854943b726c89c5f458f39fe919f5f211a0b7263be8476e91c5_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "e3d07f79fa738eb21c3171ccf7dd50d678aed180531d64573bbcc21ddc5ef722",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "e3d07f79fa738eb21c3171ccf7dd50d678aed180531d64573bbcc21ddc5ef722",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/users/Admin@example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/users/Admin@example.com/msp/keystore/0c6ad0f8ff2c14269cb16622c279025b85577ba456707c0184461a4cf83a98fa_sk",
+      "role": "Fabric administrator",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/ordererOrganizations/example.com/users/Admin@example.com/msp/signcerts/cert.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "3c2940309280288b30b6914eef9f6390fe26f94f00f9cffa1e5a250a46e34857",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/fabric-ca-client-config.yaml",
+      "role": "Fabric node / enrollment",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/msp/keystore/41ac81fbef17903e70f73a1f2cc1eb485e243fae1bf0dd481428a32162bb3b2d_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "ced16872d66ab55810512c0d55126de9f9684b6f85589746bf672c9bc934d381",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/msp/tlscacerts/ca.crt",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/keystore/64e88140298a3a9a4418cb12d8c8d754d2931a3694d03a226ab8bd0653675f3e_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "1a105ca0019fe6ad176c129b1d43a8f259d2aba5196ca181fb9382e5c72824e1",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/keystore/b5f51f48b5a60d154bc7b2f5a9df1bf094d5418c229bc0dd3a96811431fadd76_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "d12b8a0f077af078358e4de159af63a5a44f8cc17565fb4054a057701bb153e0",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "d12b8a0f077af078358e4de159af63a5a44f8cc17565fb4054a057701bb153e0",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/tlscacerts/tls-localhost-7054-ca-org1.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/253f117212af8e1846225a4887ee7061ad1bfb626a6a613a83b5e565cfc27258_sk",
+      "role": "Fabric administrator",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "d16806bb6c6aeffdc2a556b17d72f94c3aedc94450fea5361b31aa6a7a9972b1",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/8811ef178df1d9b563b18385738ae3273714a5077f2521497322af26939a6666_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "0eb4b62bb85b2364951a81e471ec75498928868e08c43b9ba2fb9a22e0e6a3e0",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/ca/ca.org2.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/fabric-ca-client-config.yaml",
+      "role": "Fabric node / enrollment",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/msp/keystore/fe55a3bbc6b036864d22a85b6810745f5f80e48a66cbe28e6e326dba0621644a_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "be3e98641a763f2b29ec56d3a8270436ba89b0ed55888668149cb45eacc0e370",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/msp/tlscacerts/ca.crt",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/keystore/315501c5b748fe22838911d5be42061dd03ee8fee1b68fce699d9bc09e703946_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "e5292dc3a20b276d435719ef5a9ebfac1e6a0ec23016138bda8894e09c3f0f21",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/keystore/bb2b34de445af8e04b02b18bdc3a1ba81b790599da3b257958bd31e2fb298abf_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "09023e4087fb2b9e17cbcd58e450c3645ac4259117ebb994b0776f146f90f42f",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "09023e4087fb2b9e17cbcd58e450c3645ac4259117ebb994b0776f146f90f42f",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/tlscacerts/tls-localhost-8054-ca-org2.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/keystore/549445259d5bb4b1b26e6456a136785c61edc6d75b125c94b9cd739c81b167ca_sk",
+      "role": "Fabric administrator",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "53e44d5221b01c5d38a34ac917f3549488170086ac2615750020125420094a06",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/users/User1@org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/users/User1@org2.example.com/msp/keystore/a23e21aea6ef12628b43ba9fd3b75932420ec1b0ee00d6ac1ab2db0848f2bbce_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/fabric-backup-20261015/organizations/peerOrganizations/org2.example.com/users/User1@org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "2c0079f7c4025e385c1882536004ecfa2127ffe4580dedaf6171704d978b2efa",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/signing/demo.env",
+      "role": "Application configuration",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/signing/ORG1-demo-cert.pem",
+      "role": "PDF signing",
+      "kind": "public-certificate",
+      "sha256": "306f7684149b3de4419d70d57bab7b18bf15b37b0eb63dd55b93fe3ca08af399",
+      "expiresAt": "2027-10-22T01:13:24.000Z",
+      "daysRemaining": 351,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/signing/ORG1-demo-key.pem",
+      "role": "PDF signing",
+      "kind": "private-key-file",
+      "protection": "encrypted PEM"
+    },
+    {
+      "path": ".data/signing/ORG2-demo-cert.pem",
+      "role": "PDF signing",
+      "kind": "public-certificate",
+      "sha256": "51af3c4706b974e99e80b3d0a9d036e49c6439a4f0bef170a1fad80dd30aba6d",
+      "expiresAt": "2027-10-22T01:13:24.000Z",
+      "daysRemaining": 351,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/signing/ORG2-demo-key.pem",
+      "role": "PDF signing",
+      "kind": "private-key-file",
+      "protection": "encrypted PEM"
+    },
+    {
+      "path": ".data/signing/pki-v2/CA-cert.pem",
+      "role": "PDF CA / timestamp authority",
+      "kind": "public-certificate",
+      "sha256": "c6b01c0b0abf00f714870d883bdd4e687373dc57b54c02144df3d939527e6c23",
+      "expiresAt": "2031-10-21T02:22:01.000Z",
+      "daysRemaining": 1811,
+      "selfSigned": true
+    },
+    {
+      "path": ".data/signing/pki-v2/CA-key.pem",
+      "role": "PDF CA / timestamp authority",
+      "kind": "private-key-file",
+      "protection": "encrypted PEM"
+    },
+    {
+      "path": ".data/signing/pki-v2/identities.json",
+      "role": "PDF signing",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/signing/pki-v2/ORG1-cert.pem",
+      "role": "PDF signing",
+      "kind": "public-certificate",
+      "sha256": "a0f09c4bb7b8d05b3af95278f4016075ad9bb5ab64bf66d6fdb6479c7fb0f778",
+      "expiresAt": "2028-10-21T02:22:01.000Z",
+      "daysRemaining": 716,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/signing/pki-v2/ORG1-key.pem",
+      "role": "PDF signing",
+      "kind": "private-key-file",
+      "protection": "encrypted PEM"
+    },
+    {
+      "path": ".data/signing/pki-v2/ORG2-cert.pem",
+      "role": "PDF signing",
+      "kind": "public-certificate",
+      "sha256": "f4f713c0e0a8dfa87120c469e50bbd696f08365c0810e0f632d2dac74b5ad8ee",
+      "expiresAt": "2028-10-21T02:22:01.000Z",
+      "daysRemaining": 716,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/signing/pki-v2/ORG2-key.pem",
+      "role": "PDF signing",
+      "kind": "private-key-file",
+      "protection": "encrypted PEM"
+    },
+    {
+      "path": ".data/signing/pki-v2/settings.json",
+      "role": "PDF signing",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".data/signing/pki-v2/TSA-cert.pem",
+      "role": "PDF CA / timestamp authority",
+      "kind": "public-certificate",
+      "sha256": "4d0c58f6b721d3f4b8436fce4d9febaaa7f24376997614bcecdb278fc392affa",
+      "expiresAt": "2028-10-21T02:22:01.000Z",
+      "daysRemaining": 716,
+      "selfSigned": false
+    },
+    {
+      "path": ".data/signing/pki-v2/TSA-key.pem",
+      "role": "PDF CA / timestamp authority",
+      "kind": "private-key-file",
+      "protection": "encrypted PEM"
+    },
+    {
+      "path": ".env.infrastructure",
+      "role": "Application configuration",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": ".fabric-ca-client/fabric-ca-client-config.yaml",
+      "role": "Fabric node / enrollment",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "apps/api/.env",
+      "role": "Application configuration",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "apps/api/.env.database",
+      "role": "Application configuration",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "apps/web/.env.local",
+      "role": "Application configuration",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/ordererOrg/ca-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/ordererOrg/msp/keystore/3168399929efcbd25bb92169eab556d5f9e4dffd7ea4597e0554f0263a3c7e6b_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/ordererOrg/msp/keystore/e0f5a06a87206d813b5a39030699f6e22b7dd969bfa932bb04ea67eb61b18c7f_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/ordererOrg/msp/keystore/IssuerRevocationPrivateKey",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/ordererOrg/tls-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "b4ca43b5e24adf5d6cbb0f9a2d7dc5988d955e57c9edbe821b0a0bd8b1e6c54a",
+      "expiresAt": "2027-10-08T11:57:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org1/ca-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org1/msp/keystore/894ee18f06814cd16f12c138a51b27e84c2b4466dc19a9566161634308b5fac4_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org1/msp/keystore/eca2cab389d94565546ecccfe563da51da6e613e9b05b6e8a18ddd8d5de882b7_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org1/msp/keystore/IssuerRevocationPrivateKey",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org1/tls-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "458602b32f4dd5637b0b1fcffede18a251faf288ce2386cbce285d14751539c4",
+      "expiresAt": "2027-10-08T11:57:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org2/ca-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org2/msp/keystore/2099805895a8fb875a8ad8e68730f3802113f5ae39f172cff513325522113b11_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org2/msp/keystore/2e23450f75477746fac5a38c5e4300617884b1c1d1db6424d47e8b7bec31758d_sk",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org2/msp/keystore/IssuerRevocationPrivateKey",
+      "role": "Fabric CA / TLS CA",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/fabric-ca/org2/tls-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "384ad567b8363fa5152f6bb1d71bd64e3629bf26d1d9c45e428474a3bf29322f",
+      "expiresAt": "2027-10-08T11:57:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/fabric-ca-client-config.yaml",
+      "role": "Fabric node / enrollment",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/msp/keystore/38f945c313889946f6b855426960c1b35d750d63461802315b704b04a12ae2f0_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "6eda067ca9650b15a6075ebbf839499b306b53c5088c047b00232d917a41d872",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/keystore/2d1ce0fad522459548b6135fa79b1294e01d96e3eb12910bca3f1e15c4967c3b_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/signcerts/orderer.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "867f005fd0629234a72dc31aa7dffa633f05f19e78431510b799d95fcb7ce277",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/keystore/a34da851f8319fcd9086463f83a8407da61c34e23881c529668df32bee8ada08_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "5245085018c101a62f985379def090fbb3114a6edf730b2c59767881f7325b3c",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "5245085018c101a62f985379def090fbb3114a6edf730b2c59767881f7325b3c",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/keystore/d98d01376c7ef8c2bcbe1d330224fe31b495c0351680af4bbe0da5cc138b800f_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/signcerts/orderer2.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "da24c93501d44cc39c95a3851cf005f1dcbe7bda4f6aa748dc5ee7c3625cdf61",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/keystore/5d40a09862d46936b2c41e60783e2ad51646321a8ab9b851f776d000b6614573_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "8f3fd309ab58d63c8f5bb7b1a1a9f4c4ee7b5e2084c4ce8e3a6b11967ed68b80",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "8f3fd309ab58d63c8f5bb7b1a1a9f4c4ee7b5e2084c4ce8e3a6b11967ed68b80",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/keystore/5fa50a8fd501c407fc58e709b1158cea221cf5399858f96c0ae576642b586c0c_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/signcerts/orderer3.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "80d359522ec2416e8d5bec927328ffca382323cbbd7759fe324446cbec574b75",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/keystore/4e946b9b1b618c62deccd911ac9c9623246867f2afedf9402350fb2282fa1408_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "859f56156a441be3021f2cd578311ce0743a6f14476ec05aac49d8f74432ebab",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "859f56156a441be3021f2cd578311ce0743a6f14476ec05aac49d8f74432ebab",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/keystore/90e7f2934865d45ac2d23724c657cc56bdd20a69bdf50269959050daeca2f646_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/signcerts/orderer4.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "bbfe4a52bde5c32eb60726da0f008daacc028c124c69c6ccd31f2400f9eb8cee",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/tlscacerts/tlsca.example.com-cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/keystore/edd596d3c1505854943b726c89c5f458f39fe919f5f211a0b7263be8476e91c5_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "e3d07f79fa738eb21c3171ccf7dd50d678aed180531d64573bbcc21ddc5ef722",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "e3d07f79fa738eb21c3171ccf7dd50d678aed180531d64573bbcc21ddc5ef722",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/tlscacerts/tls-localhost-9054-ca-orderer.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/users/Admin@example.com/msp/cacerts/localhost-9054-ca-orderer.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "918433bb9ec8c4dc0fb69d6168556a49bac16aa872cf12e5c98b8212f3303e04",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/users/Admin@example.com/msp/keystore/0c6ad0f8ff2c14269cb16622c279025b85577ba456707c0184461a4cf83a98fa_sk",
+      "role": "Fabric administrator",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/ordererOrganizations/example.com/users/Admin@example.com/msp/signcerts/cert.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "3c2940309280288b30b6914eef9f6390fe26f94f00f9cffa1e5a250a46e34857",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/fabric-ca-client-config.yaml",
+      "role": "Fabric node / enrollment",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/msp/keystore/41ac81fbef17903e70f73a1f2cc1eb485e243fae1bf0dd481428a32162bb3b2d_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "ced16872d66ab55810512c0d55126de9f9684b6f85589746bf672c9bc934d381",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/msp/tlscacerts/ca.crt",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/keystore/64e88140298a3a9a4418cb12d8c8d754d2931a3694d03a226ab8bd0653675f3e_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "1a105ca0019fe6ad176c129b1d43a8f259d2aba5196ca181fb9382e5c72824e1",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/keystore/b5f51f48b5a60d154bc7b2f5a9df1bf094d5418c229bc0dd3a96811431fadd76_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "d12b8a0f077af078358e4de159af63a5a44f8cc17565fb4054a057701bb153e0",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "d12b8a0f077af078358e4de159af63a5a44f8cc17565fb4054a057701bb153e0",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/tlscacerts/tls-localhost-7054-ca-org1.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/253f117212af8e1846225a4887ee7061ad1bfb626a6a613a83b5e565cfc27258_sk",
+      "role": "Fabric administrator",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "d16806bb6c6aeffdc2a556b17d72f94c3aedc94450fea5361b31aa6a7a9972b1",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/8811ef178df1d9b563b18385738ae3273714a5077f2521497322af26939a6666_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "0eb4b62bb85b2364951a81e471ec75498928868e08c43b9ba2fb9a22e0e6a3e0",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/ca/ca.org2.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/fabric-ca-client-config.yaml",
+      "role": "Fabric node / enrollment",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/msp/keystore/fe55a3bbc6b036864d22a85b6810745f5f80e48a66cbe28e6e326dba0621644a_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "be3e98641a763f2b29ec56d3a8270436ba89b0ed55888668149cb45eacc0e370",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/msp/tlscacerts/ca.crt",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/keystore/315501c5b748fe22838911d5be42061dd03ee8fee1b68fce699d9bc09e703946_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "e5292dc3a20b276d435719ef5a9ebfac1e6a0ec23016138bda8894e09c3f0f21",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/keystore/bb2b34de445af8e04b02b18bdc3a1ba81b790599da3b257958bd31e2fb298abf_sk",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/server.crt",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "09023e4087fb2b9e17cbcd58e450c3645ac4259117ebb994b0776f146f90f42f",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/server.key",
+      "role": "Fabric node TLS",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/signcerts/cert.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "09023e4087fb2b9e17cbcd58e450c3645ac4259117ebb994b0776f146f90f42f",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/tlscacerts/tls-localhost-8054-ca-org2.pem",
+      "role": "Fabric node TLS",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem",
+      "role": "Fabric CA / TLS CA",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/keystore/549445259d5bb4b1b26e6456a136785c61edc6d75b125c94b9cd739c81b167ca_sk",
+      "role": "Fabric administrator",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric administrator",
+      "kind": "public-certificate",
+      "sha256": "53e44d5221b01c5d38a34ac917f3549488170086ac2615750020125420094a06",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/users/User1@org2.example.com/msp/cacerts/localhost-8054-ca-org2.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "389e4db52cebcff62aa2068c5b3899940519871efe4b723ac820fe481f56752f",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/users/User1@org2.example.com/msp/keystore/a23e21aea6ef12628b43ba9fd3b75932420ec1b0ee00d6ac1ab2db0848f2bbce_sk",
+      "role": "Fabric node / enrollment",
+      "kind": "private-key-file",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "blockchain-network/organizations/peerOrganizations/org2.example.com/users/User1@org2.example.com/msp/signcerts/cert.pem",
+      "role": "Fabric node / enrollment",
+      "kind": "public-certificate",
+      "sha256": "2c0079f7c4025e385c1882536004ecfa2127ffe4580dedaf6171704d978b2efa",
+      "expiresAt": "2027-10-08T12:02:00.000Z",
+      "daysRemaining": 337,
+      "selfSigned": false
+    },
+    {
+      "path": "wallet/issuer-org1-msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric application identity",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "wallet/issuer-org1-msp/cacerts/localhost-7054-ca-org1.pem",
+      "role": "Fabric application identity",
+      "kind": "public-certificate",
+      "sha256": "3410df31e1c9f78379032cc6a8e766fe060ee9f00293007be713ae4f0a526eaa",
+      "expiresAt": "2041-10-04T11:57:00.000Z",
+      "daysRemaining": 5447,
+      "selfSigned": true
+    },
+    {
+      "path": "wallet/issuer-org1-msp/config.yaml",
+      "role": "Fabric application identity",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "wallet/issuer-org1-msp/IssuerPublicKey",
+      "role": "Fabric application identity",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "wallet/issuer-org1-msp/IssuerRevocationPublicKey",
+      "role": "Fabric application identity",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "wallet/issuer-org1-msp/keystore/afc40090dcf56ebc37fdd2964fd304d7c078d318c8e88b80bde6731c8ae99c0c_sk",
+      "role": "Fabric application identity",
+      "kind": "secret-configuration",
+      "protection": "Windows DPAPI CurrentUser"
+    },
+    {
+      "path": "wallet/issuer-org1-msp/signcerts/cert.pem",
+      "role": "Fabric application identity",
+      "kind": "secret-configuration",
+      "protection": "plaintext; ACL required"
+    },
+    {
+      "path": "wallet/issuer-org1-msp/signcerts/cert.pem",
+      "role": "Fabric application identity",
+      "kind": "public-certificate",
+      "sha256": "adda8749847d2e8a1ced307d1dedf0919b6e0eb2b7012bcba07f72e5c8b5678f",
+      "expiresAt": "2027-10-15T05:44:00.000Z",
+      "daysRemaining": 344,
+      "selfSigned": false
+    },
+    {
+      "path": "wallet/issuer-org1.json",
+      "role": "Fabric application identity",
+      "kind": "secret-configuration",
+      "protection": "Windows DPAPI CurrentUser"
+    },
+    {
+      "path": "wallet/issuer-org1.json",
+      "role": "Fabric application identity",
+      "kind": "public-certificate",
+      "sha256": "adda8749847d2e8a1ced307d1dedf0919b6e0eb2b7012bcba07f72e5c8b5678f",
+      "expiresAt": "2027-10-15T05:44:00.000Z",
+      "daysRemaining": 344,
+      "selfSigned": false
+    }
+  ],
+  "note": "Public metadata only. File copies are not distinct cryptographic identities. Private values are intentionally excluded."
+}

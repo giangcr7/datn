@@ -6,9 +6,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as grpc from '@grpc/grpc-js';
 import { connect, signers, Gateway } from '@hyperledger/fabric-gateway';
-import { createPrivateKey } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { loadFabricWallet } from './fabric-wallet';
 
 @Injectable()
 export class FabricService implements OnModuleDestroy {
@@ -54,7 +54,23 @@ export class FabricService implements OnModuleDestroy {
         'tlsca',
         'tlsca.' + domain + '-cert.pem',
       );
-    const wallet = JSON.parse(readFileSync(walletPath, 'utf8'));
+    let wallet: ReturnType<typeof loadFabricWallet>;
+    try {
+      wallet = loadFabricWallet(walletPath, {
+        expectedMspId: mspId,
+        certificateSha256: this.config.get<string>(
+          prefix + '_WALLET_CERT_SHA256',
+        ),
+        allowLegacy:
+          this.config.get<string>('NODE_ENV', 'development') !== 'production' &&
+          String(this.config.get('FABRIC_ALLOW_LEGACY_WALLET', 'false')) ===
+            'true',
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Không mở được danh tính blockchain; kiểm tra tài khoản hệ điều hành, wallet và chứng thư đã cấu hình',
+      );
+    }
     const credentials = grpc.credentials.createSsl(readFileSync(tlsPath));
     const client = new grpc.Client(
       this.config.get<string>(prefix + '_PEER_ENDPOINT') ||
@@ -79,11 +95,9 @@ export class FabricService implements OnModuleDestroy {
         client,
         identity: {
           mspId,
-          credentials: Buffer.from(wallet.credentials.certificate),
+          credentials: wallet.certificate,
         },
-        signer: signers.newPrivateKeySigner(
-          createPrivateKey(wallet.credentials.privateKey),
-        ),
+        signer: signers.newPrivateKeySigner(wallet.privateKey),
         evaluateOptions: () => ({ deadline: Date.now() + 10000 }),
         endorseOptions: () => ({ deadline: Date.now() + 30000 }),
         submitOptions: () => ({ deadline: Date.now() + 30000 }),
@@ -97,6 +111,16 @@ export class FabricService implements OnModuleDestroy {
     }
   }
 
+  execute(
+    action: 'evaluate',
+    transaction: string,
+    ...args: string[]
+  ): Promise<{ result: Record<string, any> }>;
+  execute(
+    action: 'submit',
+    transaction: string,
+    ...args: string[]
+  ): Promise<{ txId: string; blockNumber: string; payload: string }>;
   execute(
     action: 'submit' | 'evaluate',
     transaction: string,
@@ -121,7 +145,7 @@ export class FabricService implements OnModuleDestroy {
           new TextDecoder().decode(
             await contract.evaluateTransaction(transaction, ...args),
           ),
-        ),
+        ) as Record<string, any>,
       };
     const endorsed = await contract
       .newProposal(transaction, {

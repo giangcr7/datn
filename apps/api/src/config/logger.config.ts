@@ -1,6 +1,11 @@
 import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
 import * as winston from 'winston';
 import 'winston-daily-rotate-file';
+import { redactLogValue } from '../security/log-redaction';
+
+const redactionFormat = winston.format(
+  (info) => redactLogValue(info) as typeof info,
+);
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -10,6 +15,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const level = process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug');
 
 const fileFormat = winston.format.combine(
+  redactionFormat(),
   winston.format.timestamp(),
   winston.format.json(),
 );
@@ -19,6 +25,7 @@ export const winstonConfig = {
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(
+        redactionFormat(),
         winston.format.timestamp(),
         nestWinstonModuleUtilities.format.nestLike('DiplomaChain', {
           prettyPrint: true,

@@ -53,6 +53,11 @@ Desktop.ini
 # Misc
 .DS_Store
 *.pem
+*.p12
+*.pfx
+*.key
+*.dpapi
+*.keybackup
 wallet/
 logs/
 dist/

@@ -1,5 +1,18 @@
 import * as Joi from 'joi';
 
+type SecurityEnvironment = Record<string, unknown> & {
+  NODE_ENV?: string;
+  FABRIC_ALLOW_LEGACY_WALLET?: boolean;
+  PDF_SIGNING_MODE?: string;
+  PDF_PKI_ENABLED?: boolean;
+  PDF_TSA_URL: string;
+  PDF_PKI_ALLOWED_HOSTS: string;
+  NODE_TLS_REJECT_UNAUTHORIZED?: string;
+  FABRIC_TLS_SKIP_VERIFY?: string;
+  STORAGE_DRIVER?: string;
+  STORAGE_S3_BUCKET?: string;
+};
+
 export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
@@ -11,6 +24,15 @@ export const envValidationSchema = Joi.object({
   EMAIL_PASS: Joi.string().allow('').optional(),
   EMAIL_FROM: Joi.string().allow('').optional(),
   FABRIC_ENABLED: Joi.boolean().default(false),
+  FABRIC_ALLOW_LEGACY_WALLET: Joi.boolean().default(false),
+  ORG1_WALLET_CERT_SHA256: Joi.string()
+    .allow('')
+    .pattern(/^[0-9a-f]{64}$/i)
+    .optional(),
+  ORG2_WALLET_CERT_SHA256: Joi.string()
+    .allow('')
+    .pattern(/^[0-9a-f]{64}$/i)
+    .optional(),
   FABRIC_NETWORK_BASE: Joi.string().when('FABRIC_ENABLED', {
     is: true,
     then: Joi.required(),
@@ -48,7 +70,11 @@ export const envValidationSchema = Joi.object({
   NODE_TLS_REJECT_UNAUTHORIZED: Joi.string().optional(),
 })
   .unknown(true)
-  .custom((value, helpers) => {
+  .custom((value: SecurityEnvironment, helpers) => {
+    if (value.NODE_ENV === 'production' && value.FABRIC_ALLOW_LEGACY_WALLET)
+      return helpers.message({
+        custom: 'Production requires a protected Fabric wallet',
+      });
     if (value.NODE_ENV === 'production' && value.PDF_SIGNING_MODE === 'demo')
       return helpers.message({
         custom: 'Không sử dụng chứng thư PDF demo trên production',
@@ -66,7 +92,11 @@ export const envValidationSchema = Joi.object({
           return helpers.message({
             custom: 'Thiếu cấu hình chứng thư PDF ' + prefix,
           });
-        if (!/^[0-9a-f]{64}$/i.test(value['PDF_' + prefix + '_CERT_SHA256']))
+        if (
+          !/^[0-9a-f]{64}$/i.test(
+            String(value['PDF_' + prefix + '_CERT_SHA256']),
+          )
+        )
           return helpers.message({
             custom: 'Fingerprint chứng thư PDF phải là SHA-256 (64 hex)',
           });

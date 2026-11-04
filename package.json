@@ -7,7 +7,10 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-workspace.ps1"
+    "clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-workspace.ps1",
+    "keys:inventory": "node scripts/manage-keys.mjs inventory",
+    "keys:audit": "node scripts/manage-keys.mjs audit",
+    "test:keys": "npm run build -w api && npm run build -w educert-chaincode && npm test -w api -- --runInBand --no-cache security/ && node scripts/test-key-custody.mjs"
   },
   "devDependencies": {
     "mongodb-memory-server": "^11.3.0",
