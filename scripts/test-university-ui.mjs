@@ -17,6 +17,11 @@ function check(label, condition) {
 }
 let pathname = "/search";
 const load = createWebLoader({
+  "next-auth/react": {
+    useSession: () => ({ data: null, status: "unauthenticated" }),
+    signIn: async () => ({ ok: true }),
+    signOut: async () => {},
+  },
   "next/navigation": {
     usePathname: () => pathname,
     useRouter: () => ({ push() {}, replace() {}, refresh() {} }),
@@ -39,8 +44,9 @@ for (const [section, href] of [
 ]) {
   const html = markup(UniversityHeader, { active: section });
   check(
-    "one active navigation item: " + section,
-    (html.match(/aria-current="page"/g) || []).length === 1,
+    "active destination in desktop and compact navigation: " + section,
+    (html.match(/aria-current="page"/g) || []).length ===
+      (section === "account" ? 2 : 1),
   );
   check(
     "active destination: " + href,
@@ -236,10 +242,24 @@ check(
   ),
 );
 check(
-  "mobile sidebar overrides desktop sticky positioning",
-  /@media \(max-width: 991px\)\s*\{\s*\.shell \.sidebar\s*\{\s*position: fixed/.test(
-    workspaceCss,
-  ),
+  "mobile sidebar does not reserve desktop space",
+  postcss
+    .parse(workspaceCss)
+    .nodes.some(
+      (node) =>
+        node.type === "atrule" &&
+        node.name === "media" &&
+        node.params === "(max-width: 991px)" &&
+        node.nodes.some(
+          (rule) =>
+            rule.type === "rule" &&
+            rule.selectors.includes(".shell .sidebar") &&
+            rule.nodes.some(
+              (declaration) =>
+                declaration.prop === "display" && declaration.value === "none",
+            ),
+        ),
+    ),
 );
 check(
   "table overflow is contained",

@@ -227,10 +227,36 @@
   .launcher {
     right: 16px;
     bottom: max(16px, env(safe-area-inset-bottom));
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .launcher > :global(span:not(.ant-btn-icon)) {
+    display: none;
   }
   .messages,
   .notice,
   .composer {
     padding-inline: 16px;
+  }
+
+  .suggestions button,
+  .followUpQuestions button {
+    min-height: 44px;
+  }
+
+  .actions {
+    gap: 8px;
+    margin-top: 22px;
+  }
+
+  .actions > span {
+    flex-basis: 100%;
+  }
+
+  .actions > button {
+    width: 100%;
   }
 }

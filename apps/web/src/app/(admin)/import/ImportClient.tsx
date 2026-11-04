@@ -371,6 +371,7 @@ export default function ImportClient({
             </Typography.Text>
             <Table
               rowKey="sheetName"
+              scroll={{ x: 560 }}
               pagination={false}
               className="mt-3"
               dataSource={Object.entries(preview.summary.bySheet).map(

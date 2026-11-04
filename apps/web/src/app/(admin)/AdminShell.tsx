@@ -36,6 +36,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { UniversityBrand } from "@/components/UniversityChrome";
 import NotificationBell from "@/components/NotificationBell";
+import MobileNavigation from "@/components/MobileNavigation";
 import styles from "@/styles/workspace.module.css";
 import {
   canAccessWorkspacePath,
@@ -66,7 +67,7 @@ export default function AdminShell({
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobile, setMobile] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const workspace = getWorkspace(user);
@@ -118,24 +119,21 @@ export default function AdminShell({
     },
   ];
 
+  const navigate = ({ key }: { key: string }) => {
+    router.push(key);
+    setMenuOpen(false);
+  };
+
   return (
     <Layout className={styles.shell}>
       <a className={styles.skipLink} href="#workspace-content">
         Chuyển đến nội dung chính
       </a>
-      {mobile && !collapsed && (
-        <button
-          className={styles.scrim}
-          aria-label="Đóng menu"
-          onClick={() => setCollapsed(true)}
-        />
-      )}
       <Sider
         collapsed={collapsed}
         onCollapse={setCollapsed}
-        onBreakpoint={setMobile}
-        breakpoint="lg"
-        collapsedWidth={mobile ? 0 : 72}
+        trigger={null}
+        collapsedWidth={72}
         width={272}
         className={styles.sidebar}
       >
@@ -152,30 +150,56 @@ export default function AdminShell({
           />
           {!collapsed && <span>QUẢN LÝ VĂN BẰNG</span>}
         </Link>
+        <nav id="workspace-desktop-navigation" aria-label="Menu quản lý">
+          <Menu
+            mode="inline"
+            selectedKeys={[pathname]}
+            defaultOpenKeys={["group:/diploma-records"]}
+            items={menuItems}
+            onClick={navigate}
+            className={styles.menu}
+          />
+        </nav>
+      </Sider>
+      <MobileNavigation
+        id="workspace-mobile-navigation"
+        title="Menu quản lý"
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+      >
         <Menu
           mode="inline"
           selectedKeys={[pathname]}
           defaultOpenKeys={["group:/diploma-records"]}
           items={menuItems}
-          onClick={({ key }) => {
-            router.push(key);
-            if (mobile) setCollapsed(true);
-          }}
-          className={styles.menu}
+          onClick={navigate}
         />
-      </Sider>
+      </MobileNavigation>
       <Layout style={{ minWidth: 0 }}>
         <Header className={styles.header}>
           <div className={styles.identity}>
             <Button
               aria-label={collapsed ? "Mở menu" : "Thu gọn menu"}
+              aria-expanded={!collapsed}
+              aria-controls="workspace-desktop-navigation"
+              className={styles.desktopToggle}
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
             />
+            <Button
+              aria-label="Mở menu quản lý"
+              aria-haspopup="dialog"
+              aria-expanded={menuOpen}
+              aria-controls="workspace-mobile-navigation"
+              type="text"
+              className={styles.mobileToggle}
+              icon={<MenuUnfoldOutlined />}
+              onClick={() => setMenuOpen(true)}
+            />
             <UniversityBrand compact />
           </div>
-          <Space size="middle" wrap>
+          <Space size={8} className={styles.headerActions}>
             <NotificationBell />
             <Link
               href="/verify"
@@ -202,7 +226,7 @@ export default function AdminShell({
                   style={{ background: "var(--school-primary)" }}
                   icon={<UserOutlined />}
                 />
-                <span>Tài khoản</span>
+                <span className={styles.accountLabel}>Tài khoản</span>
               </Button>
             </Dropdown>
           </Space>

@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Layout, Menu } from "antd";
+import React, { useState } from "react";
+import { Button, Layout, Menu } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/components/UniversityChrome";
 import styles from "@/styles/workspace.module.css";
 import NotificationBell from "@/components/NotificationBell";
+import MobileNavigation from "@/components/MobileNavigation";
 import portalStyles from "@/styles/university-portal.module.css";
 import {
   DashboardOutlined,
@@ -17,6 +18,7 @@ import {
   UserOutlined,
   SearchOutlined,
   FormOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 
 const { Content } = Layout;
@@ -28,6 +30,7 @@ export default function StudentShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // 1. Cấu hình lại Menu dành riêng cho Sinh viên đã đăng nhập
   const menuItems = [
@@ -61,6 +64,7 @@ export default function StudentShell({
 
   // 2. Xử lý điều hướng và Đăng xuất
   const handleMenuClick = ({ key }: { key: string }) => {
+    setMenuOpen(false);
     if (key === "logout") {
       // Hủy phiên đăng nhập và đưa người dùng về trang chủ hoặc trang Login Sinh viên
       signOut({ callbackUrl: "/login?type=student" });
@@ -78,6 +82,18 @@ export default function StudentShell({
         <UniversityMasthead />
         <nav className={styles.studentNav} aria-label="Điều hướng sinh viên">
           <div className={styles.studentNavInner}>
+            <Button
+              type="text"
+              className={styles.studentMobileToggle}
+              icon={<MenuOutlined />}
+              aria-label="Mở menu sinh viên"
+              aria-haspopup="dialog"
+              aria-expanded={menuOpen}
+              aria-controls="student-mobile-navigation"
+              onClick={() => setMenuOpen(true)}
+            >
+              Menu sinh viên
+            </Button>
             <Menu
               theme="dark"
               mode="horizontal"
@@ -90,6 +106,19 @@ export default function StudentShell({
           </div>
         </nav>
       </header>
+      <MobileNavigation
+        id="student-mobile-navigation"
+        title="Menu sinh viên"
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+      >
+        <Menu
+          mode="inline"
+          selectedKeys={[pathname]}
+          items={menuItems}
+          onClick={handleMenuClick}
+        />
+      </MobileNavigation>
       <Content id="student-content" tabIndex={-1} className={styles.content}>
         {children}
       </Content>

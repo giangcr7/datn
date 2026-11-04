@@ -390,6 +390,7 @@ export default function DiplomaAssistant() {
               ref={input}
               value={question}
               maxLength={800}
+              enterKeyHint="send"
               showCount
               autoSize={{ minRows: 2, maxRows: 5 }}
               onChange={(event) => setQuestion(event.target.value)}

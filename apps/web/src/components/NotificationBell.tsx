@@ -137,7 +137,7 @@ export default function NotificationBell({
         title="Thông báo công việc"
         open={open}
         onClose={() => setOpen(false)}
-        width={480}
+        size="min(480px, 100vw)"
       >
         <Space
           style={{

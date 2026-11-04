@@ -1,5 +1,6 @@
 .shell {
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--school-ink);
   background: var(--school-background);
 }
@@ -24,6 +25,7 @@
   top: 0;
   z-index: 100;
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   border-top: 3px solid var(--school-primary);
   border-inline-end: 1px solid var(--school-border);
@@ -89,12 +91,13 @@
   padding: 6px 8px;
 }
 
-.scrim {
-  position: fixed;
-  z-index: 99;
-  inset: 0;
-  border: 0;
-  background: #16345966;
+.shell .mobileToggle,
+.studentNav .studentMobileToggle {
+  display: none;
+}
+
+.headerActions {
+  flex-shrink: 0;
 }
 
 .studentHeader {
@@ -134,24 +137,52 @@
 }
 
 @media (max-width: 991px) {
-  .shell .sidebar {
-    position: fixed;
-    inset-inline-start: 0;
+  .shell .sidebar,
+  .shell .desktopToggle,
+  .studentNav .studentMenu {
+    display: none;
+  }
+  .shell .mobileToggle,
+  .studentNav .studentMobileToggle {
+    display: inline-flex;
+  }
+  .studentNav .studentMobileToggle {
+    min-height: 48px;
+    color: #ffffff;
+  }
+  .studentNavInner {
+    justify-content: space-between;
+    padding-inline: 12px;
+  }
+  .shell .header {
+    flex-wrap: nowrap;
+    min-height: 72px;
+    gap: 8px;
+  }
+  .identity {
+    flex: 1;
   }
 }
 
 @media (max-width: 640px) {
   .shell .header {
     gap: 8px;
-    padding: 12px 16px;
+    padding: 10px 12px;
   }
   .identity {
     gap: 4px;
   }
-  .publicAction {
+  .publicAction,
+  .accountLabel {
     display: none;
   }
-  .studentNav .studentMenu {
-    line-height: 44px;
+  .header .account {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
   }
 }

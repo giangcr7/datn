@@ -99,6 +99,7 @@ export default function UserTable({ data }: UserTableProps) {
 
       <Table
         columns={columns}
+        scroll={{ x: 800 }}
         dataSource={filteredData}
         bordered
         pagination={{

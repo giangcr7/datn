@@ -91,4 +91,31 @@
   .accountPanel {
     padding: 20px 18px;
   }
+
+  .panel :global(.ant-tabs-nav-list),
+  .accountPanel :global(.ant-tabs-nav-list) {
+    width: 100%;
+  }
+
+  .panel :global(.ant-tabs-tab),
+  .accountPanel :global(.ant-tabs-tab) {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 0;
+    min-height: 48px;
+    margin-inline: 0;
+    padding-inline: 6px;
+  }
+
+  .panel :global(.ant-tabs-tab-btn),
+  .accountPanel :global(.ant-tabs-tab-btn) {
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .accountPanel :global(.ant-space-compact > .ant-input-affix-wrapper) {
+    min-width: 0;
+  }
 }

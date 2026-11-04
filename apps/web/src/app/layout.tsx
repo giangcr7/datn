@@ -1,4 +1,5 @@
 import React from "react";
+import type { Viewport } from "next";
 import localFont from "next/font/local";
 import ThemeRegistry from "./ThemeRegistry";
 import { schoolColors } from "@/lib/school-theme";
@@ -29,6 +30,12 @@ export const metadata = {
   icons: {
     icon: "/logo-tlu.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

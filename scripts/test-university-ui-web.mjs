@@ -12,13 +12,16 @@ import {
   unlink,
 } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { encode } from "next-auth/jwt";
+import { runMobileUiChecks } from "./lib/mobile-ui-checks.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+const webRequire = createRequire(join(root, "apps/web/package.json"));
 const temporary = await mkdtemp(join(tmpdir(), "diplomachain-university-ui-"));
 const web = join(temporary, "apps/web");
 const links = [];
@@ -48,7 +51,42 @@ const backend = createServer((request, response) => {
         forwardedQuery: new URL(request.url, "http://fixture.invalid").search,
       }),
     );
-  } else if (request.url === "/auth/users") response.end("[]");
+  } else if (request.url === "/catalog/programs")
+    response.end(
+      JSON.stringify([
+        {
+          id: "ui-program",
+          code: "UI001",
+          name: "Công nghệ thông tin và quản lý dữ liệu văn bằng",
+          nameEn: "Information Technology and Diploma Data Management",
+          nationalCode: "7480201",
+          active: true,
+          aliases: [
+            {
+              id: "ui-alias",
+              originalName: "CNTT",
+              createdAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        },
+      ]),
+    );
+  else if (request.url === "/auth/users")
+    response.end(
+      JSON.stringify([
+        {
+          id: "ui-user",
+          displayName: "Tài khoản kiểm thử giao diện biệt lập",
+          email: "isolated-ui-account@example.test",
+          memberships: [{ role: "UNIVERSITY" }],
+          active: true,
+        },
+      ]),
+    );
+  else if (request.url?.startsWith("/imports?"))
+    response.end(JSON.stringify({ data: [], total: 0 }));
+  else if (request.url === "/inbox")
+    response.end(JSON.stringify({ unread: 0, items: [] }));
   else if (request.url?.startsWith("/students"))
     response.end(JSON.stringify({ data: [] }));
   else if (request.url?.startsWith("/cert/student/")) response.end("[]");
@@ -144,46 +182,67 @@ try {
   await link(join(root, "node_modules"), join(temporary, "node_modules"));
   await mkdir(join(web, "node_modules"), { recursive: true });
   await cp(
-    join(root, "apps/web/node_modules/next"),
+    dirname(webRequire.resolve("next/package.json")),
     join(web, "node_modules/next"),
     { recursive: true },
   );
-  for (const name of ["@next", "@types", "react", "react-dom"])
+  for (const [name, packageName] of [
+    ["@next", "@next/env"],
+    ["@types", "@types/react"],
+    ["react", "react"],
+    ["react-dom", "react-dom"],
+  ]) {
+    const packageDirectory = dirname(
+      webRequire.resolve(packageName + "/package.json"),
+    );
     await link(
-      join(root, "apps/web/node_modules", name),
+      name.startsWith("@") ? dirname(packageDirectory) : packageDirectory,
       join(web, "node_modules", name),
     );
-  child = spawn(
-    process.execPath,
-    [
-      join(web, "node_modules/next/dist/bin/next"),
-      "dev",
-      "--webpack",
-      "--hostname",
-      "127.0.0.1",
-      "--port",
-      String(port),
-    ],
-    {
-      cwd: web,
-      env: {
-        ...process.env,
-        NEXTAUTH_SECRET: secret,
-        NEXTAUTH_URL: base,
-        API_URL: "http://127.0.0.1:" + backendPort,
-        NEXT_PUBLIC_API_URL: "http://127.0.0.1:" + backendPort,
-        NEXT_TELEMETRY_DISABLED: "1",
-        AI_ASSISTANT_ENABLED: "false",
-        AI_API_KEY: "",
-      },
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"],
+  }
+  const serverOptions = {
+    cwd: web,
+    env: {
+      ...process.env,
+      NEXTAUTH_SECRET: secret,
+      NEXTAUTH_URL: base,
+      API_URL: "http://127.0.0.1:" + backendPort,
+      NEXT_PUBLIC_API_URL: "http://127.0.0.1:" + backendPort,
+      NEXT_TELEMETRY_DISABLED: "1",
+      AI_ASSISTANT_ENABLED: "false",
+      AI_API_KEY: "",
     },
-  );
-  for (const stream of [child.stdout, child.stderr])
-    stream.on("data", (chunk) => {
-      logs = (logs + chunk).slice(-30000);
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  };
+  function launchNext(args) {
+    child = spawn(
+      process.execPath,
+      [join(web, "node_modules/next/dist/bin/next"), ...args],
+      serverOptions,
+    );
+    for (const stream of [child.stdout, child.stderr])
+      stream.on("data", (chunk) => {
+        logs = (logs + chunk).slice(-30000);
+      });
+  }
+  const browserChecks = Boolean(process.env.WORKDESK_BROWSER_MODULE);
+  if (browserChecks) {
+    launchNext(["build", "--webpack"]);
+    const buildCode = await new Promise((accept, reject) => {
+      child.once("error", reject);
+      child.once("exit", accept);
     });
+    check("isolated production build succeeds", buildCode === 0);
+  }
+  launchNext([
+    browserChecks ? "start" : "dev",
+    ...(browserChecks ? [] : ["--webpack"]),
+    "--hostname",
+    "127.0.0.1",
+    "--port",
+    String(port),
+  ]);
   let ready = false;
   for (let attempt = 0; attempt < 90; attempt++) {
     if (child.exitCode !== null)
@@ -212,6 +271,8 @@ try {
     ["/change-password", null, "Đổi mật khẩu"],
     ["/dashboard", officer, "Tổng quan"],
     ["/diploma-records", officer, "Hồ sơ cấp văn bằng"],
+    ["/diploma-records/requests", officer, "Yêu cầu chỉnh sửa văn bằng"],
+    ["/diploma-records/batches", officer, "Đợt cấp văn bằng"],
     ["/certificates", officer, "Sổ văn bằng"],
     ["/catalog", officer, "Danh mục"],
     ["/activity", officer, "Nhật ký hoạt động"],
@@ -230,6 +291,7 @@ try {
     ["/users", admin, "Tài khoản hệ thống"],
     ["/student/dashboard", student, "Văn bằng của tôi"],
     ["/student/profile", student, "Thông tin tài khoản"],
+    ["/student/requests", student, "Yêu cầu chỉnh sửa của tôi"],
   ];
   const stylesheets = new Set();
   for (const [path, session, heading] of routes) {
@@ -269,7 +331,10 @@ try {
     );
     check(
       "one page heading: " + path,
-      (html.match(/<h1[ >]/g) || []).length === 1,
+      (visibleHtml.match(/<h1[ >]/g) || []).length === 1 ||
+        (browserChecks &&
+          path === "/verify" &&
+          visibleHtml.includes('role="status"')),
     );
     const css = [...html.matchAll(/<link[^>]*>/g)]
       .map(([tag]) => tag)
@@ -415,6 +480,8 @@ try {
     "full Vietnamese font binaries served without subsetting",
     servedFonts.size === expectedFonts.size,
   );
+  if (process.env.WORKDESK_BROWSER_MODULE)
+    await runMobileUiChecks({ base, temporary, routes, check });
   console.log(
     "Isolated university web checks passed: " +
       checks +

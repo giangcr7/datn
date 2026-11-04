@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { HomeOutlined, LoginOutlined } from "@ant-design/icons";
+import { useState } from "react";
+import { HomeOutlined, LoginOutlined, MenuOutlined } from "@ant-design/icons";
+import MobileNavigation from "./MobileNavigation";
 import styles from "@/styles/university-portal.module.css";
 
 type PublicSection = "home" | "search" | "verify" | "account";
@@ -41,6 +43,18 @@ export function UniversityHeader({
 }: {
   active?: PublicSection;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const publicLinks = [
+    { href: "/", label: "Trang chủ", section: "home" },
+    { href: "/search", label: "Tra cứu văn bằng", section: "search" },
+    { href: "/verify", label: "Xác thực văn bằng", section: "verify" },
+    {
+      href: active === "home" ? "#huong-dan" : "/#huong-dan",
+      label: "Hướng dẫn sử dụng",
+      section: "guide",
+    },
+    { href: "/login", label: "Đăng nhập", section: "account" },
+  ];
   return (
     <header className={styles.header}>
       <UniversityMasthead />
@@ -80,7 +94,46 @@ export function UniversityHeader({
             Đăng nhập
           </Link>
         </div>
+        <div className={styles.container + " " + styles.mobileNavigationBar}>
+          <button
+            type="button"
+            className={styles.navigationToggle}
+            aria-label="Mở menu chính"
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+            aria-controls="public-mobile-navigation"
+            onClick={() => setMenuOpen(true)}
+          >
+            <MenuOutlined aria-hidden="true" />
+            Menu
+          </button>
+          <Link
+            href="/login"
+            className={styles.mobileLogin}
+            aria-current={active === "account" ? "page" : undefined}
+          >
+            <LoginOutlined aria-hidden="true" />
+            Đăng nhập
+          </Link>
+        </div>
       </nav>
+      <MobileNavigation
+        id="public-mobile-navigation"
+        title="Menu chính"
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+      >
+        {publicLinks.map((link) => (
+          <Link
+            key={link.section}
+            href={link.href}
+            aria-current={active === link.section ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
+            {link.label}
+          </Link>
+        ))}
+      </MobileNavigation>
     </header>
   );
 }
