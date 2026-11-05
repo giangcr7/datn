@@ -28,6 +28,36 @@ export interface RegisterEntry {
   revokedReason?: string | null;
 }
 
+export interface RegisterSuggestion {
+  uuid: string;
+  fullName: string | null;
+  mssv: string | null;
+  soHieu: string | null;
+  soVaoSo: string | null;
+  major: string | null;
+  namTotNghiep: string | null;
+  status: string;
+  matchKind: "EXACT_CODE" | "EXACT_NAME" | "PARTIAL" | "SIMILAR";
+}
+
+export function isRegisterSuggestion(
+  value: unknown,
+): value is RegisterSuggestion {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.uuid === "string" &&
+    ["fullName", "mssv", "soHieu", "soVaoSo", "major", "namTotNghiep"].every(
+      (key) => item[key] === null || typeof item[key] === "string",
+    ) &&
+    typeof item.status === "string" &&
+    Object.hasOwn(registerStatuses, item.status) &&
+    ["EXACT_CODE", "EXACT_NAME", "PARTIAL", "SIMILAR"].includes(
+      String(item.matchKind),
+    )
+  );
+}
+
 export const registerStatuses: Record<
   string,
   { label: string; color: string }

@@ -228,6 +228,49 @@ export async function runMobileUiChecks({ base, temporary, routes, check }) {
     );
     await page.getByRole("button", { name: "Mở menu", exact: true }).click();
     await preview("desktop-dashboard");
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await go("/certificates", officer);
+      const quickSearch = page.getByRole("combobox", {
+        name: "Tìm kiếm nhanh",
+        exact: true,
+      });
+      await quickSearch.fill("dang anh");
+      const option = page.getByRole("option", { name: /Đặng Thị Ánh/ });
+      await option.waitFor({ state: "visible" });
+      check(
+        "search suggestions stay within viewport at " + width + "px",
+        await page
+          .getByRole("listbox", { name: "Văn bằng phù hợp" })
+          .evaluate((element) => {
+            const rect = element.parentElement.getBoundingClientRect();
+            return rect.left >= 0 && rect.right <= innerWidth + 1;
+          }),
+      );
+      await fits("open quick search fits at " + width + "px");
+      if (width === 390) await preview("mobile-register-search");
+      if (width === 1280) await preview("desktop-register-search");
+      await quickSearch.press("ArrowDown");
+      check(
+        "keyboard selects the first search result at " + width + "px",
+        (await quickSearch.getAttribute("aria-activedescendant")) ===
+          "register-search-suggestions-0",
+      );
+      const requested = page.waitForRequest((request) => {
+        const url = new URL(request.url());
+        return (
+          url.pathname === "/api/certificates" &&
+          url.searchParams.get("search") === "VB-UI-001"
+        );
+      });
+      await quickSearch.press("Enter");
+      await requested;
+      check(
+        "Enter applies the suggested certificate identifier at " + width + "px",
+        (await quickSearch.inputValue()) === "VB-UI-001" &&
+          (await quickSearch.getAttribute("aria-expanded")) === "false",
+      );
+    }
     await page.setViewportSize({ width: 320, height: 740 });
     await go("/catalog", officer);
     const table = page.locator(".ant-table-content").first();

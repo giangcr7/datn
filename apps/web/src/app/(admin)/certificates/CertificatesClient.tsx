@@ -53,6 +53,7 @@ import {
 import QRCode from "react-qr-code";
 import Link from "next/link";
 import ReplacementCreateModal from "@/components/ReplacementCreateModal";
+import RegisterQuickSearch from "@/components/RegisterQuickSearch";
 import { replacementEventLabels } from "@/lib/diploma-replacements";
 
 const { Text } = Typography;
@@ -103,6 +104,7 @@ export default function CertificatesClient({
   const [loadError, setLoadError] = useState("");
   const [exporting, setExporting] = useState(false);
   const requestId = useRef(0);
+  const registerAbort = useRef<AbortController | null>(null);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
@@ -132,12 +134,15 @@ export default function CertificatesClient({
   const fetchCerts = useCallback(
     async (page: number, limit: number, nextFilters: RegisterFilters) => {
       const currentRequest = ++requestId.current;
+      registerAbort.current?.abort();
+      const controller = new AbortController();
+      registerAbort.current = controller;
       setLoading(true);
       setLoadError("");
       try {
         const res = await fetch(
           `/api/certificates?${registerParams(nextFilters, page, limit)}`,
-          { cache: "no-store" },
+          { cache: "no-store", signal: controller.signal },
         );
         const json = await res.json();
         if (currentRequest !== requestId.current) return;
@@ -165,6 +170,7 @@ export default function CertificatesClient({
 
   const cancelPendingFetch = useCallback(() => {
     requestId.current++;
+    registerAbort.current?.abort();
   }, []);
 
   useEffect(() => {
@@ -175,7 +181,7 @@ export default function CertificatesClient({
     return cancelPendingFetch;
   }, [fetchCerts, initialSearch, cancelPendingFetch]);
 
-  const applyFilters = () => {
+  const applyFilters = (nextSearch?: string) => {
     if (
       filters.issuedFrom &&
       filters.issuedTo &&
@@ -184,8 +190,10 @@ export default function CertificatesClient({
       message.warning("Ngày cấp từ phải trước hoặc bằng ngày cấp đến");
       return;
     }
-    setAppliedFilters({ ...filters });
-    void fetchCerts(1, pagination.pageSize, filters);
+    const nextFilters = { ...filters, search: nextSearch ?? filters.search };
+    setFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    void fetchCerts(1, pagination.pageSize, nextFilters);
   };
 
   React.useEffect(() => {
@@ -729,19 +737,26 @@ export default function CertificatesClient({
                   : "Văn bằng đã phát hành của cơ sở."}
             </Typography.Text>
           </div>
-          <Form layout="vertical" onFinish={applyFilters} disabled={exporting}>
+          <Form
+            layout="vertical"
+            onFinish={() => applyFilters()}
+            disabled={exporting}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-4">
-              <Form.Item label="Tra cứu văn bằng" htmlFor="register-search">
-                <Input
+              <Form.Item
+                label="Tìm kiếm nhanh"
+                htmlFor="register-search"
+                className="md:col-span-2"
+              >
+                <RegisterQuickSearch
                   id="register-search"
-                  placeholder="Họ tên, MSSV, số hiệu, số vào sổ"
-                  allowClear
-                  maxLength={255}
-                  value={filters.search}
-                  onChange={(event) =>
+                  filters={filters}
+                  disabled={exporting}
+                  onSubmit={applyFilters}
+                  onChange={(value) =>
                     setFilters((previous) => ({
                       ...previous,
-                      search: event.target.value,
+                      search: value,
                     }))
                   }
                 />

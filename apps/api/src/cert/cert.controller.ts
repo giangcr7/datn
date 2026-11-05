@@ -16,6 +16,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import type { AuthActor } from '../auth/auth-actor';
 import { CertService } from './cert.service';
 import { RegisterQueryDto } from './register-query.dto';
 import { LookupDiplomaDto } from './lookup-diploma.dto';
@@ -49,6 +50,18 @@ export class CertController {
   @SkipThrottle()
   register(@Query() query: RegisterQueryDto, @Req() req: Request) {
     return this.certService.findRegister(query, (req as any).user);
+  }
+  @Get('register/suggestions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'university')
+  @ApiBearerAuth()
+  @Header('Cache-Control', 'private, no-store')
+  @Throttle({ medium: { ttl: 60000, limit: 120 } })
+  registerSuggestions(
+    @Query() query: RegisterQueryDto,
+    @Req() req: Request & { user: AuthActor },
+  ) {
+    return this.certService.suggestRegister(query, req.user);
   }
   @Get('candidates')
   @UseGuards(JwtAuthGuard, RolesGuard)

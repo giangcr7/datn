@@ -51,6 +51,26 @@ const backend = createServer((request, response) => {
         forwardedQuery: new URL(request.url, "http://fixture.invalid").search,
       }),
     );
+  } else if (request.url?.startsWith("/cert/register/suggestions?")) {
+    assert.equal(request.headers.authorization, "Bearer isolated-ui-token");
+    response.setHeader("Cache-Control", "private, no-store");
+    response.end(
+      JSON.stringify({
+        data: [
+          {
+            uuid: "ui-diploma",
+            fullName: "Đặng Thị Ánh",
+            mssv: "001234",
+            soHieu: "VB-UI-001",
+            soVaoSo: "VS-UI-001",
+            major: "Công nghệ thông tin",
+            namTotNghiep: "2024",
+            status: "ON_CHAIN",
+            matchKind: "PARTIAL",
+          },
+        ],
+      }),
+    );
   } else if (request.url === "/catalog/programs")
     response.end(
       JSON.stringify([

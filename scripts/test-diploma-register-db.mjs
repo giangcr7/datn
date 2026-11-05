@@ -438,8 +438,8 @@ try {
         active.payload.soVaoSo,
       ])
         check(
-          "searches the published name and identifiers " + search,
-          (await find({ search })).pagination.total === 1,
+          "prioritizes exact published name and identifiers " + search,
+          (await find({ search })).data[0].uuid === active.diploma.id,
         );
       check(
         "does not search changed relational identifiers instead of signed values",
@@ -840,6 +840,29 @@ try {
           "HTTP register route binds and applies the validated filters",
           response.ok && (await response.json()).pagination.total === 1,
         );
+        const suggestionsResponse = await fetch(
+          base + "/cert/register/suggestions?search=nguyen&year=2024",
+        );
+        const suggestionsBody = await suggestionsResponse.json();
+        check(
+          "HTTP suggestions use validated filters and prevent caching",
+          suggestionsResponse.ok &&
+            suggestionsResponse.headers.get("cache-control") ===
+              "private, no-store" &&
+            suggestionsBody.data.length === 3 &&
+            suggestionsBody.data.every((item) =>
+              item.fullName.startsWith("Nguyễn"),
+            ),
+        );
+        check(
+          "HTTP suggestions reject attempts to override institution scope",
+          (
+            await fetch(
+              base +
+                "/cert/register/suggestions?search=nguyen&institutionId=other",
+            )
+          ).status === 400,
+        );
         for (const query of [
           "page=0",
           "limit=101",
@@ -866,6 +889,7 @@ try {
             (await fetch(base + "/cert/register")).status === 403,
           );
           for (const path of [
+            "/cert/register/suggestions?search=nguyen",
             "/reports/overview",
             "/reports/export?kind=register",
             "/dashboard/overview",
@@ -1061,6 +1085,149 @@ try {
       check(
         "dashboard recent-issued query is bounded to five records",
         (await dashboard.overview(main.actor)).recentIssued.length === 5,
+      );
+      const query = (search, extra = {}) =>
+        Object.assign(new RegisterQueryDto(), { search, ...extra });
+      const searchPayload = (fullName, code, extra = {}) => ({
+        fullName,
+        mssv: code,
+        soHieu: "VB-" + code,
+        soVaoSo: "VS-" + code,
+        major: "Kỹ thuật phần mềm",
+        namTotNghiep: 2023,
+        grade: "Giỏi",
+        decisionNo: "567/QĐ-TEST",
+        issueDate: "2023-06-20",
+        ...extra,
+      });
+      const searchExact = await fixture({
+        payload: searchPayload("Đặng Thị Ánh", "TEST00123"),
+      });
+      const searchPartial = await fixture({
+        payload: searchPayload("Đặng Thị Ánh Dương", "TEST001234"),
+      });
+      const uniqueName = await fixture({
+        payload: searchPayload("Phan Thị Huyền Trang", "TEST778899"),
+      });
+      const searchRegister = async (search, extra) =>
+        service.findRegister(query(search, extra), main.actor);
+      const suggest = async (search, extra) =>
+        service.suggestRegister(query(search, extra), main.actor);
+      check(
+        "exact code ranks ahead of a longer partial code after hydration",
+        (await searchRegister("test00123")).data
+          .map((item) => item.uuid)
+          .join(",") ===
+          [searchExact.diploma.id, searchPartial.diploma.id].join(","),
+      );
+      check(
+        "accent-free words may be reordered and combined with identifiers",
+        (await searchRegister("anh dang test00123")).pagination.total === 2 &&
+          (await searchRegister("ÁNH ĐẶNG TEST00123".normalize("NFD")))
+            .pagination.total === 2,
+      );
+      const exactSuggestions = await suggest("TEST00123");
+      check(
+        "suggestions project only required fields and rank exact identifiers first",
+        exactSuggestions.data[0].uuid === searchExact.diploma.id &&
+          exactSuggestions.data[0].matchKind === "EXACT_CODE" &&
+          !Object.hasOwn(exactSuggestions.data[0], "dob") &&
+          !Object.hasOwn(exactSuggestions.data[0], "payload"),
+      );
+      const typo = await suggest("phan thi huyen tragn");
+      check(
+        "conservative name typo matching returns an explicitly marked suggestion",
+        typo.data.some(
+          (item) =>
+            item.uuid === uniqueName.diploma.id && item.matchKind === "SIMILAR",
+        ),
+      );
+      check(
+        "numeric identifiers are never fuzzy matched",
+        (await suggest("778898")).data.length === 0,
+      );
+      check(
+        "wildcards and SQL-looking strings remain literal",
+        (await searchRegister("%_")).pagination.total === 0 &&
+          (await searchRegister("'; DROP TABLE diplomas;--")).pagination
+            .total === 0,
+      );
+      check(
+        "search uses issued names, not the currently edited student name",
+        (await searchRegister(searchExact.student.fullName)).pagination
+          .total === 0,
+      );
+      const legacyResult = await searchRegister(legacy.student.studentCode);
+      check(
+        "incomplete historical snapshots retain relational fallback search",
+        legacyResult.data.some((item) => item.uuid === legacy.diploma.id),
+      );
+      const nullName = await fixture({
+        payload: searchPayload(null, "TESTNULL001"),
+      });
+      check(
+        "explicit snapshot null never falls back to a changed student name",
+        !(await searchRegister(nullName.student.fullName)).data.some(
+          (item) => item.uuid === nullName.diploma.id,
+        ),
+      );
+      const hidden = [];
+      for (const flags of [
+        { school: foreign },
+        { workflowStatus: "DRAFT", status: "DRAFT" },
+        { anchorStatus: "QUEUED" },
+        { noAnchor: true },
+        { olderVersion: true, anchorStatus: "QUEUED" },
+      ])
+        hidden.push(
+          await fixture({
+            ...flags,
+            payload: searchPayload("Đặng Thị Ánh", "HIDDEN7788"),
+          }),
+        );
+      check(
+        "suggestions exclude foreign, draft and uncommitted latest versions",
+        (await suggest("HIDDEN7788")).data.length === 0,
+      );
+      const recalled = await fixture({
+        status: "REVOKED",
+        payload: searchPayload("Đặng Thị Ánh", "REVOKED7788"),
+      });
+      check(
+        "suggestions apply status, year, major, decision and date filters together",
+        (
+          await suggest("dang anh", {
+            status: "REVOKED",
+            year: 2023,
+            major: "phần mềm",
+            decision: "567/QĐ",
+            issuedFrom: "2023-06-01",
+            issuedTo: "2023-06-30",
+          })
+        ).data[0]?.uuid === recalled.diploma.id &&
+          (await suggest("dang anh", { year: 2024 })).data.length === 0,
+      );
+      for (let index = 0; index < 8; index++)
+        await fixture({
+          payload: searchPayload("Lê Kiểm Thử Tìm Kiếm", "LIMIT" + index),
+        });
+      check(
+        "suggestion count cannot be expanded by limit/page input",
+        (await suggest("le kiem thu tim kiem", { limit: 100, page: 99 })).data
+          .length === 6,
+      );
+      check(
+        "search-based reports and exports agree with register filters",
+        (await reports.overview(query("TEST00123"), main.actor)).summary
+          .total === 2,
+      );
+      const original = await transaction.diplomaVersion.findFirst({
+        where: { diplomaId: searchExact.diploma.id },
+      });
+      check(
+        "search leaves issued payload and hash untouched",
+        original.payloadHash === payloadHash(original.payload) &&
+          original.payload.fullName === "Đặng Thị Ánh",
       );
       httpActor = { ...main.actor, institutionId: undefined };
       await assert.rejects(

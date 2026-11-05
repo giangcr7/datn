@@ -39,7 +39,8 @@ import { DIPLOMA_PRINT_TEMPLATE } from '../database/diploma-print-data';
 import type { PrintDiplomaDataDto } from '../common/dto/print-diploma.dto';
 import { createDiplomaPdf } from '../signatures/pdf-signature-engine';
 import { RegisterQueryDto } from './register-query.dto';
-import { registerQuery } from './diploma-register';
+import { registerQuery, registerSuggestionsQuery } from './diploma-register';
+import { normalizeRegisterSearch } from './register-search';
 import { LookupDiplomaDto } from './lookup-diploma.dto';
 import { diplomaLookupProjection, diplomaLookupQuery } from './diploma-lookup';
 import {
@@ -1183,7 +1184,7 @@ export class CertService {
       })
     ).map((item) => publicDiplomaProjection(item));
   }
-  async findRegister(query: RegisterQueryDto, actor: AuthActor) {
+  private registerAccess(query: RegisterQueryDto, actor: AuthActor) {
     if (
       !actor?.institutionId ||
       !(
@@ -1199,6 +1200,23 @@ export class CertService {
       throw new BadRequestException(
         'Ngày cấp từ phải trước hoặc bằng ngày cấp đến',
       );
+  }
+
+  async suggestRegister(query: RegisterQueryDto, actor: AuthActor) {
+    this.registerAccess(query, actor);
+    if (normalizeRegisterSearch(query.search).length < 2) return { data: [] };
+    const data = await this.database.$transaction(
+      (transaction) =>
+        transaction.$queryRaw(
+          registerSuggestionsQuery(actor.institutionId, query),
+        ),
+      { isolationLevel: 'RepeatableRead' },
+    );
+    return { data };
+  }
+
+  async findRegister(query: RegisterQueryDto, actor: AuthActor) {
+    this.registerAccess(query, actor);
 
     return this.database.$transaction(
       async (transaction) => {
@@ -1212,8 +1230,12 @@ export class CertService {
               orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             })
           : [];
+        const entries = new Map(data.map((item) => [item.id, item]));
         return {
-          data: data.map((item) => diplomaProjection(item, true)),
+          data: result.ids.flatMap((id) => {
+            const item = entries.get(id);
+            return item ? [diplomaProjection(item, true)] : [];
+          }),
           pagination: {
             total: result.total,
             page: query.page,
