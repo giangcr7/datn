@@ -261,7 +261,33 @@ export class CertService {
           },
         });
         await transaction.auditLog.create({
-          data: this.auditData(actor, 'REQUEST_CERT', diploma.id, ip),
+          data: this.auditData(actor, 'REQUEST_CERT', diploma.id, ip, {
+            student: {
+              studentCode: normalizeText(body.mssv),
+              fullName: normalizeText(body.fullName),
+              dateOfBirth: dateOnly(birthDate),
+            },
+            academic: {
+              programId: alias.programId,
+              programName: alias.program?.name || null,
+              graduationYear: year,
+              gpa,
+              classification,
+              degreeType: body.degreeType,
+              classCode: normalizeText(body.className) || null,
+            },
+            diploma: {
+              certificateNo: normalizeText(body.soHieu),
+              registryNo: normalizeText(body.soVaoSo),
+              issueDate: dateOnly(issuedOn),
+              issuePlace: normalizeText(body.issuePlace),
+              signerName: normalizeText(body.diplomaSignerName),
+              signerTitle: normalizeText(body.diplomaSignerTitle),
+              fullNameLatin: normalizeText(body.fullNameLatin) || null,
+              majorNameEn:
+                normalizeText(body.majorNameEn) || alias.program?.nameEn || null,
+            },
+          }),
         });
         return {
           success: true,
@@ -344,7 +370,16 @@ export class CertService {
         data: { diplomaId: uuid, actorId: actor.id, eventType: 'REQUESTED' },
       });
       await transaction.auditLog.create({
-        data: this.auditData(actor, 'SAVE_PENDING_DIPLOMA', uuid),
+        data: this.auditData(actor, 'SAVE_PENDING_DIPLOMA', uuid, undefined, {
+          before: {
+            status: draft.status,
+            workflowStatus: draft.workflowStatus,
+          },
+          after: {
+            status: draft.status,
+            workflowStatus: 'REQUESTED',
+          },
+        }),
       });
       return { success: true, uuid, status: 'PENDING' };
     });

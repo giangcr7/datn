@@ -40,7 +40,7 @@ import {
   registryBatchSummaryText,
   type RegistryBatchSummary,
 } from "@/lib/registry-review";
-import { degreeOptions } from "./DiplomaPrintDataEditor";
+import { useDiplomaTypeOptions } from "./DiplomaPrintDataEditor";
 import NewDiplomaRequest from "./NewDiplomaRequest";
 
 interface BatchOption {
@@ -85,6 +85,7 @@ export default function DiplomaWorkflowWorkspace({
   const prepare = mode === "prepare";
   const canApprove = getWorkspaceKind(user) === "approver";
   const canAct = canApprove;
+  const diplomaTypeOptions = useDiplomaTypeOptions();
   const [data, setData] = useState<WorkflowDiploma[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -303,7 +304,7 @@ export default function DiplomaWorkflowWorkspace({
           </Typography.Text>
           <br />
           <Typography.Text type="secondary">
-            {degreeOptions.find((option) => option.value === record.degreeType)
+            {diplomaTypeOptions.find((option) => option.value === record.degreeType)
               ?.label || "Chưa xác nhận loại bằng"}
           </Typography.Text>
         </>
@@ -850,7 +851,7 @@ export default function DiplomaWorkflowWorkspace({
                   key: "degree",
                   label: "Loại bằng",
                   children:
-                    degreeOptions.find(
+                    diplomaTypeOptions.find(
                       (option) => option.value === detail.degreeType,
                     )?.label || "Chưa xác nhận",
                 },

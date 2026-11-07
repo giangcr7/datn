@@ -14,6 +14,7 @@ import {
   Space,
   Table,
   Tabs,
+  Switch,
   Tag,
   Typography,
   message,
@@ -39,6 +40,25 @@ interface ProgramValues {
   note: string;
 }
 
+interface DiplomaType {
+  id: string;
+  code: string;
+  name: string;
+  nameEn: string | null;
+  active: boolean;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface DiplomaTypeValues {
+  code: string;
+  name: string;
+  nameEn?: string;
+  active: boolean;
+  note: string;
+}
+
 interface AliasValues {
   programId: string;
   originalName: string;
@@ -47,21 +67,31 @@ interface AliasValues {
 
 export default function CatalogClient() {
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [diplomaTypes, setDiplomaTypes] = useState<DiplomaType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [programOpen, setProgramOpen] = useState(false);
   const [editing, setEditing] = useState<Program | null>(null);
+  const [diplomaTypeOpen, setDiplomaTypeOpen] = useState(false);
+  const [editingDiplomaType, setEditingDiplomaType] =
+    useState<DiplomaType | null>(null);
   const [aliasOpen, setAliasOpen] = useState(false);
   const [programForm] = Form.useForm<ProgramValues>();
   const [aliasForm] = Form.useForm<AliasValues>();
+  const [diplomaTypeForm] = Form.useForm<DiplomaTypeValues>();
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      setPrograms(await workflowJson<Program[]>("/api/catalog/programs"));
+      const [programResult, diplomaTypeResult] = await Promise.all([
+        workflowJson<Program[]>("/api/catalog/programs"),
+        workflowJson<DiplomaType[]>("/api/catalog/diploma-types"),
+      ]);
+      setPrograms(programResult);
+      setDiplomaTypes(diplomaTypeResult);
     } catch (failure) {
       setError(
         failure instanceof Error ? failure.message : "Không tải được danh mục",
@@ -92,6 +122,18 @@ export default function CatalogClient() {
     aliasForm.resetFields();
     aliasForm.setFieldsValue({ programId });
     setAliasOpen(true);
+  }
+
+  function openDiplomaType(diplomaType?: DiplomaType) {
+    setEditingDiplomaType(diplomaType || null);
+    diplomaTypeForm.resetFields();
+    diplomaTypeForm.setFieldsValue({
+      code: diplomaType?.code || undefined,
+      name: diplomaType?.name || "",
+      nameEn: diplomaType?.nameEn || "",
+      active: diplomaType?.active ?? true,
+    });
+    setDiplomaTypeOpen(true);
   }
 
   async function saveProgram(values: ProgramValues) {
@@ -139,6 +181,32 @@ export default function CatalogClient() {
     }
   }
 
+  async function saveDiplomaType(values: DiplomaTypeValues) {
+    setSaving(true);
+    try {
+      await workflowJson(
+        "/api/catalog/diploma-types" +
+          (editingDiplomaType ? "/" + editingDiplomaType.id : ""),
+        {
+          method: editingDiplomaType ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        },
+      );
+      setDiplomaTypeOpen(false);
+      message.success("Đã lưu loại văn bằng và nhật ký thay đổi.");
+      await load();
+    } catch (failure) {
+      message.error(
+        failure instanceof Error
+          ? failure.message
+          : "Không lưu được loại văn bằng",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const query = search.trim().toLocaleLowerCase("vi-VN");
   const matches = (...values: (string | null)[]) =>
     values.some((value) => value?.toLocaleLowerCase("vi-VN").includes(query));
@@ -149,6 +217,13 @@ export default function CatalogClient() {
       programCode: program.code,
     })),
   );
+  const diplomaTypeCodeOptions = [
+    { value: "BACHELOR", label: "Bằng cử nhân" },
+    { value: "ENGINEER", label: "Bằng kỹ sư" },
+    { value: "MASTER", label: "Bằng thạc sĩ" },
+    { value: "DOCTOR", label: "Bằng tiến sĩ" },
+    { value: "OTHER", label: "Loại khác" },
+  ];
 
   return (
     <div className="workspace-page">
@@ -307,6 +382,65 @@ export default function CatalogClient() {
               </>
             ),
           },
+          {
+            key: "diploma-types",
+            label: `Loại văn bằng (${diplomaTypes.length})`,
+            children: (
+              <>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  className="mb-4"
+                  onClick={() => openDiplomaType()}
+                >
+                  Thêm loại văn bằng
+                </Button>
+                <Table<DiplomaType>
+                  rowKey="id"
+                  loading={loading}
+                  scroll={{ x: 850 }}
+                  dataSource={diplomaTypes.filter((diplomaType) =>
+                    matches(
+                      diplomaType.code,
+                      diplomaType.name,
+                      diplomaType.nameEn,
+                    ),
+                  )}
+                  pagination={{ pageSize: 20, showSizeChanger: false }}
+                  columns={[
+                    { title: "Mã loại", dataIndex: "code" },
+                    { title: "Tên loại văn bằng", dataIndex: "name" },
+                    {
+                      title: "Tên tiếng Anh",
+                      dataIndex: "nameEn",
+                      render: (value: string | null) => value || "Chưa có",
+                    },
+                    {
+                      title: "Trạng thái",
+                      dataIndex: "active",
+                      render: (active: boolean) => (
+                        <Tag color={active ? "green" : "default"}>
+                          {active ? "Đang sử dụng" : "Đã ngừng sử dụng"}
+                        </Tag>
+                      ),
+                    },
+                    {
+                      title: "Thao tác",
+                      key: "actions",
+                      render: (_, diplomaType) => (
+                        <Button
+                          size="small"
+                          onClick={() => openDiplomaType(diplomaType)}
+                        >
+                          Cập nhật
+                        </Button>
+                      ),
+                    },
+                  ]}
+                />
+              </>
+            ),
+          },
         ]}
       />
       <Modal
@@ -342,6 +476,60 @@ export default function CatalogClient() {
           </Form.Item>
           <Form.Item name="nationalCode" label="Mã ngành quốc gia">
             <Input maxLength={30} />
+          </Form.Item>
+          <Form.Item
+            name="note"
+            label="Căn cứ / lý do cập nhật"
+            rules={[{ required: true, whitespace: true }]}
+          >
+            <Input.TextArea rows={3} maxLength={2000} />
+          </Form.Item>
+        </Form>
+      </Modal>
+      <Modal
+        title={
+          editingDiplomaType
+            ? "Cập nhật loại văn bằng"
+            : "Thêm loại văn bằng"
+        }
+        open={diplomaTypeOpen}
+        onCancel={() => !saving && setDiplomaTypeOpen(false)}
+        onOk={() => diplomaTypeForm.submit()}
+        confirmLoading={saving}
+        okText="Lưu loại văn bằng"
+        cancelText="Hủy"
+      >
+        <Form
+          form={diplomaTypeForm}
+          layout="vertical"
+          onFinish={saveDiplomaType}
+        >
+          <Form.Item
+            name="code"
+            label="Mã loại"
+            rules={[{ required: true }]}
+          >
+            <Select
+              disabled={!!editingDiplomaType}
+              options={diplomaTypeCodeOptions}
+            />
+          </Form.Item>
+          <Form.Item
+            name="name"
+            label="Tên loại văn bằng"
+            rules={[{ required: true, whitespace: true }]}
+          >
+            <Input maxLength={255} />
+          </Form.Item>
+          <Form.Item name="nameEn" label="Tên tiếng Anh">
+            <Input maxLength={255} />
+          </Form.Item>
+          <Form.Item
+            name="active"
+            label="Cho phép sử dụng trong hồ sơ mới"
+            valuePropName="checked"
+          >
+            <Switch />
           </Form.Item>
           <Form.Item
             name="note"

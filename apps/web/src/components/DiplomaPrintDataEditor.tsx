@@ -12,6 +12,32 @@ export const degreeOptions = [
   { value: "OTHER", label: "Loại khác" },
 ];
 
+type DiplomaTypeResponse = {
+  id: string;
+  code: string;
+  name: string;
+  nameEn: string | null;
+};
+
+export function useDiplomaTypeOptions() {
+  const [options, setOptions] = useState(degreeOptions);
+  useEffect(() => {
+    let active = true;
+    workflowJson<DiplomaTypeResponse[]>("/api/catalog/diploma-types/active")
+      .then((types) => {
+        if (active)
+          setOptions(
+            types.map((type) => ({ value: type.code, label: type.name })),
+          );
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+  return options;
+}
+
 export default function DiplomaPrintDataEditor({
   records,
   onClose,
@@ -23,6 +49,7 @@ export default function DiplomaPrintDataEditor({
 }) {
   const [form] = Form.useForm();
   const [busy, setBusy] = useState(false);
+  const diplomaTypeOptions = useDiplomaTypeOptions();
   const single = records.length === 1;
   useEffect(() => {
     form.resetFields();
@@ -139,7 +166,7 @@ export default function DiplomaPrintDataEditor({
           <Form.Item name="degreeType" label="Loại bằng">
             <Select
               allowClear
-              options={degreeOptions}
+              options={diplomaTypeOptions}
               placeholder="Giữ nguyên / chưa xác nhận"
             />
           </Form.Item>

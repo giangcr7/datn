@@ -17,12 +17,12 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { ProgramAliasDto } from '../common/dto/registry-import.dto';
 import { RegistryImportService } from '../imports/registry-import.service';
 import { CatalogService } from './catalog.service';
-import { SaveProgramDto } from './catalog.dto';
+import { SaveDiplomaTypeDto, SaveProgramDto } from './catalog.dto';
 
 @ApiTags('catalog')
 @Controller('catalog')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('university')
+@Roles('admin', 'university')
 @ApiBearerAuth()
 export class CatalogController {
   constructor(
@@ -33,6 +33,33 @@ export class CatalogController {
   @Get('programs')
   list(@Req() req: { user: AuthActor }) {
     return this.service.list(req.user);
+  }
+
+  @Get('diploma-types/active')
+  activeDiplomaTypes(@Req() req: { user: AuthActor }) {
+    return this.service.listActiveDiplomaTypes(req.user);
+  }
+
+  @Get('diploma-types')
+  diplomaTypes(@Req() req: { user: AuthActor }) {
+    return this.service.listDiplomaTypes(req.user);
+  }
+
+  @Post('diploma-types')
+  createDiplomaType(
+    @Body() body: SaveDiplomaTypeDto,
+    @Req() req: { user: AuthActor },
+  ) {
+    return this.service.saveDiplomaType(body, req.user);
+  }
+
+  @Patch('diploma-types/:id')
+  updateDiplomaType(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: SaveDiplomaTypeDto,
+    @Req() req: { user: AuthActor },
+  ) {
+    return this.service.saveDiplomaType(body, req.user, id);
   }
 
   @Post('programs')

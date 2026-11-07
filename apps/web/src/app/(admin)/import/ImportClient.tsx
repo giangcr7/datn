@@ -34,6 +34,7 @@ import {
   registryBatchSummaryText,
   registryIssueText,
 } from "@/lib/registry-review";
+import { useDiplomaTypeOptions } from "@/components/DiplomaPrintDataEditor";
 
 async function api(url: string, options?: RequestInit) {
   const response = await fetch(url, options);
@@ -50,6 +51,7 @@ export default function ImportClient({
   initialStatus?: string;
   initialRowId?: string;
 }) {
+  const diplomaTypeOptions = useDiplomaTypeOptions();
   const [file, setFile] = useState<File | null>(null),
     [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<any>(null),
@@ -732,13 +734,7 @@ export default function ImportClient({
                     allowClear
                     value={correctionValues.degreeType || undefined}
                     placeholder="Không suy loại bằng từ tên ngành"
-                    options={[
-                      { value: "BACHELOR", label: "Bằng cử nhân" },
-                      { value: "ENGINEER", label: "Bằng kỹ sư" },
-                      { value: "MASTER", label: "Bằng thạc sĩ" },
-                      { value: "DOCTOR", label: "Bằng tiến sĩ" },
-                      { value: "OTHER", label: "Loại khác" },
-                    ]}
+                    options={diplomaTypeOptions}
                     onChange={(value) =>
                       changeCorrection("degreeType", value || null)
                     }
@@ -862,13 +858,7 @@ export default function ImportClient({
                 <span>Loại bằng</span>
                 <Select
                   value={correctionValues.degreeType || undefined}
-                  options={[
-                    { value: "BACHELOR", label: "Bằng cử nhân" },
-                    { value: "ENGINEER", label: "Bằng kỹ sư" },
-                    { value: "MASTER", label: "Bằng thạc sĩ" },
-                    { value: "DOCTOR", label: "Bằng tiến sĩ" },
-                    { value: "OTHER", label: "Loại khác" },
-                  ]}
+                  options={diplomaTypeOptions}
                   onChange={(value) => changeCorrection("degreeType", value)}
                 />
               </label>

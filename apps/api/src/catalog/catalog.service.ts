@@ -8,8 +8,8 @@ import {
 import type { AuthActor } from '../auth/auth-actor';
 import { DatabaseService } from '../database/database.service';
 import { jsonData, lookupText, normalizeText } from '../database/data-utils';
-import { Prisma } from '../generated/prisma/client';
-import type { SaveProgramDto } from './catalog.dto';
+import { DegreeType, Prisma } from '../generated/prisma/client';
+import type { SaveDiplomaTypeDto, SaveProgramDto } from './catalog.dto';
 
 @Injectable()
 export class CatalogService {
@@ -24,6 +24,13 @@ export class CatalogService {
     )
       throw new ForbiddenException(
         'Chỉ cán bộ cơ sở chính được quản lý danh mục',
+      );
+  }
+
+  private activeReader(actor: AuthActor) {
+    if (!actor.institutionId || !['admin', 'university'].includes(actor.role))
+      throw new ForbiddenException(
+        'Không có quyền tra cứu loại văn bằng của nhà trường',
       );
   }
 
@@ -44,6 +51,33 @@ export class CatalogService {
           orderBy: { originalName: 'asc' },
         },
       },
+    });
+  }
+
+  listDiplomaTypes(actor: AuthActor) {
+    this.staff(actor);
+    return this.database.diplomaTypeCatalog.findMany({
+      where: { institutionId: actor.institutionId },
+      orderBy: [{ active: 'desc' }, { name: 'asc' }],
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        nameEn: true,
+        active: true,
+        note: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  listActiveDiplomaTypes(actor: AuthActor) {
+    this.activeReader(actor);
+    return this.database.diplomaTypeCatalog.findMany({
+      where: { institutionId: actor.institutionId, active: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, code: true, name: true, nameEn: true },
     });
   }
 
@@ -117,6 +151,84 @@ export class CatalogService {
       )
         throw new ConflictException(
           'Mã ngành, tên ngành hoặc ánh xạ đã tồn tại',
+        );
+      throw error;
+    }
+  }
+
+  async saveDiplomaType(
+    body: SaveDiplomaTypeDto,
+    actor: AuthActor,
+    diplomaTypeId?: string,
+  ) {
+    this.staff(actor);
+    const code = normalizeText(body.code).toUpperCase();
+    const name = normalizeText(body.name);
+    const nameEn = normalizeText(body.nameEn) || null;
+    const note = normalizeText(body.note);
+    if (
+      !Object.values(DegreeType).includes(code as DegreeType) ||
+      !name ||
+      !note
+    )
+      throw new BadRequestException(
+        'Cần mã loại, tên loại văn bằng và lý do cập nhật',
+      );
+
+    try {
+      return await this.database.$transaction(async (transaction) => {
+        const before = diplomaTypeId
+          ? await transaction.diplomaTypeCatalog.findFirst({
+              where: {
+                id: diplomaTypeId,
+                institutionId: actor.institutionId,
+              },
+            })
+          : null;
+        if (diplomaTypeId && !before)
+          throw new NotFoundException(
+            'Không tìm thấy loại văn bằng thuộc nhà trường',
+          );
+        const active = body.active ?? before?.active ?? true;
+        const data = {
+          code: code as DegreeType,
+          name,
+          nameEn,
+          active,
+          note,
+        };
+        const diplomaType = before
+          ? await transaction.diplomaTypeCatalog.update({
+              where: { id: before.id },
+              data,
+            })
+          : await transaction.diplomaTypeCatalog.create({
+              data: { ...data, institutionId: actor.institutionId },
+            });
+        await transaction.auditLog.create({
+          data: {
+            institutionId: actor.institutionId,
+            actorId: actor.id,
+            actorEmail: actor.email,
+            action: before ? 'UPDATE_DIPLOMA_TYPE' : 'CREATE_DIPLOMA_TYPE',
+            target: diplomaType.id,
+            result: 'SUCCESS',
+            metadata: jsonData({
+              note,
+              before,
+              after: diplomaType,
+            }),
+          },
+        });
+        return diplomaType;
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      )
+        throw new ConflictException(
+          'Mã loại văn bằng đã tồn tại trong danh mục nhà trường',
         );
       throw error;
     }

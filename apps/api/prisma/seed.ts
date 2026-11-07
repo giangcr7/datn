@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { join } from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, Role } from '../src/generated/prisma/client';
+import { DegreeType, PrismaClient, Role } from '../src/generated/prisma/client';
 import { hash } from 'bcryptjs';
 import { lookupText } from '../src/database/data-utils';
 
@@ -96,6 +96,22 @@ async function main() {
         originalName: name,
         normalizedName: lookupText(name),
       },
+    });
+  }
+  const diplomaTypes: [DegreeType, string, string][] = [
+    [DegreeType.BACHELOR, 'Cử nhân', 'Bachelor'],
+    [DegreeType.ENGINEER, 'Kỹ sư', 'Engineer'],
+    [DegreeType.MASTER, 'Thạc sĩ', 'Master'],
+    [DegreeType.DOCTOR, 'Tiến sĩ', 'Doctor'],
+    [DegreeType.OTHER, 'Loại khác', 'Other'],
+  ];
+  for (const [code, name, nameEn] of diplomaTypes) {
+    await database.diplomaTypeCatalog.upsert({
+      where: {
+        institutionId_code: { institutionId: institution.id, code },
+      },
+      update: {},
+      create: { institutionId: institution.id, code, name, nameEn },
     });
   }
   for (const [prefix, role, campusCode] of [

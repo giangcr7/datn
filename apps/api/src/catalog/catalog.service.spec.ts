@@ -34,10 +34,16 @@ function setup() {
       findUnique: jest.fn().mockResolvedValue(null),
       create: jest.fn().mockResolvedValue({}),
     },
+    diplomaTypeCatalog: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({ id: 'diploma-type-1' }),
+      update: jest.fn().mockResolvedValue({ id: 'diploma-type-1' }),
+    },
     auditLog: { create: jest.fn().mockResolvedValue({}) },
   };
   const database = {
     program: { findMany: jest.fn().mockResolvedValue([]) },
+    diplomaTypeCatalog: { findMany: jest.fn().mockResolvedValue([]) },
     $transaction: jest
       .fn()
       .mockImplementation((callback: (value: unknown) => unknown) =>
@@ -174,6 +180,94 @@ describe('program catalog', () => {
     );
     await expect(service.save(body, actor)).rejects.toThrow(
       'audit unavailable',
+    );
+  });
+});
+
+describe('diploma type catalog', () => {
+  it('lists types within the current institution', async () => {
+    const { database, service } = setup();
+    await service.listDiplomaTypes(actor);
+    expect(database.diplomaTypeCatalog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { institutionId: actor.institutionId },
+      }),
+    );
+  });
+
+  it('lists only active types for workflow forms', async () => {
+    const { database, service } = setup();
+    await service.listActiveDiplomaTypes({
+      ...actor,
+      isHeadquarters: false,
+      canApproveDiplomas: false,
+    });
+    expect(database.diplomaTypeCatalog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { institutionId: actor.institutionId, active: true },
+      }),
+    );
+  });
+
+  it('creates a type and records the reason plus before/after audit data', async () => {
+    const { transaction, service } = setup();
+    await service.saveDiplomaType(
+      {
+        code: ' master ' as never,
+        name: ' Master degree ',
+        nameEn: ' Master ',
+        active: true,
+        note: 'Approved by the academic council',
+      },
+      actor,
+    );
+    expect(transaction.diplomaTypeCatalog.create).toHaveBeenCalledWith({
+      data: {
+        institutionId: actor.institutionId,
+        code: 'MASTER',
+        name: 'Master degree',
+        nameEn: 'Master',
+        active: true,
+        note: 'Approved by the academic council',
+      },
+    });
+    expect(transaction.auditLog.create.mock.calls[0][0].data).toMatchObject({
+      action: 'CREATE_DIPLOMA_TYPE',
+      target: 'diploma-type-1',
+      metadata: expect.objectContaining({
+        note: 'Approved by the academic council',
+      }),
+    });
+  });
+
+  it('updates a type in the same institution and preserves active state when omitted', async () => {
+    const { transaction, service } = setup();
+    transaction.diplomaTypeCatalog.findFirst.mockResolvedValue({
+      id: 'diploma-type-1',
+      active: false,
+      name: 'Old name',
+    });
+    await service.saveDiplomaType(
+      {
+        code: 'OTHER' as never,
+        name: 'Loại khác cập nhật',
+        note: 'Revised catalog wording',
+      },
+      actor,
+      'diploma-type-1',
+    );
+    expect(transaction.diplomaTypeCatalog.update).toHaveBeenCalledWith({
+      where: { id: 'diploma-type-1' },
+      data: {
+        code: 'OTHER',
+        name: 'Loại khác cập nhật',
+        nameEn: null,
+        active: false,
+        note: 'Revised catalog wording',
+      },
+    });
+    expect(transaction.auditLog.create.mock.calls[0][0].data.action).toBe(
+      'UPDATE_DIPLOMA_TYPE',
     );
   });
 });

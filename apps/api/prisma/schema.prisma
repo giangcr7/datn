@@ -91,6 +91,7 @@ model Institution {
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   campuses       Campus[]
   programs       Program[]
+  diplomaTypes   DiplomaTypeCatalog[]
   programAliases ProgramAlias[]
   students       Student[]
   decisions      GraduationDecision[]
@@ -146,6 +147,23 @@ model Program {
   @@unique([institutionId, code])
   @@unique([institutionId, name])
   @@map("programs")
+}
+
+model DiplomaTypeCatalog {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId String      @map("institution_id") @db.Uuid
+  code          String      @db.VarChar(40)
+  name          String      @db.VarChar(255)
+  nameEn        String?     @map("name_en") @db.VarChar(255)
+  active        Boolean     @default(true)
+  note          String?     @db.Text
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+
+  @@unique([institutionId, code])
+  @@index([institutionId, active])
+  @@map("diploma_type_catalog")
 }
 
 model ProgramAlias {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Form, Input, InputNumber, Modal, Select, message } from "antd";
 import { workflowJson } from "@/lib/diploma-workflow";
-import { degreeOptions } from "./DiplomaPrintDataEditor";
+import { useDiplomaTypeOptions } from "./DiplomaPrintDataEditor";
 
 type Program = { id: string; name: string; nameEn: string | null };
 type Student = { studentId: string; name: string; dob?: string | null };
@@ -21,6 +21,7 @@ export default function NewDiplomaRequest({
   const [programs, setPrograms] = useState<Program[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [busy, setBusy] = useState(false);
+  const diplomaTypeOptions = useDiplomaTypeOptions();
   async function findStudents(search: string) {
     try {
       const result = await workflowJson<{ data: Student[] }>(
@@ -130,7 +131,7 @@ export default function NewDiplomaRequest({
             <Input type="date" max={new Date().toISOString().slice(0, 10)} />
           </Form.Item>
           <Form.Item name="degreeType" label="Loại bằng" rules={required}>
-            <Select options={degreeOptions} />
+            <Select options={diplomaTypeOptions} />
           </Form.Item>
           <Form.Item name="major" label="Ngành đào tạo" rules={required}>
             <Select

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Form, Input, InputNumber, Modal, Select, message } from "antd";
-import { degreeOptions } from "@/components/DiplomaPrintDataEditor";
+import { useDiplomaTypeOptions } from "@/components/DiplomaPrintDataEditor";
 import { workflowJson } from "@/lib/diploma-workflow";
 import {
   correctionValues,
@@ -27,6 +27,7 @@ export default function CorrectionEditor({
 }) {
   const [form] = Form.useForm();
   const [busy, setBusy] = useState(false);
+  const diplomaTypeOptions = useDiplomaTypeOptions();
   const [programs, setPrograms] = useState<Program[] | null>(null);
   const [loadError, setLoadError] = useState("");
   useEffect(() => {
@@ -155,7 +156,7 @@ export default function CorrectionEditor({
             />
           </Form.Item>
           <Form.Item name="degreeType" label="Loại bằng" rules={required}>
-            <Select options={degreeOptions} />
+            <Select options={diplomaTypeOptions} />
           </Form.Item>
           <Form.Item name="grade" label="Hạng tốt nghiệp" rules={required}>
             <Select

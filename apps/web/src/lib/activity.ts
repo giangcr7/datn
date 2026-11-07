@@ -32,6 +32,8 @@ export const activityLabels: Record<string, string> = {
   APPROVE_REPLACEMENT: "Duyệt phát hành thay thế",
   CREATE_PROGRAM: "Thêm ngành đào tạo",
   UPDATE_PROGRAM: "Cập nhật ngành đào tạo",
+  CREATE_DIPLOMA_TYPE: "Thêm loại văn bằng",
+  UPDATE_DIPLOMA_TYPE: "Cập nhật loại văn bằng",
   APPROVE_PROGRAM_ALIAS: "Bổ sung ánh xạ ngành",
   VERIFY_CERT: "Xác thực văn bằng",
   CHECK_BLOCKCHAIN: "Đối chiếu blockchain",

@@ -33,6 +33,7 @@ type TargetKind =
   | 'diploma'
   | 'student'
   | 'program'
+  | 'diploma-type'
   | 'issuance-batch'
   | 'import-batch'
   | 'import-row'
@@ -177,6 +178,8 @@ export class AuditService {
       )
     )
       return 'program';
+    if (['CREATE_DIPLOMA_TYPE', 'UPDATE_DIPLOMA_TYPE'].includes(action))
+      return 'diploma-type';
     if (
       [
         'CREATE_ISSUANCE_BATCH',
@@ -257,6 +260,7 @@ export class AuditService {
     };
     type StudentSummary = { id: string; fullName: string; studentCode: string };
     type ProgramSummary = { id: string; code: string; name: string };
+    type DiplomaTypeSummary = { id: string; code: string; name: string };
     type IssuanceBatchSummary = {
       id: string;
       code: string;
@@ -294,6 +298,7 @@ export class AuditService {
     const diplomaIds = idsByKind('diploma');
     const studentIds = idsByKind('student');
     const programIds = idsByKind('program');
+    const diplomaTypeIds = idsByKind('diploma-type');
     const batchIds = idsByKind('issuance-batch');
     const importBatchIds = idsByKind('import-batch');
     const importRowIds = idsByKind('import-row');
@@ -302,6 +307,7 @@ export class AuditService {
       diplomas,
       students,
       programs,
+      diplomaTypes,
       batches,
       importBatches,
       importRows,
@@ -334,6 +340,12 @@ export class AuditService {
             select: { id: true, code: true, name: true },
           })
         : Promise.resolve([] as ProgramSummary[]),
+      diplomaTypeIds.length
+        ? this.database.diplomaTypeCatalog.findMany({
+            where: { id: { in: diplomaTypeIds }, institutionId },
+            select: { id: true, code: true, name: true },
+          })
+        : Promise.resolve([] as DiplomaTypeSummary[]),
       batchIds.length
         ? this.database.diplomaIssuanceBatch.findMany({
             where: { id: { in: batchIds }, institutionId },
@@ -386,6 +398,7 @@ export class AuditService {
       DiplomaSummary[],
       StudentSummary[],
       ProgramSummary[],
+      DiplomaTypeSummary[],
       IssuanceBatchSummary[],
       ImportBatchSummary[],
       ImportRowSummary[],
@@ -406,6 +419,9 @@ export class AuditService {
     );
     programs.forEach((item) =>
       put('program', item.id, `${item.name} (${item.code})`),
+    );
+    diplomaTypes.forEach((item) =>
+      put('diploma-type', item.id, `${item.name} (${item.code})`),
     );
     batches.forEach((item) =>
       put(
