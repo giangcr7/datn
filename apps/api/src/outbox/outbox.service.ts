@@ -73,7 +73,11 @@ export class OutboxService {
     if (claimed[0].status === 'FAILED') return true;
     const event = await this.database.outboxEvent.findUniqueOrThrow({
       where: { id: claimed[0].id },
-      include: { version: true },
+      include: {
+        version: {
+          include: { diploma: { select: { institutionId: true } } },
+        },
+      },
     });
     const payload = event.payload as {
       uuid: string;
@@ -147,6 +151,26 @@ export class OutboxService {
               anchorId: anchor.id,
               transactionId: result.txId,
               action: event.eventType,
+            },
+          },
+        });
+        await transaction.auditLog.create({
+          data: {
+            actorEmail: 'system',
+            institutionId: event.version.diploma.institutionId,
+            action: 'COMMIT_BLOCKCHAIN',
+            target: event.version.diplomaId,
+            result: 'SUCCESS',
+            metadata: {
+              anchorId: anchor.id,
+              outboxId: event.id,
+              eventType: event.eventType,
+              version: event.version.version,
+              transactionId: result.txId,
+              blockNumber:
+                result.idempotent === true || !response.blockNumber
+                  ? null
+                  : Number(response.blockNumber),
             },
           },
         });

@@ -147,4 +147,54 @@ describe('audit isolation and durability', () => {
       ],
     ]);
   });
+
+  it('raises email and IP burst alerts from failed logins in the lookback window', async () => {
+    const start = new Date('2026-11-07T10:00:00Z');
+    const failures = [
+      ...Array.from({ length: 5 }, (_, index) => ({
+        id: `email-${index}`,
+        actorEmail: 'staff@example.test',
+        ip: `192.0.2.${index + 1}`,
+        createdAt: new Date(start.getTime() + index * 60_000),
+      })),
+      ...Array.from({ length: 10 }, (_, index) => ({
+        id: `ip-${index}`,
+        actorEmail: `user-${index}@example.test`,
+        ip: '198.51.100.8',
+        createdAt: new Date(start.getTime() + index * 60_000),
+      })),
+    ];
+    const findMany = jest.fn().mockResolvedValue(failures);
+    const service = new AuditService({
+      auditLog: { findMany },
+    } as unknown as DatabaseService);
+
+    const result = await service.securitySummary(actor);
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          institutionId: actor.institutionId,
+          action: 'LOGIN',
+          result: 'FAILED',
+        }),
+        take: 1000,
+      }),
+    );
+    expect(result.failedLogins).toBe(15);
+    expect(result.alerts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'EMAIL_FAILURE_BURST',
+          subject: 'staff@example.test',
+          count: 5,
+        }),
+        expect.objectContaining({
+          kind: 'IP_FAILURE_BURST',
+          subject: '198.51.100.8',
+          count: 10,
+        }),
+      ]),
+    );
+  });
 });

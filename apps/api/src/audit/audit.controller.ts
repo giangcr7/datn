@@ -28,6 +28,16 @@ export class AuditController {
     );
   }
 
+  @Get('security-summary')
+  securitySummary(@Req() req: { user: AuthActor }) {
+    return this.auditService.securitySummary(req.user);
+  }
+
+  @Get(':id/related')
+  findRelated(@Param('id') id: string, @Req() req: { user: AuthActor }) {
+    return this.auditService.findRelated(id, req.user);
+  }
+
   @Get('user/:userId')
   @Roles('admin')
   findByUser(@Param('userId') userId: string, @Req() req: { user: AuthActor }) {

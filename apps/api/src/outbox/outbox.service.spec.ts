@@ -8,6 +8,7 @@ describe('outbox commit handling', () => {
         update: jest.fn().mockResolvedValue({ id: 'anchor-id' }),
       },
       diplomaEvent: { create: jest.fn() },
+      auditLog: { create: jest.fn() },
     };
     const event = {
       id: 'event-id',
@@ -21,7 +22,12 @@ describe('outbox commit handling', () => {
         payloadHash: 'a'.repeat(64),
         issuerMspId: 'Org1MSP',
       },
-      version: { diplomaId: 'diploma-id', payloadHash: 'a'.repeat(64) },
+      version: {
+        diplomaId: 'diploma-id',
+        payloadHash: 'a'.repeat(64),
+        version: 1,
+        diploma: { institutionId: 'institution-id' },
+      },
     };
     const database = {
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'event-id' }]),
@@ -53,7 +59,16 @@ describe('outbox commit handling', () => {
       }),
     });
     await test.service.processOne();
-    expect(test.fabric.executeForMsp).toHaveBeenCalledWith('Org1MSP', 'submit', 'AnchorDiploma', 'diploma-id', '1', 'diploma-v1', 'a'.repeat(64), 'Org1MSP');
+    expect(test.fabric.executeForMsp).toHaveBeenCalledWith(
+      'Org1MSP',
+      'submit',
+      'AnchorDiploma',
+      'diploma-id',
+      '1',
+      'diploma-v1',
+      'a'.repeat(64),
+      'Org1MSP',
+    );
     expect(test.transaction.blockchainAnchor.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -63,6 +78,18 @@ describe('outbox commit handling', () => {
         }),
       }),
     );
+    expect(test.transaction.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'COMMIT_BLOCKCHAIN',
+        target: 'diploma-id',
+        institutionId: 'institution-id',
+        metadata: expect.objectContaining({
+          anchorId: 'anchor-id',
+          transactionId: 'tx-1',
+          blockNumber: 7,
+        }),
+      }),
+    });
   });
   it('reuses the original transaction id without fabricating its block number', async () => {
     const test = fixture({
@@ -108,7 +135,9 @@ describe('outbox commit handling', () => {
 
   it('does not submit a lease-expired task after its final allowed attempt', async () => {
     const test = fixture(null);
-    test.database.$queryRaw.mockResolvedValue([{ id: 'event-id', status: 'FAILED' }] as any);
+    test.database.$queryRaw.mockResolvedValue([
+      { id: 'event-id', status: 'FAILED' },
+    ] as any);
     await expect(test.service.processOne()).resolves.toBe(true);
     expect(test.fabric.executeForMsp).not.toHaveBeenCalled();
     expect(test.database.outboxEvent.findUniqueOrThrow).not.toHaveBeenCalled();
@@ -120,12 +149,17 @@ describe('outbox commit handling', () => {
     { success: true, txId: 123, hash: 'a'.repeat(64) },
     { success: true, txId: '', hash: 'a'.repeat(64) },
     { success: true, txId: 'tx', hash: 'b'.repeat(64) },
-  ])('never completes a recovered task with invalid Fabric evidence %p', async (payload) => {
-    const test = fixture({ payload: JSON.stringify(payload) });
-    await test.service.processOne();
-    expect(test.transaction.outboxEvent.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'PENDING' }) }),
-    );
-    expect(test.transaction.diplomaEvent.create).not.toHaveBeenCalled();
-  });
+  ])(
+    'never completes a recovered task with invalid Fabric evidence %p',
+    async (payload) => {
+      const test = fixture({ payload: JSON.stringify(payload) });
+      await test.service.processOne();
+      expect(test.transaction.outboxEvent.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'PENDING' }),
+        }),
+      );
+      expect(test.transaction.diplomaEvent.create).not.toHaveBeenCalled();
+    },
+  );
 });

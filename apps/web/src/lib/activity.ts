@@ -36,8 +36,16 @@ export const activityLabels: Record<string, string> = {
   VERIFY_CERT: "Xác thực văn bằng",
   CHECK_BLOCKCHAIN: "Đối chiếu blockchain",
   RETRY_BLOCKCHAIN: "Khôi phục giao dịch hết lượt thử lại",
+  COMMIT_BLOCKCHAIN: "Ghi nhận thành công trên blockchain",
   SHARE_DIPLOMA: "Chia sẻ liên kết xác thực văn bằng",
 };
+
+export interface AuditReference {
+  key: string;
+  label: string;
+  value: string;
+  kind: "target" | "request" | "blockchain" | "source" | "record";
+}
 
 export interface ActivityEntry {
   id: string;
@@ -52,6 +60,27 @@ export interface ActivityEntry {
   createdAt: string;
   errorMessage: string | null;
   metadata: Record<string, unknown> | null;
+  targetKind: string | null;
+  targetLabel: string | null;
+  references: AuditReference[];
+}
+
+export interface SecurityAlert {
+  kind: "EMAIL_FAILURE_BURST" | "IP_FAILURE_BURST";
+  severity: "HIGH" | "MEDIUM";
+  subject: string;
+  count: number;
+  windowMinutes: number;
+  firstAt: string;
+  lastAt: string;
+  auditIds: string[];
+}
+
+export interface SecuritySummary {
+  generatedAt: string;
+  lookbackHours: number;
+  failedLogins: number;
+  alerts: SecurityAlert[];
 }
 
 export interface ActivityFilters {

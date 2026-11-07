@@ -124,6 +124,8 @@ export class AuthService {
         action: AuditAction.LOGIN,
         result: 'FAILED',
         ip,
+        userAgent,
+        metadata: { role },
       });
       throw new UnauthorizedException(
         'Email, mật khẩu hoặc cổng đăng nhập không hợp lệ',
@@ -149,6 +151,8 @@ export class AuthService {
           userEmail: account.email,
           action: AuditAction.LOGIN,
           ip,
+          userAgent,
+          metadata: { role },
         },
         transaction,
       );

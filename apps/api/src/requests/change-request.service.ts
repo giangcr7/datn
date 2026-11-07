@@ -171,6 +171,7 @@ export class ChangeRequestService {
     actor: AuthActor,
     note: string,
     ip?: string,
+    changes?: unknown,
   ) {
     await transaction.diplomaChangeRequestEvent.create({
       data: {
@@ -193,6 +194,7 @@ export class ChangeRequestService {
         metadata: jsonData({
           status: request.status,
           revision: request.revision,
+          ...(changes === undefined ? {} : { changes }),
         }),
       },
     });
@@ -275,7 +277,14 @@ export class ChangeRequestService {
             reason: body.reason.trim(),
           },
         });
-        await this.event(transaction, record, actor, body.reason.trim(), ip);
+        await this.event(
+          transaction,
+          record,
+          actor,
+          body.reason.trim(),
+          ip,
+          changes,
+        );
         return this.view(
           await transaction.diplomaChangeRequest.findUniqueOrThrow({
             where: { id: record.id },
@@ -381,7 +390,14 @@ export class ChangeRequestService {
             body.status === 'RESOLVED' ? body.resolvedDiplomaId : null,
         },
       });
-      await this.event(transaction, updated, actor, body.note, ip);
+      await this.event(
+        transaction,
+        updated,
+        actor,
+        body.note,
+        ip,
+        current.changes,
+      );
       return this.view(
         await transaction.diplomaChangeRequest.findUniqueOrThrow({
           where: { id },

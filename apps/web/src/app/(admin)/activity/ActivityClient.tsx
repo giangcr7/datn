@@ -1,29 +1,38 @@
 "use client";
 
 import PageTitle from "@/components/PageTitle";
-
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
+  Card,
   Descriptions,
+  Empty,
   Form,
   Input,
+  List,
   Modal,
   Select,
   Space,
+  Statistic,
   Table,
   Tag,
   Typography,
 } from "antd";
-import { ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import {
+  ReloadOutlined,
+  SearchOutlined,
+  WarningOutlined,
+} from "@ant-design/icons";
 import { workflowJson } from "@/lib/diploma-workflow";
 import {
   activityLabels,
   activitySearchParams,
   type ActivityEntry,
   type ActivityFilters,
+  type SecurityAlert,
+  type SecuritySummary,
 } from "@/lib/activity";
 
 const emptyFilters: ActivityFilters = {
@@ -33,8 +42,24 @@ const emptyFilters: ActivityFilters = {
   from: "",
   to: "",
 };
-const timeLabel = (value: string) =>
-  new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+
+const targetKindLabels: Record<string, string> = {
+  diploma: "Văn bằng",
+  student: "Sinh viên",
+  program: "Ngành đào tạo",
+  "issuance-batch": "Đợt cấp",
+  "import-batch": "Lô import",
+  "import-row": "Dòng import",
+  "change-request": "Yêu cầu chỉnh sửa",
+};
+
+const referenceKindLabels: Record<string, string> = {
+  target: "Đối tượng",
+  request: "Yêu cầu",
+  blockchain: "Blockchain",
+  source: "Nguồn dữ liệu",
+  record: "Bản ghi liên quan",
+};
 
 const metadataLabels: Record<string, string> = {
   actorId: "Mã tài khoản",
@@ -43,14 +68,18 @@ const metadataLabels: Record<string, string> = {
   basis: "Căn cứ xử lý",
   before: "Thông tin trước thay đổi",
   batchId: "Mã đợt",
+  blockNumber: "Số block",
+  changeRequestId: "Mã yêu cầu chỉnh sửa",
   code: "Mã nghiệp vụ",
   corrections: "Nội dung điều chỉnh",
   count: "Số lượng",
   diplomaId: "Mã văn bằng",
   diplomaIds: "Danh sách mã văn bằng",
   emailSent: "Đã gửi email",
+  eventType: "Loại sự kiện",
   expiresAt: "Thời hạn liên kết",
   note: "Ghi chú xử lý",
+  outboxId: "Mã hàng đợi blockchain",
   previousAttempts: "Số lần thử trước",
   previousError: "Lỗi lần thử trước",
   previousIssuedOn: "Ngày cấp trước đó",
@@ -59,12 +88,18 @@ const metadataLabels: Record<string, string> = {
   recipientEmail: "Email người nhận",
   recheckedRowIds: "Các dòng đã kiểm tra lại",
   replacementId: "Mã hồ sơ thay thế",
+  requestId: "Mã yêu cầu",
   sourceHash: "Mã băm nguồn",
   sourceId: "Mã nguồn",
   sourceRowId: "Mã dòng dữ liệu nguồn",
   status: "Trạng thái",
-  transactionId: "Mã giao dịch",
+  transactionId: "Mã giao dịch blockchain",
+  txId: "Mã giao dịch blockchain",
+  version: "Phiên bản dữ liệu",
 };
+
+const timeLabel = (value: string) =>
+  new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -105,9 +140,10 @@ function MetadataValue({
   value: unknown;
 }): ReactNode {
   if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return <Typography.Text type="secondary">Không có dữ liệu</Typography.Text>;
-    }
+    if (value.length === 0)
+      return (
+        <Typography.Text type="secondary">Không có dữ liệu</Typography.Text>
+      );
     return (
       <Space direction="vertical" size={8} className="w-full">
         {value.map((item, index) => (
@@ -129,9 +165,10 @@ function MetadataValue({
 
   if (isRecord(value)) {
     const entries = Object.entries(value);
-    if (entries.length === 0) {
-      return <Typography.Text type="secondary">Không có dữ liệu</Typography.Text>;
-    }
+    if (entries.length === 0)
+      return (
+        <Typography.Text type="secondary">Không có dữ liệu</Typography.Text>
+      );
     return (
       <Descriptions
         bordered
@@ -160,6 +197,131 @@ function MetadataValue({
   );
 }
 
+type DiffRow = {
+  key: string;
+  field: string;
+  before: unknown;
+  after: unknown;
+};
+
+function flattenValue(
+  value: unknown,
+  prefix: string,
+  result: Record<string, unknown>,
+) {
+  if (isRecord(value)) {
+    Object.entries(value).forEach(([key, child]) =>
+      flattenValue(child, prefix ? `${prefix}.${key}` : key, result),
+    );
+    return;
+  }
+  result[prefix || "Giá trị"] = value;
+}
+
+function changed(before: unknown, after: unknown) {
+  try {
+    return JSON.stringify(before) !== JSON.stringify(after);
+  } catch {
+    return String(before) !== String(after);
+  }
+}
+
+function buildDiffRows(before: unknown, after: unknown): DiffRow[] {
+  const beforeFlat: Record<string, unknown> = {};
+  const afterFlat: Record<string, unknown> = {};
+  flattenValue(before, "", beforeFlat);
+  flattenValue(after, "", afterFlat);
+  return Array.from(
+    new Set([...Object.keys(beforeFlat), ...Object.keys(afterFlat)]),
+  )
+    .filter((key) => changed(beforeFlat[key], afterFlat[key]))
+    .map((key) => ({
+      key,
+      field: key.split(".").map(metadataLabel).join(" / "),
+      before: beforeFlat[key],
+      after: afterFlat[key],
+    }));
+}
+
+function buildChangeListRows(value: unknown): DiffRow[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, index) => {
+    if (!isRecord(item) || !("before" in item) || !("after" in item)) return [];
+    const field =
+      typeof item.field === "string" ? item.field : `Trường ${index + 1}`;
+    return changed(item.before, item.after)
+      ? [
+          {
+            key: `change-${index}`,
+            field: metadataLabel(field),
+            before: item.before,
+            after: item.after,
+          },
+        ]
+      : [];
+  });
+}
+
+function CodeValue({ value }: { value: string | null | undefined }) {
+  if (!value)
+    return <Typography.Text type="secondary">Không có dữ liệu</Typography.Text>;
+  return (
+    <Typography.Text copyable={{ text: value }} className="break-all">
+      {value}
+    </Typography.Text>
+  );
+}
+
+function SecurityAlertItem({ alert }: { alert: SecurityAlert }) {
+  const isIp = alert.kind === "IP_FAILURE_BURST";
+  return (
+    <List.Item>
+      <List.Item.Meta
+        title={
+          <Space wrap>
+            <Tag color={alert.severity === "HIGH" ? "red" : "orange"}>
+              {alert.severity === "HIGH" ? "Mức cao" : "Cần chú ý"}
+            </Tag>
+            <Typography.Text strong>
+              {isIp
+                ? "Một IP thử đăng nhập dồn dập"
+                : "Một tài khoản bị thử mật khẩu nhiều lần"}
+            </Typography.Text>
+          </Space>
+        }
+        description={
+          <Space direction="vertical" size={2}>
+            <Typography.Text>
+              {isIp ? "IP" : "Email"}:{" "}
+              <Typography.Text code>{alert.subject}</Typography.Text> ·{" "}
+              <Typography.Text strong>
+                {alert.count} lần thất bại
+              </Typography.Text>{" "}
+              trong {alert.windowMinutes} phút.
+            </Typography.Text>
+            <Typography.Text type="secondary">
+              Từ {timeLabel(alert.firstAt)} đến {timeLabel(alert.lastAt)} ·{" "}
+              {alert.auditIds.length} nhật ký liên quan
+            </Typography.Text>
+            <Space wrap size={[4, 4]}>
+              {alert.auditIds.slice(0, 4).map((id) => (
+                <Typography.Text key={id} code copyable={{ text: id }}>
+                  {id}
+                </Typography.Text>
+              ))}
+              {alert.auditIds.length > 4 && (
+                <Typography.Text type="secondary">
+                  +{alert.auditIds.length - 4} mã khác
+                </Typography.Text>
+              )}
+            </Space>
+          </Space>
+        }
+      />
+    </List.Item>
+  );
+}
+
 interface ActivityPage {
   data: ActivityEntry[];
   total: number;
@@ -175,6 +337,12 @@ export default function ActivityClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ActivityEntry | null>(null);
+  const [related, setRelated] = useState<ActivityEntry[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedError, setRelatedError] = useState("");
+  const [security, setSecurity] = useState<SecuritySummary | null>(null);
+  const [securityLoading, setSecurityLoading] = useState(true);
+  const [securityError, setSecurityError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -185,7 +353,7 @@ export default function ActivityClient() {
       pagination.page,
       pagination.limit,
     );
-    workflowJson<ActivityPage>("/api/activity?" + params, {
+    workflowJson<ActivityPage>(`/api/activity?${params}`, {
       signal: controller.signal,
     })
       .then((result) => {
@@ -209,6 +377,55 @@ export default function ActivityClient() {
     return () => controller.abort();
   }, [filters, pagination, refresh]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    setSecurityLoading(true);
+    setSecurityError("");
+    workflowJson<SecuritySummary>("/api/activity/security", {
+      signal: controller.signal,
+    })
+      .then(setSecurity)
+      .catch((failure: unknown) => {
+        if (!controller.signal.aborted)
+          setSecurityError(
+            failure instanceof Error
+              ? failure.message
+              : "Không tải được cảnh báo an ninh",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSecurityLoading(false);
+      });
+    return () => controller.abort();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!selected) {
+      setRelated([]);
+      return;
+    }
+    const controller = new AbortController();
+    setRelatedLoading(true);
+    setRelatedError("");
+    workflowJson<{ data: ActivityEntry[] }>(
+      `/api/activity/${encodeURIComponent(selected.id)}/related`,
+      { signal: controller.signal },
+    )
+      .then((result) => setRelated(result.data))
+      .catch((failure: unknown) => {
+        if (!controller.signal.aborted)
+          setRelatedError(
+            failure instanceof Error
+              ? failure.message
+              : "Không tải được hoạt động liên quan",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setRelatedLoading(false);
+      });
+    return () => controller.abort();
+  }, [selected?.id]);
+
   function applyFilters(values: ActivityFilters) {
     const next = { ...emptyFilters, ...values };
     if (next.from && next.to && next.from > next.to) {
@@ -219,25 +436,91 @@ export default function ActivityClient() {
     setPagination((previous) => ({ ...previous, page: 1 }));
   }
 
+  const diffRows = useMemo(() => {
+    if (!selected?.metadata) return [];
+    return [
+      ...buildDiffRows(selected.metadata.before, selected.metadata.after),
+      ...buildChangeListRows(selected.metadata.changes),
+    ];
+  }, [selected]);
+
+  const detailMetadata = useMemo(() => {
+    if (!selected?.metadata) return null;
+    const entries = Object.entries(selected.metadata).filter(
+      ([key]) => key !== "before" && key !== "after",
+    );
+    return entries.length ? Object.fromEntries(entries) : null;
+  }, [selected]);
+
   return (
     <div className="workspace-page">
       <PageTitle>Nhật ký hoạt động</PageTitle>
       <Typography.Paragraph type="secondary">
-        Tra cứu người thực hiện, thời điểm và kết quả xử lý trong phạm vi nhà
-        trường. Nhật ký chỉ được xem, không chỉnh sửa hoặc xóa.
+        Tra cứu người thực hiện, đối tượng, mã yêu cầu, mã blockchain và kết quả
+        xử lý trong phạm vi nhà trường. Nhật ký chỉ được xem, không chỉnh sửa
+        hoặc xóa.
       </Typography.Paragraph>
+
+      <Card
+        className="mb-5"
+        size="small"
+        title={
+          <Space>
+            <WarningOutlined />
+            <span>Cảnh báo đăng nhập và spam trong 24 giờ</span>
+          </Space>
+        }
+        loading={securityLoading}
+      >
+        {securityError && (
+          <Alert showIcon type="warning" message={securityError} />
+        )}
+        {security && (
+          <>
+            <Space wrap size={24} className="mb-4">
+              <Statistic
+                title="Đăng nhập thất bại"
+                value={security.failedLogins}
+              />
+              <Statistic
+                title="Cảnh báo đang có"
+                value={security.alerts.length}
+              />
+              <Typography.Text type="secondary">
+                Cập nhật lúc {timeLabel(security.generatedAt)}
+              </Typography.Text>
+            </Space>
+            {security.alerts.length ? (
+              <List
+                bordered
+                size="small"
+                dataSource={security.alerts}
+                renderItem={(alert) => <SecurityAlertItem alert={alert} />}
+              />
+            ) : (
+              <Alert
+                showIcon
+                type="success"
+                message="Chưa phát hiện đăng nhập bất thường trong 24 giờ gần nhất"
+                description="Hệ thống vẫn ghi nhận nhật ký thất bại để phục vụ kiểm tra sau này."
+              />
+            )}
+          </>
+        )}
+      </Card>
+
       <Form
         form={form}
         layout="vertical"
         initialValues={emptyFilters}
         onFinish={applyFilters}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-x-4">
+        <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 xl:grid-cols-5">
           <Form.Item name="search" label="Người thực hiện / đối tượng">
             <Input
               allowClear
               maxLength={255}
-              placeholder="Email hoặc mã hồ sơ"
+              placeholder="Email, mã hồ sơ hoặc mã blockchain"
             />
           </Form.Item>
           <Form.Item name="action" label="Hoạt động">
@@ -283,18 +566,21 @@ export default function ActivityClient() {
           <Button
             icon={<ReloadOutlined />}
             onClick={() => setRefresh((value) => value + 1)}
-            loading={loading}
+            loading={loading || securityLoading}
           >
             Tải lại
           </Button>
         </Space>
       </Form>
-      {error && <Alert showIcon type="error" title={error} className="mb-4" />}
+
+      {error && (
+        <Alert showIcon type="error" message={error} className="mb-4" />
+      )}
       <Table<ActivityEntry>
         rowKey="id"
         dataSource={data}
         loading={loading}
-        scroll={{ x: 1050 }}
+        scroll={{ x: 1150 }}
         pagination={{
           current: pagination.page,
           pageSize: pagination.limit,
@@ -319,9 +605,28 @@ export default function ActivityClient() {
           },
           {
             title: "Đối tượng",
-            dataIndex: "target",
-            ellipsis: true,
-            render: (value: string | null) => value || "—",
+            key: "target",
+            width: 310,
+            render: (_, entry: ActivityEntry) => (
+              <Space direction="vertical" size={0}>
+                <Typography.Text
+                  ellipsis={{
+                    tooltip: entry.targetLabel || entry.target || undefined,
+                  }}
+                >
+                  {entry.targetLabel || entry.target || "—"}
+                </Typography.Text>
+                {entry.targetLabel && entry.target && (
+                  <Typography.Text
+                    type="secondary"
+                    className="text-xs"
+                    copyable={{ text: entry.target }}
+                  >
+                    {entry.target}
+                  </Typography.Text>
+                )}
+              </Space>
+            ),
           },
           {
             title: "Kết quả",
@@ -343,96 +648,216 @@ export default function ActivityClient() {
           },
         ]}
       />
+
       <Modal
         title="Chi tiết hoạt động"
         open={!!selected}
         onCancel={() => setSelected(null)}
         footer={null}
-        width={760}
+        width={960}
       >
         {selected && (
-          <>
-            <Descriptions
-              bordered
-              column={1}
-              size="small"
-              items={[
-                {
-                  key: "id",
-                  label: "Mã nhật ký",
-                  children: (
-                    <Typography.Text copyable={{ text: selected.id }}>
-                      {selected.id}
-                    </Typography.Text>
-                  ),
-                },
-                {
-                  key: "time",
-                  label: "Thời điểm",
-                  children: timeLabel(selected.createdAt),
-                },
-                {
-                  key: "actor",
-                  label: "Người thực hiện",
-                  children: selected.actorEmail,
-                },
-                {
-                  key: "action",
-                  label: "Hoạt động",
-                  children: activityLabels[selected.action] || selected.action,
-                },
-                {
-                  key: "target",
-                  label: "Đối tượng",
-                  children: selected.target || "Không có dữ liệu",
-                },
-                {
-                  key: "result",
-                  label: "Kết quả",
-                  children: (
-                    <Tag color={selected.result === "SUCCESS" ? "green" : "red"}>
-                      {selected.result === "SUCCESS" ? "Thành công" : "Thất bại"}
-                    </Tag>
-                  ),
-                },
-                {
-                  key: "actorId",
-                  label: "Mã tài khoản",
-                  children: selected.actorId || "Không có dữ liệu",
-                },
-                {
-                  key: "institutionId",
-                  label: "Mã đơn vị",
-                  children: selected.institutionId || "Không có dữ liệu",
-                },
-                {
-                  key: "ip",
-                  label: "Địa chỉ IP",
-                  children: selected.ip || "Không có dữ liệu",
-                },
-                {
-                  key: "userAgent",
-                  label: "Thiết bị / trình duyệt",
-                  children: selected.userAgent || "Không có dữ liệu",
-                },
-              ]}
-            />
+          <Space direction="vertical" size={16} className="w-full">
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Mã nhật ký">
+                <CodeValue value={selected.id} />
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời điểm">
+                {timeLabel(selected.createdAt)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Người thực hiện">
+                {selected.actorEmail}
+              </Descriptions.Item>
+              <Descriptions.Item label="Hoạt động">
+                {activityLabels[selected.action] || selected.action}
+              </Descriptions.Item>
+              <Descriptions.Item label="Nhóm đối tượng">
+                {selected.targetKind
+                  ? targetKindLabels[selected.targetKind] || selected.targetKind
+                  : "Không xác định"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Đối tượng dễ hiểu">
+                <Space direction="vertical" size={2}>
+                  <Typography.Text strong>
+                    {selected.targetLabel ||
+                      selected.target ||
+                      "Không có dữ liệu"}
+                  </Typography.Text>
+                  {selected.target && <CodeValue value={selected.target} />}
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="Kết quả">
+                <Tag color={selected.result === "SUCCESS" ? "green" : "red"}>
+                  {selected.result === "SUCCESS" ? "Thành công" : "Thất bại"}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã tài khoản">
+                <CodeValue value={selected.actorId} />
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã đơn vị">
+                <CodeValue value={selected.institutionId} />
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa chỉ IP">
+                <CodeValue value={selected.ip} />
+              </Descriptions.Item>
+              <Descriptions.Item label="Thiết bị / trình duyệt">
+                {selected.userAgent || "Không có dữ liệu"}
+              </Descriptions.Item>
+            </Descriptions>
+
             {selected.errorMessage && (
               <Alert
+                showIcon
                 type="error"
-                title={selected.errorMessage}
-                className="mt-4"
+                message="Chi tiết lỗi"
+                description={selected.errorMessage}
               />
             )}
-            {selected.metadata && (
-              <>
-                <Typography.Title level={5}>
-                  Thông tin ghi nhận
-                </Typography.Title>
-                <MetadataValue fieldKey="metadata" value={selected.metadata} />
-              </>
+
+            <Card size="small" title="Mã tham chiếu liên quan">
+              {selected.references.length ? (
+                <List
+                  size="small"
+                  bordered
+                  dataSource={selected.references}
+                  renderItem={(reference) => (
+                    <List.Item>
+                      <Space wrap>
+                        <Tag>
+                          {referenceKindLabels[reference.kind] ||
+                            reference.kind}
+                        </Tag>
+                        <Typography.Text>{reference.label}</Typography.Text>
+                        <CodeValue value={reference.value} />
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Không có mã tham chiếu bổ sung"
+                />
+              )}
+            </Card>
+
+            {(selected.metadata?.before !== undefined ||
+              selected.metadata?.after !== undefined ||
+              Array.isArray(selected.metadata?.changes)) && (
+              <Card size="small" title="So sánh trước và sau thay đổi">
+                {diffRows.length ? (
+                  <Table<DiffRow>
+                    rowKey="key"
+                    size="small"
+                    pagination={false}
+                    scroll={{ x: 650 }}
+                    dataSource={diffRows}
+                    columns={[
+                      { title: "Trường", dataIndex: "field", width: 220 },
+                      {
+                        title: "Trước thay đổi",
+                        dataIndex: "before",
+                        render: (value: unknown, row) => (
+                          <MetadataValue fieldKey={row.field} value={value} />
+                        ),
+                      },
+                      {
+                        title: "Sau thay đổi",
+                        dataIndex: "after",
+                        render: (value: unknown, row) => (
+                          <MetadataValue fieldKey={row.field} value={value} />
+                        ),
+                      },
+                    ]}
+                  />
+                ) : (
+                  <Alert
+                    type="info"
+                    message="Không có trường dữ liệu khác nhau"
+                  />
+                )}
+              </Card>
             )}
-          </>
+
+            {detailMetadata && (
+              <Card size="small" title="Thông tin ghi nhận">
+                <MetadataValue fieldKey="metadata" value={detailMetadata} />
+              </Card>
+            )}
+
+            <Card
+              size="small"
+              title={`Chuỗi hoạt động liên quan${related.length ? ` (${related.length})` : ""}`}
+            >
+              {relatedError && (
+                <Alert showIcon type="warning" message={relatedError} />
+              )}
+              {relatedLoading ? (
+                <Typography.Text type="secondary">
+                  Đang tải hoạt động liên quan...
+                </Typography.Text>
+              ) : related.length ? (
+                <List
+                  size="small"
+                  bordered
+                  dataSource={related}
+                  renderItem={(entry) => (
+                    <List.Item
+                      actions={[
+                        <Button
+                          key="view"
+                          type="link"
+                          size="small"
+                          onClick={() => setSelected(entry)}
+                        >
+                          Xem
+                        </Button>,
+                      ]}
+                    >
+                      <List.Item.Meta
+                        title={
+                          <Space wrap>
+                            <Typography.Text>
+                              {timeLabel(entry.createdAt)}
+                            </Typography.Text>
+                            <Tag>
+                              {activityLabels[entry.action] || entry.action}
+                            </Tag>
+                            <Tag
+                              color={
+                                entry.result === "SUCCESS" ? "green" : "red"
+                              }
+                            >
+                              {entry.result === "SUCCESS"
+                                ? "Thành công"
+                                : "Thất bại"}
+                            </Tag>
+                          </Space>
+                        }
+                        description={
+                          <Space direction="vertical" size={0}>
+                            <Typography.Text>
+                              {entry.targetLabel ||
+                                entry.target ||
+                                "Không có đối tượng"}
+                            </Typography.Text>
+                            <Typography.Text type="secondary">
+                              {entry.actorEmail}
+                            </Typography.Text>
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Chưa tìm thấy hoạt động liên quan"
+                />
+              )}
+            </Card>
+          </Space>
         )}
       </Modal>
     </div>
