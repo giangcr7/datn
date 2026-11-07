@@ -3,18 +3,25 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
+import { hash } from 'bcryptjs';
 import ExcelJS from 'exceljs';
 import { DatabaseService } from '../database/database.service';
 import { pagination, normalizeText } from '../database/data-utils';
 import type { AuthActor } from '../auth/auth-actor';
 import { Prisma } from '../generated/prisma/client';
 import { assertWorkbookSize } from '../imports/registry-parser';
+import { NotifyService } from '../notify/notify.service';
 
 @Injectable()
 export class StudentsService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    @Optional() private readonly notify?: NotifyService,
+  ) {}
   private staff(actor: AuthActor) {
     if (!['admin', 'university'].includes(actor.role))
       throw new ForbiddenException('Chỉ cán bộ được quản lý sinh viên');
@@ -90,6 +97,8 @@ export class StudentsService {
     if (!/^\d{10}$/.test(studentCode) || !name || !email.includes('@'))
       throw new BadRequestException('MSSV, họ tên hoặc email không hợp lệ');
     let created: boolean;
+    let temporaryPassword = '';
+    let emailSent: boolean | undefined;
     try {
       created = await this.database.$transaction(async (transaction) => {
         const existing = await transaction.student.findUnique({
@@ -151,14 +160,13 @@ export class StudentsService {
               contactEmail: email,
             },
           }));
+        temporaryPassword = randomBytes(18).toString('base64url') + 'A!1';
         const account = await transaction.account.create({
           data: {
             studentId: student.id,
             email,
             displayName: name,
-            // OTP activation sets the real bcrypt hash; this marker cannot authenticate.
-            passwordHash:
-              '!pending-activation!' + randomBytes(32).toString('hex'),
+            passwordHash: await hash(temporaryPassword, 8),
             mustChangePassword: true,
           },
         });
@@ -196,7 +204,24 @@ export class StudentsService {
         );
       throw error;
     }
-    return { success: true, created };
+    if (created && this.notify) {
+      try {
+        await this.notify.sendStudentTemporaryPassword(
+          email,
+          name,
+          studentCode,
+          temporaryPassword,
+        );
+        emailSent = true;
+      } catch {
+        emailSent = false;
+      }
+    }
+    return {
+      success: true,
+      created,
+      ...(emailSent === undefined ? {} : { emailSent }),
+    };
   }
 
   async importFromExcel(fileName: string, fileData: string, actor: AuthActor) {
@@ -238,6 +263,7 @@ export class StudentsService {
       );
     let created = 0;
     let skipped = 0;
+    let emailFailed = 0;
     const errors: { row: number; message: string }[] = [];
     for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
       const row = sheet.getRow(rowNumber);
@@ -257,6 +283,7 @@ export class StudentsService {
         );
         if (result.created) created++;
         else skipped++;
+        if (result.emailSent === false) emailFailed++;
       } catch (error) {
         errors.push({
           row: rowNumber,
@@ -269,9 +296,45 @@ export class StudentsService {
       created,
       skipped,
       failed: errors.length,
-      emailFailed: 0,
+      emailFailed,
       total: created + skipped + errors.length,
       errors,
     };
+  }
+
+  async resendTemporaryPassword(studentId: string, actor: AuthActor) {
+    this.staff(actor);
+    if (!this.notify)
+      throw new ServiceUnavailableException('Dịch vụ email chưa sẵn sàng');
+    const student = await this.database.student.findFirst({
+      where: {
+        id: studentId,
+        institutionId: actor.institutionId,
+        ...(actor.role === 'admin'
+          ? {}
+          : { enrollments: { some: { campusId: actor.campusId } } }),
+      },
+      include: { account: true },
+    });
+    if (!student?.account || !student.account.mustChangePassword)
+      throw new BadRequestException(
+        'Sinh viên không còn ở trạng thái chờ đổi mật khẩu lần đầu',
+      );
+    const temporaryPassword = randomBytes(18).toString('base64url') + 'A!1';
+    await this.database.account.update({
+      where: { id: student.account.id },
+      data: {
+        passwordHash: await hash(temporaryPassword, 8),
+        mustChangePassword: true,
+        sessionVersion: { increment: 1 },
+      },
+    });
+    await this.notify.sendStudentTemporaryPassword(
+      student.account.email,
+      student.fullName,
+      student.studentCode,
+      temporaryPassword,
+    );
+    return { success: true, message: 'Đã gửi lại mật khẩu tạm thời qua email' };
   }
 }

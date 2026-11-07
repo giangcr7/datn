@@ -4,9 +4,7 @@ import Link from "next/link";
 import {
   ArrowRightOutlined,
   BankOutlined,
-  FilePdfOutlined,
   InfoCircleOutlined,
-  QrcodeOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   UserOutlined,
@@ -19,19 +17,19 @@ import {
 
 const steps = [
   {
-    title: "Chọn chức năng",
+    title: "Sinh viên đăng nhập",
     description:
-      "Chọn tra cứu thông tin hoặc xác thực văn bằng theo nhu cầu sử dụng.",
+      "Sinh viên dùng tài khoản nhà trường cấp để truy cập văn bằng của mình.",
   },
   {
-    title: "Cung cấp thông tin",
+    title: "Tạo liên kết chia sẻ",
     description:
-      "Nhập thông tin tra cứu; hoặc sử dụng tệp PDF, mã QR để xác thực văn bằng.",
+      "Chọn văn bằng và gửi liên kết xác thực có thời hạn đến Gmail người nhận.",
   },
   {
-    title: "Xem kết quả",
+    title: "Người nhận mở liên kết",
     description:
-      "Đối chiếu thông tin và đọc kết quả kiểm tra, bao gồm các lưu ý về tình trạng văn bằng.",
+      "Người nhận mở liên kết riêng để xem kết quả xác thực do nhà trường cung cấp.",
   },
 ];
 
@@ -59,20 +57,15 @@ export default function HomePage() {
                   aria-hidden="true"
                 />
                 <div>
-                  <h2>Xác thực văn bằng</h2>
-                  <p>Kiểm tra văn bằng được cung cấp</p>
+                  <h2>Xác thực văn bằng được chia sẻ</h2>
+                  <p>Chỉ truy cập qua liên kết riêng của sinh viên</p>
                 </div>
               </div>
               <div className={styles.methods} aria-label="Hình thức xác thực">
-                <span>
-                  <FilePdfOutlined aria-hidden="true" /> Tệp PDF văn bằng
-                </span>
-                <span>
-                  <QrcodeOutlined aria-hidden="true" /> Mã QR trên văn bằng
-                </span>
+                <span>Liên kết chia sẻ có thời hạn</span>
               </div>
-              <Link className={styles.primaryAction} href="/verify">
-                Xác thực ngay
+              <Link className={styles.primaryAction} href="/login?type=student">
+                Sinh viên đăng nhập để chia sẻ
                 <ArrowRightOutlined aria-hidden="true" />
               </Link>
             </article>
@@ -101,8 +94,9 @@ export default function HomePage() {
           <div className={styles.notice}>
             <InfoCircleOutlined aria-hidden="true" />
             <p>
-              <strong>Lưu ý khi sử dụng:</strong> Để kiểm tra tính toàn vẹn của
-              tệp văn bằng, vui lòng sử dụng tệp PDF được cấp từ hệ thống.
+              <strong>Lưu ý khi sử dụng:</strong> Kết quả xác thực chỉ hiển thị
+              qua liên kết chia sẻ riêng do sinh viên tạo từ tài khoản nhà
+              trường.
             </p>
           </div>
 
@@ -133,17 +127,16 @@ export default function HomePage() {
                   <summary>Tra cứu và xác thực khác nhau thế nào?</summary>
                   <p>
                     Tra cứu giúp tìm thông tin văn bằng trong hệ thống. Xác thực
-                    giúp kiểm tra văn bằng bạn cung cấp. Việc tìm thấy thông tin
-                    không thay thế cho việc kiểm tra tệp PDF.
+                    giúp kiểm tra kết quả văn bằng qua liên kết chia sẻ riêng.
+                    Việc tìm thấy thông tin không thay thế cho liên kết xác
+                    thực.
                   </p>
                 </details>
                 <details>
-                  <summary>Nên dùng tệp PDF hay mã QR?</summary>
+                  <summary>Làm sao để nhận kết quả xác thực?</summary>
                   <p>
-                    Dùng tệp PDF khi cần kiểm tra tính toàn vẹn của chính tệp
-                    đó. Quét mã QR để mở và kiểm tra thông tin văn bằng được
-                    liên kết; mã QR không thay thế việc kiểm tra nội dung tệp
-                    PDF.
+                    Yêu cầu sinh viên gửi liên kết xác thực đến Gmail của bạn.
+                    Liên kết có thời hạn và có thể bị sinh viên thu hồi.
                   </p>
                 </details>
               </div>

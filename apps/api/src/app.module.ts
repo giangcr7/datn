@@ -26,6 +26,7 @@ import { ReportsModule } from './reports/reports.module';
 import { ChangeRequestModule } from './requests/change-request.module';
 import { InboxModule } from './inbox/inbox.module';
 import { requestRateLimits } from './auth/rate-limit';
+import { ShareModule } from './shares/share.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { requestRateLimits } from './auth/rate-limit';
     AuthModule,
     CertModule,
     VerifyModule,
+    ShareModule,
     FabricModule,
     NotifyModule,
     StudentsModule,

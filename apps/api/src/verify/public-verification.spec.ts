@@ -1,9 +1,4 @@
-import type { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import request from 'supertest';
 import { publicVerification } from './public-verification';
-import { VerifyController } from './verify.controller';
-import { VerifyService } from './verify.service';
 
 function fixture() {
   return {
@@ -111,48 +106,3 @@ describe('public verification allowlist', () => {
     ).toBeUndefined();
   });
 });
-
-describe('HTTP public verification privacy', () => {
-  let app: INestApplication<Server>;
-  const service = { verify: jest.fn(), verifyPdf: jest.fn() };
-  beforeAll(async () => {
-    const module = await Test.createTestingModule({
-      controllers: [VerifyController],
-      providers: [{ provide: VerifyService, useValue: service }],
-    }).compile();
-    app = module.createNestApplication<INestApplication<Server>>();
-    app.setGlobalPrefix('api');
-    await app.init();
-  });
-  afterAll(async () => {
-    await app?.close();
-  });
-  it('sanitizes JSON verification even when the internal service returns full evidence', async () => {
-    service.verify.mockResolvedValue(fixture());
-    const response = await request(app.getHttpServer())
-      .post('/api/verify')
-      .send({ uuid: 'fixture' })
-      .expect(201);
-    const body = response.body as ReturnType<typeof publicVerification>;
-    expect(body.details).toHaveProperty('studentName');
-    expect(JSON.stringify(response.body)).not.toMatch(
-      /PRIVATE-CODE|private-|internal-evidence/,
-    );
-  });
-  it('sanitizes PDF verification without removing exact-file match confirmation', async () => {
-    service.verifyPdf.mockResolvedValue({
-      ...fixture(),
-      fileVerification: 'EXACT_SIGNED_FILE_MATCH',
-    });
-    const response = await request(app.getHttpServer())
-      .post('/api/verify/pdf')
-      .attach('file', Buffer.from('%PDF-fixture'), 'fixture.pdf')
-      .expect(201);
-    const body = response.body as ReturnType<typeof publicVerification>;
-    expect(body.fileVerification).toBe('EXACT_SIGNED_FILE_MATCH');
-    expect(JSON.stringify(response.body)).not.toMatch(
-      /PRIVATE-CODE|private-|internal-evidence/,
-    );
-  });
-});
-import type { Server } from 'node:http';

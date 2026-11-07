@@ -8,13 +8,32 @@ import * as nodemailer from 'nodemailer';
 @Injectable()
 export class NotifyService {
   private readonly logger = new Logger(NotifyService.name);
-  private transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+  private transporter = nodemailer.createTransport(
+    process.env.SMTP_HOST
+      ? {
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT || 587),
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        }
+      : {
+          service: process.env.EMAIL_SERVICE || 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        },
+  );
+
+  private ensureConfigured() {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS)
+      throw new ServiceUnavailableException(
+        'Chưa cấu hình EMAIL_USER và EMAIL_PASS cho dịch vụ gửi email.',
+      );
+  }
 
   async sendCertIssued(
     to: string,
@@ -151,6 +170,7 @@ export class NotifyService {
   }
 
   async sendActivationOtp(to: string, studentName: string, otp: string) {
+    this.ensureConfigured();
     try {
       await this.transporter.sendMail({
         from: process.env.EMAIL_FROM,
@@ -184,6 +204,95 @@ export class NotifyService {
       this.logger.warn('Không gửi được email OTP; mã sẽ bị vô hiệu hóa');
       throw new ServiceUnavailableException(
         'Không gửi được email kích hoạt. Vui lòng thử lại sau.',
+      );
+    }
+  }
+
+  async sendStudentTemporaryPassword(
+    to: string,
+    studentName: string,
+    mssv: string,
+    temporaryPassword: string,
+  ) {
+    this.ensureConfigured();
+    const baseUrl = (process.env.WEB_URL || 'http://localhost:3000').replace(
+      /\/$/,
+      '',
+    );
+    const loginUrl = `${baseUrl}/login?type=student`;
+    try {
+      await this.transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to,
+        subject: 'Kích hoạt tài khoản sinh viên - DiplomaChain',
+        text:
+          `Xin chào ${studentName || 'Sinh viên'},\n\n` +
+          'Tài khoản DiplomaChain của bạn đã được tạo. Dùng thông tin dưới đây để đăng nhập lần đầu:\n\n' +
+          `MSSV: ${mssv}\nEmail: ${to}\nMật khẩu tạm thời: ${temporaryPassword}\n\n` +
+          `${loginUrl}\n\n` +
+          'Sau khi đăng nhập, hệ thống sẽ bắt buộc đổi mật khẩu. Không chia sẻ mật khẩu tạm thời cho người khác.',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <div style="background:#0056b3;padding:24px;text-align:center;color:#fff">
+              <h2 style="margin:0">DiplomaChain</h2>
+            </div>
+            <div style="padding:28px;background:#fff;color:#333">
+              <p>Xin chào <strong>${studentName || 'Sinh viên'}</strong>,</p>
+              <p>Tài khoản sinh viên của bạn đã được nhà trường tạo. Dùng thông tin dưới đây để đăng nhập lần đầu:</p>
+              <div style="background:#f0f5ff;border:1px solid #b7d1f5;border-radius:8px;padding:16px;margin:20px 0">
+                <p><strong>MSSV:</strong> ${mssv}</p>
+                <p><strong>Email:</strong> ${to}</p>
+                <p><strong>Mật khẩu tạm thời:</strong> ${temporaryPassword}</p>
+              </div>
+              <p><a href="${loginUrl}" style="display:inline-block;background:#0056b3;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">Đăng nhập sinh viên</a></p>
+              <p style="color:#666;font-size:13px">Sau khi đăng nhập, hệ thống sẽ bắt buộc đổi mật khẩu. Không chia sẻ mật khẩu tạm thời.</p>
+            </div>
+          </div>
+        `,
+      });
+      this.logger.log(`Email kích hoạt tài khoản đã gửi tới ${to}`);
+    } catch (error: any) {
+      this.logger.warn(`Gửi email kích hoạt thất bại: ${error.message}`);
+      throw new ServiceUnavailableException(
+        'Không gửi được email kích hoạt. Vui lòng kiểm tra cấu hình SMTP hoặc thử lại sau.',
+      );
+    }
+  }
+
+  async sendDiplomaShare(
+    to: string,
+    studentName: string,
+    shareUrl: string,
+    expiresAt: Date,
+  ) {
+    this.ensureConfigured();
+    try {
+      await this.transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to,
+        subject: 'Liên kết xác thực văn bằng được chia sẻ - DiplomaChain',
+        text:
+          `Sinh viên ${studentName || 'DiplomaChain'} đã chia sẻ một văn bằng với bạn.\n\n` +
+          `Mở liên kết để xác thực: ${shareUrl}\n\n` +
+          `Liên kết hết hạn lúc ${expiresAt.toLocaleString('vi-VN')}.`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <div style="background:#0056b3;padding:24px;text-align:center;color:#fff">
+              <h2 style="margin:0">Xác thực văn bằng</h2>
+            </div>
+            <div style="padding:28px;background:#fff;color:#333">
+              <p><strong>${studentName || 'Một sinh viên'}</strong> đã chia sẻ văn bằng với bạn.</p>
+              <p><a href="${shareUrl}" style="display:inline-block;background:#0056b3;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">Mở liên kết xác thực</a></p>
+              <p style="color:#666;font-size:13px">Liên kết hết hạn lúc ${expiresAt.toLocaleString('vi-VN')}. Chỉ sử dụng liên kết này cho đúng người nhận.</p>
+            </div>
+          </div>
+        `,
+      });
+      this.logger.log(`Email chia sẻ văn bằng đã gửi tới ${to}`);
+    } catch (error: any) {
+      this.logger.warn(`Gửi email chia sẻ thất bại: ${error.message}`);
+      throw new ServiceUnavailableException(
+        'Không gửi được email chia sẻ. Vui lòng kiểm tra cấu hình SMTP hoặc thử lại sau.',
       );
     }
   }

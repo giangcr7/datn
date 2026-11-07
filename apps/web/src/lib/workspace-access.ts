@@ -88,7 +88,8 @@ export function getWorkspace(user?: WorkspaceUser | null): {
             {
               path: "/diploma-records/requests",
               label: "Yêu cầu chỉnh sửa",
-              description: "Tiếp nhận đề nghị của sinh viên và theo dõi xử lý thay thế.",
+              description:
+                "Tiếp nhận đề nghị của sinh viên và theo dõi xử lý thay thế.",
             },
             {
               path: "/diploma-records/batches",
@@ -223,8 +224,7 @@ export function getDiplomaActions(
     verify:
       staff &&
       ["ON_CHAIN", "REVOKED", "REPLACED"].includes(record.status || ""),
-    share:
-      ["approver", "student"].includes(kind) && record.status === "ON_CHAIN",
+    share: kind === "student" && record.status === "ON_CHAIN",
     revoke:
       kind === "approver" &&
       record.status === "ON_CHAIN" &&

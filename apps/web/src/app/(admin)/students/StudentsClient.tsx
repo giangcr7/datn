@@ -96,6 +96,27 @@ export default function StudentsClient({
       key: "action",
       render: (_: any, record: any) => (
         <Space>
+          {!record.hasPassword && (
+            <Tooltip title="Gửi lại mật khẩu tạm thời qua email">
+              <Button
+                size="small"
+                onClick={async () => {
+                  const response = await fetch(
+                    `/api/students/${encodeURIComponent(record.id)}/resend-password`,
+                    { method: "POST" },
+                  );
+                  const result = await response.json();
+                  if (!response.ok || !result.success)
+                    message.error(
+                      result.error || "Không gửi lại được mật khẩu",
+                    );
+                  else message.success("Đã gửi lại mật khẩu tạm thời");
+                }}
+              >
+                Gửi lại mật khẩu
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip title="Xem văn bằng của sinh viên này">
             <Button
               size="small"

@@ -336,6 +336,7 @@ model Diploma {
   signedDocuments SignedDiplomaDocument[]
   changeRequests DiplomaChangeRequest[] @relation("ChangeRequestSource")
   resolvedRequests DiplomaChangeRequest[] @relation("ChangeRequestResolution")
+  shares         DiplomaShare[]
 
   @@unique([institutionId, certificateNo])
   @@unique([institutionId, registryNo])
@@ -345,6 +346,25 @@ model Diploma {
   @@index([graduationId])
   @@index([issuanceBatchId])
   @@map("diplomas")
+}
+
+model DiplomaShare {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diplomaId       String    @map("diploma_id") @db.Uuid
+  ownerId         String    @map("owner_id") @db.Uuid
+  recipientEmail  String    @map("recipient_email") @db.VarChar(320)
+  tokenHash       String    @unique @map("token_hash") @db.Char(64)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(3)
+  firstAccessedAt DateTime? @map("first_accessed_at") @db.Timestamptz(3)
+  lastAccessedAt  DateTime? @map("last_accessed_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  diploma         Diploma   @relation(fields: [diplomaId], references: [id], onDelete: Restrict)
+  owner           Account   @relation("DiplomaShareOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([diplomaId, ownerId, revokedAt])
+  @@index([recipientEmail, expiresAt])
+  @@map("diploma_shares")
 }
 
 model DiplomaVersion {
@@ -558,6 +578,7 @@ model Account {
   issuanceBatches    DiplomaIssuanceBatch[]
   changeRequests DiplomaChangeRequest[]
   changeRequestEvents DiplomaChangeRequestEvent[]
+  diplomaShares       DiplomaShare[]         @relation("DiplomaShareOwner")
 
   @@map("accounts")
 }

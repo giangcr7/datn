@@ -5,13 +5,17 @@ import {
   Body,
   Header,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { VerifyService } from './verify.service';
 import { publicVerification } from './public-verification';
+import { JwtAuthGuard } from '../auth/jwt.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('verify')
 @Controller('verify')
@@ -19,6 +23,9 @@ export class VerifyController {
   constructor(private readonly verifyService: VerifyService) {}
 
   @Post('pdf')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'university', 'student')
+  @ApiBearerAuth()
   @Header('Cache-Control', 'no-store')
   @Throttle({ medium: { ttl: 60000, limit: 10 } })
   @UseInterceptors(
@@ -32,6 +39,9 @@ export class VerifyController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'university', 'student')
+  @ApiBearerAuth()
   @Header('Cache-Control', 'no-store')
   @Throttle({ medium: { ttl: 60000, limit: 30 } }) // 30 lần/phút cho tra cứu công khai
   async verify(@Body() body: any) {

@@ -16,7 +16,6 @@ import {
   DashboardOutlined,
   LogoutOutlined,
   UserOutlined,
-  SearchOutlined,
   FormOutlined,
   MenuOutlined,
 } from "@ant-design/icons";
@@ -48,11 +47,6 @@ export default function StudentShell({
       key: "/student/requests",
       icon: <FormOutlined />,
       label: "Yêu cầu chỉnh sửa",
-    },
-    {
-      key: "/verify",
-      icon: <SearchOutlined />,
-      label: "Xác thực văn bằng",
     },
     {
       key: "logout",

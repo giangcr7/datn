@@ -37,11 +37,9 @@ import {
   Select,
 } from "antd";
 import {
-  CopyOutlined,
   SafetyCertificateOutlined,
   CheckCircleFilled,
   CloseCircleFilled,
-  QrcodeOutlined,
   ReloadOutlined,
   DownloadOutlined,
   MoreOutlined,
@@ -50,7 +48,6 @@ import {
   FileExcelOutlined,
   FilePdfOutlined,
 } from "@ant-design/icons";
-import QRCode from "react-qr-code";
 import Link from "next/link";
 import ReplacementCreateModal from "@/components/ReplacementCreateModal";
 import RegisterQuickSearch from "@/components/RegisterQuickSearch";
@@ -86,7 +83,6 @@ export default function CertificatesClient({
   const [loadingVerify, setLoadingVerify] = useState<Record<string, boolean>>(
     {},
   );
-  const [qrRecord, setQrRecord] = useState<any>(null);
   const [auditRecord, setAuditRecord] = useState<any>(null);
   const [revokeRecord, setRevokeRecord] = useState<any>(null);
   const [revokeReason, setRevokeReason] = useState("");
@@ -412,16 +408,6 @@ export default function CertificatesClient({
             label: "Chi tiết",
             onClick: () => setDetailRecord(record),
           },
-          ...(actions.share
-            ? [
-                {
-                  key: "qr",
-                  icon: <QrcodeOutlined />,
-                  label: "Mã QR xác thực",
-                  onClick: () => setQrRecord(record),
-                },
-              ]
-            : []),
           ...(actions.history
             ? [
                 {
@@ -521,12 +507,6 @@ export default function CertificatesClient({
       },
     },
   ];
-
-  const verifyUrl = qrRecord
-    ? window.location.origin +
-      "/verify?proof=" +
-      encodeURIComponent(JSON.stringify({ uuid: qrRecord.uuid }))
-    : "";
 
   return (
     <div className="workspace-page">
@@ -689,35 +669,6 @@ export default function CertificatesClient({
               ]}
             />
           </>
-        )}
-      </Modal>
-      <Modal
-        open={!!qrRecord}
-        onCancel={() => setQrRecord(null)}
-        footer={null}
-        title={qrRecord ? `QR Code — ${qrRecord.fullName}` : ""}
-        centered
-      >
-        {qrRecord && (
-          <div className="flex flex-col items-center gap-4 p-4">
-            <QRCode
-              value={verifyUrl}
-              size={300}
-              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-            />
-            <Typography.Text type="secondary" className="text-center text-xs">
-              Quét QR để xác thực văn bằng tại trang công khai
-            </Typography.Text>
-            <Button
-              icon={<CopyOutlined />}
-              onClick={() => {
-                navigator.clipboard.writeText(verifyUrl);
-                message.success("Đã copy link xác thực!");
-              }}
-            >
-              Copy Link
-            </Button>
-          </div>
         )}
       </Modal>
       <div className="min-w-0">

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
 import { requestClientHeaders } from "@/lib/client-ip";
 
 const headers = { "Cache-Control": "no-store" };
@@ -14,6 +16,12 @@ export async function POST(request: Request) {
       { status: 413, headers },
     );
   try {
+    const session = (await getServerSession(authOptions)) as any;
+    if (!session?.accessToken)
+      return NextResponse.json(
+        { success: false, error: "Chưa đăng nhập" },
+        { status: 401, headers },
+      );
     const reader = request.body.getReader();
     const chunks: Uint8Array[] = [];
     let length = 0;
@@ -49,7 +57,10 @@ export async function POST(request: Request) {
       "http://localhost:3001/api";
     const upstream = await fetch(apiUrl + "/verify/pdf", {
       method: "POST",
-      headers: await requestClientHeaders(),
+      headers: {
+        ...(await requestClientHeaders()),
+        Authorization: `Bearer ${session.accessToken}`,
+      },
       body: upload,
       cache: "no-store",
       signal: AbortSignal.timeout(60000),

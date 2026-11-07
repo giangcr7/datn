@@ -23,6 +23,10 @@ export const envValidationSchema = Joi.object({
   EMAIL_USER: Joi.string().allow('').optional(),
   EMAIL_PASS: Joi.string().allow('').optional(),
   EMAIL_FROM: Joi.string().allow('').optional(),
+  EMAIL_SERVICE: Joi.string().allow('').optional(),
+  SMTP_HOST: Joi.string().allow('').optional(),
+  SMTP_PORT: Joi.number().integer().min(1).max(65535).default(587),
+  SMTP_SECURE: Joi.boolean().default(false),
   FABRIC_ENABLED: Joi.boolean().default(false),
   FABRIC_ALLOW_LEGACY_WALLET: Joi.boolean().default(false),
   ORG1_WALLET_CERT_SHA256: Joi.string()

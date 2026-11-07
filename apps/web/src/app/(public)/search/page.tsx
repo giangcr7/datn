@@ -14,7 +14,6 @@ import {
   lookupDate,
   lookupGroups,
   lookupStatus,
-  lookupVerificationHref,
   requestDiplomaLookup,
   validateLookupFields,
   type DiplomaLookupResult,
@@ -343,10 +342,7 @@ export default function SearchPage() {
                     thông tin văn bằng thay thế.
                   </p>
                 )}
-                <Link
-                  className={styles.verifyLink}
-                  href={lookupVerificationHref(diploma.uuid)}
-                >
+                <Link className={styles.verifyLink} href="/login?type=student">
                   Kiểm tra tình trạng văn bằng <span aria-hidden="true">→</span>
                 </Link>
               </article>
@@ -356,9 +352,9 @@ export default function SearchPage() {
       <aside className={styles.notice}>
         <strong>Lưu ý khi sử dụng kết quả</strong>
         <p>
-          Tra cứu giúp tìm thông tin lưu trữ, không thay thế việc xác thực tệp
-          văn bằng. Nếu cần kiểm tra tệp PDF hoặc mã QR, sử dụng{" "}
-          <Link href="/verify">chức năng xác thực văn bằng</Link>.
+          Tra cứu giúp tìm thông tin lưu trữ, không thay thế xác thực. Để kiểm
+          tra kết quả xác thực, hãy yêu cầu sinh viên gửi liên kết chia sẻ riêng
+          đến Gmail của bạn.
         </p>
         <p>
           Thông tin không khớp hoặc không nhớ số định danh?{" "}

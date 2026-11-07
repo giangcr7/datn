@@ -17,6 +17,7 @@ type ImportResult = {
   created?: number;
   skipped?: number;
   failed?: number;
+  emailFailed?: number;
   total?: number;
   error?: string;
   message?: string;
@@ -139,7 +140,7 @@ export default function ImportStudentsClient() {
               title={
                 result.success
                   ? result.message ||
-                    (result.failed
+                    (result.failed || result.emailFailed
                       ? "Đã xử lý file, có dòng cần sửa dữ liệu."
                       : "Đã xử lý xong danh sách sinh viên.")
                   : result.error || result.message || "Không nhập được file"
@@ -168,6 +169,11 @@ export default function ImportStudentsClient() {
                 {!!result.failed && (
                   <Text type="danger">
                     Dòng lỗi: <strong>{result.failed}</strong>
+                  </Text>
+                )}
+                {!!result.emailFailed && (
+                  <Text type="danger">
+                    Email chưa gửi: <strong>{result.emailFailed}</strong>
                   </Text>
                 )}
               </Space>

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Param,
   Body,
   Query,
   UseGuards,
@@ -80,5 +81,12 @@ export class StudentsController {
       body.fileData,
       req.user,
     );
+  }
+
+  @Post(':id/resend-password')
+  @UseGuards(RolesGuard)
+  @Roles('university')
+  resendPassword(@Param('id') id: string, @Req() req: any) {
+    return this.studentsService.resendTemporaryPassword(id, req.user);
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Descriptions, Result } from "antd";
+import { Descriptions, Result } from "antd";
 import type { DiplomaVerification } from "@/lib/public-verification";
 
 const degreeLabels: Record<string, string> = {
@@ -30,22 +30,6 @@ export default function DiplomaVerificationResult({
         status={pending ? "warning" : "error"}
         title={pending ? "CHƯA THỂ XÁC THỰC VĂN BẰNG" : "VĂN BẰNG KHÔNG HỢP LỆ"}
         subTitle={verification.message}
-        extra={
-          verification.details?.replacementUuid ? (
-            <Button
-              href={
-                "/verify?proof=" +
-                encodeURIComponent(
-                  JSON.stringify({
-                    uuid: verification.details.replacementUuid,
-                  }),
-                )
-              }
-            >
-              Xác thực văn bằng thay thế
-            </Button>
-          ) : undefined
-        }
       />
     );
   }

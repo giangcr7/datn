@@ -314,7 +314,3 @@ export function lookupDate(value?: string | null) {
     ? date.split("-").reverse().join("/")
     : "Chưa ghi nhận";
 }
-
-export function lookupVerificationHref(uuid: string) {
-  return "/verify?proof=" + encodeURIComponent(JSON.stringify({ uuid }));
-}

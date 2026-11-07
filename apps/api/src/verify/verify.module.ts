@@ -7,5 +7,6 @@ import { FabricModule } from '../fabric/fabric.module';
   imports: [FabricModule],
   controllers: [VerifyController],
   providers: [VerifyService],
+  exports: [VerifyService],
 })
 export class VerifyModule {}

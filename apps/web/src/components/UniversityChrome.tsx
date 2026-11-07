@@ -47,7 +47,6 @@ export function UniversityHeader({
   const publicLinks = [
     { href: "/", label: "Trang chủ", section: "home" },
     { href: "/search", label: "Tra cứu văn bằng", section: "search" },
-    { href: "/verify", label: "Xác thực văn bằng", section: "verify" },
     {
       href: active === "home" ? "#huong-dan" : "/#huong-dan",
       label: "Hướng dẫn sử dụng",
@@ -74,13 +73,6 @@ export function UniversityHeader({
             aria-current={active === "search" ? "page" : undefined}
           >
             Tra cứu<span className={styles.navigationDetail}> văn bằng</span>
-          </Link>
-          <Link
-            href="/verify"
-            aria-label="Xác thực văn bằng"
-            aria-current={active === "verify" ? "page" : undefined}
-          >
-            Xác thực<span className={styles.navigationDetail}> văn bằng</span>
           </Link>
           <Link href={active === "home" ? "#huong-dan" : "/#huong-dan"}>
             Hướng dẫn

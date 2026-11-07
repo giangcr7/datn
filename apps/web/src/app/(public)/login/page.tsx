@@ -4,7 +4,6 @@ import React, { useState, Suspense } from "react";
 import { Form, Input, Button, Typography, Tabs, Checkbox, message } from "antd";
 import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { signIn } from "next-auth/react";
 import styles from "@/styles/public-pages.module.css";
 
@@ -161,13 +160,10 @@ function LoginContent() {
         {/* LOGIC HIỂN THỊ CÓ ĐIỀU KIỆN (CONDITIONAL RENDERING) */}
         {activeTab === "student" ? (
           <div style={{ textAlign: "center", marginTop: "20px" }}>
-            <Text>Bạn chưa kích hoạt tài khoản? </Text>
-            <Link
-              href="/register/student" // Đã trỏ chuẩn về thư mục thiết kế
-              style={{ color: "var(--school-primary)", fontWeight: 500 }}
-            >
-              Kích hoạt ngay
-            </Link>
+            <Text type="secondary">
+              Chưa nhận được mật khẩu tạm thời? Vui lòng liên hệ nhà trường để
+              gửi lại.
+            </Text>
           </div>
         ) : (
           <div style={{ textAlign: "center", marginTop: "20px" }}>
