@@ -2,6 +2,7 @@
 
 import PageTitle from "@/components/PageTitle";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -34,6 +35,131 @@ const emptyFilters: ActivityFilters = {
 };
 const timeLabel = (value: string) =>
   new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+
+const metadataLabels: Record<string, string> = {
+  actorId: "Mã tài khoản",
+  after: "Thông tin sau thay đổi",
+  anchorId: "Mã neo blockchain",
+  basis: "Căn cứ xử lý",
+  before: "Thông tin trước thay đổi",
+  batchId: "Mã đợt",
+  code: "Mã nghiệp vụ",
+  corrections: "Nội dung điều chỉnh",
+  count: "Số lượng",
+  diplomaId: "Mã văn bằng",
+  diplomaIds: "Danh sách mã văn bằng",
+  emailSent: "Đã gửi email",
+  expiresAt: "Thời hạn liên kết",
+  note: "Ghi chú xử lý",
+  previousAttempts: "Số lần thử trước",
+  previousError: "Lỗi lần thử trước",
+  previousIssuedOn: "Ngày cấp trước đó",
+  programId: "Mã ngành đào tạo",
+  reason: "Lý do",
+  recipientEmail: "Email người nhận",
+  recheckedRowIds: "Các dòng đã kiểm tra lại",
+  replacementId: "Mã hồ sơ thay thế",
+  sourceHash: "Mã băm nguồn",
+  sourceId: "Mã nguồn",
+  sourceRowId: "Mã dòng dữ liệu nguồn",
+  status: "Trạng thái",
+  transactionId: "Mã giao dịch",
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const metadataLabel = (key: string) =>
+  metadataLabels[key] ||
+  key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/^./, (character) => character.toUpperCase());
+
+function metadataText(key: string, value: unknown) {
+  if (value === null || value === undefined) return "Không có dữ liệu";
+  if (typeof value === "boolean") return value ? "Có" : "Không";
+  if (typeof value === "number") return value.toLocaleString("vi-VN");
+  if (typeof value !== "string") return String(value);
+
+  if (/At$|Date$|On$/.test(key) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T00:00:00+07:00`).toLocaleDateString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    });
+  }
+  if (
+    /At$|Date$|On$/.test(key) &&
+    /^\d{4}-\d{2}-\d{2}T/.test(value) &&
+    !Number.isNaN(new Date(value).getTime())
+  ) {
+    return timeLabel(value);
+  }
+  return value;
+}
+
+function MetadataValue({
+  fieldKey,
+  value,
+}: {
+  fieldKey: string;
+  value: unknown;
+}): ReactNode {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <Typography.Text type="secondary">Không có dữ liệu</Typography.Text>;
+    }
+    return (
+      <Space direction="vertical" size={8} className="w-full">
+        {value.map((item, index) => (
+          <div
+            key={`${fieldKey}-${index}`}
+            className="rounded border border-solid border-gray-200 bg-gray-50 px-3 py-2"
+          >
+            <Typography.Text type="secondary" className="text-xs">
+              Mục {index + 1}
+            </Typography.Text>
+            <div className="mt-1">
+              <MetadataValue fieldKey={`${fieldKey}-${index}`} value={item} />
+            </div>
+          </div>
+        ))}
+      </Space>
+    );
+  }
+
+  if (isRecord(value)) {
+    const entries = Object.entries(value);
+    if (entries.length === 0) {
+      return <Typography.Text type="secondary">Không có dữ liệu</Typography.Text>;
+    }
+    return (
+      <Descriptions
+        bordered
+        size="small"
+        column={1}
+        className="w-full"
+        items={entries.map(([key, child]) => ({
+          key,
+          label: metadataLabel(key),
+          children: <MetadataValue fieldKey={key} value={child} />,
+        }))}
+      />
+    );
+  }
+
+  const text = metadataText(fieldKey, value);
+  const copyText =
+    typeof value === "string" && value.length >= 36 ? value : undefined;
+  return (
+    <Typography.Text
+      className="block break-all"
+      copyable={copyText ? { text: copyText } : undefined}
+    >
+      {text}
+    </Typography.Text>
+  );
+}
+
 interface ActivityPage {
   data: ActivityEntry[];
   total: number;
@@ -232,6 +358,15 @@ export default function ActivityClient() {
               size="small"
               items={[
                 {
+                  key: "id",
+                  label: "Mã nhật ký",
+                  children: (
+                    <Typography.Text copyable={{ text: selected.id }}>
+                      {selected.id}
+                    </Typography.Text>
+                  ),
+                },
+                {
                   key: "time",
                   label: "Thời điểm",
                   children: timeLabel(selected.createdAt),
@@ -249,13 +384,36 @@ export default function ActivityClient() {
                 {
                   key: "target",
                   label: "Đối tượng",
-                  children: selected.target || "—",
+                  children: selected.target || "Không có dữ liệu",
                 },
                 {
                   key: "result",
                   label: "Kết quả",
-                  children:
-                    selected.result === "SUCCESS" ? "Thành công" : "Thất bại",
+                  children: (
+                    <Tag color={selected.result === "SUCCESS" ? "green" : "red"}>
+                      {selected.result === "SUCCESS" ? "Thành công" : "Thất bại"}
+                    </Tag>
+                  ),
+                },
+                {
+                  key: "actorId",
+                  label: "Mã tài khoản",
+                  children: selected.actorId || "Không có dữ liệu",
+                },
+                {
+                  key: "institutionId",
+                  label: "Mã đơn vị",
+                  children: selected.institutionId || "Không có dữ liệu",
+                },
+                {
+                  key: "ip",
+                  label: "Địa chỉ IP",
+                  children: selected.ip || "Không có dữ liệu",
+                },
+                {
+                  key: "userAgent",
+                  label: "Thiết bị / trình duyệt",
+                  children: selected.userAgent || "Không có dữ liệu",
                 },
               ]}
             />
@@ -271,9 +429,7 @@ export default function ActivityClient() {
                 <Typography.Title level={5}>
                   Thông tin ghi nhận
                 </Typography.Title>
-                <pre className="bg-gray-50 p-4 rounded text-xs whitespace-pre-wrap break-words max-h-96 overflow-auto">
-                  {JSON.stringify(selected.metadata, null, 2)}
-                </pre>
+                <MetadataValue fieldKey="metadata" value={selected.metadata} />
               </>
             )}
           </>

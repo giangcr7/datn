@@ -36,14 +36,19 @@ export const activityLabels: Record<string, string> = {
   VERIFY_CERT: "Xác thực văn bằng",
   CHECK_BLOCKCHAIN: "Đối chiếu blockchain",
   RETRY_BLOCKCHAIN: "Khôi phục giao dịch hết lượt thử lại",
+  SHARE_DIPLOMA: "Chia sẻ liên kết xác thực văn bằng",
 };
 
 export interface ActivityEntry {
   id: string;
+  institutionId: string | null;
+  actorId: string | null;
   actorEmail: string;
   action: string;
   target: string | null;
   result: string;
+  ip: string | null;
+  userAgent: string | null;
   createdAt: string;
   errorMessage: string | null;
   metadata: Record<string, unknown> | null;
