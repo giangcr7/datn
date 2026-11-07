@@ -37,6 +37,9 @@ export const activityLabels: Record<string, string> = {
   CHECK_BLOCKCHAIN: "Đối chiếu blockchain",
   RETRY_BLOCKCHAIN: "Khôi phục giao dịch hết lượt thử lại",
   COMMIT_BLOCKCHAIN: "Ghi nhận thành công trên blockchain",
+  RATE_LIMITED: "Bị chặn do vượt giới hạn tần suất",
+  SECURITY_ALERT_STATUS: "Cập nhật trạng thái cảnh báo an ninh",
+  REVOKE_SESSION: "Thu hồi phiên đăng nhập",
   SHARE_DIPLOMA: "Chia sẻ liên kết xác thực văn bằng",
 };
 
@@ -66,20 +69,43 @@ export interface ActivityEntry {
 }
 
 export interface SecurityAlert {
-  kind: "EMAIL_FAILURE_BURST" | "IP_FAILURE_BURST";
+  id: string;
+  kind: "EMAIL_FAILURE_BURST" | "IP_FAILURE_BURST" | "RATE_LIMIT_BURST";
   severity: "HIGH" | "MEDIUM";
+  subjectType: "EMAIL" | "IP";
   subject: string;
   count: number;
   windowMinutes: number;
   firstAt: string;
   lastAt: string;
   auditIds: string[];
+  status: SecurityAlertStatus;
+  statusNote: string | null;
+  statusChangedAt: string | null;
+  statusChangedBy: string | null;
+}
+
+export type SecurityAlertStatus =
+  | "OPEN"
+  | "ACKNOWLEDGED"
+  | "RESOLVED"
+  | "DISMISSED";
+
+export interface SessionDevice {
+  id: string;
+  familyId: string;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  expiresAt: string;
+  current: boolean;
 }
 
 export interface SecuritySummary {
   generatedAt: string;
   lookbackHours: number;
   failedLogins: number;
+  rateLimitedRequests: number;
   alerts: SecurityAlert[];
 }
 

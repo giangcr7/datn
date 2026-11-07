@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Body,
@@ -56,6 +57,21 @@ export class AuthController {
   @Post('logout')
   logout(@Body() body: RefreshTokenDto) {
     return this.authService.logout(body.refreshToken);
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  listSessions(@Req() req: any) {
+    return this.authService.listSessions(req.user);
+  }
+
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  revokeSession(@Param('id') id: string, @Req() req: any) {
+    const ip = req.ip || (req.headers['x-forwarded-for'] as string);
+    return this.authService.revokeSession(req.user, id, ip);
   }
 
   @Post('logout-all')

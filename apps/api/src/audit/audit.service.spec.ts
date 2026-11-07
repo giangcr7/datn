@@ -153,12 +153,14 @@ describe('audit isolation and durability', () => {
     const failures = [
       ...Array.from({ length: 5 }, (_, index) => ({
         id: `email-${index}`,
+        action: 'LOGIN',
         actorEmail: 'staff@example.test',
         ip: `192.0.2.${index + 1}`,
         createdAt: new Date(start.getTime() + index * 60_000),
       })),
       ...Array.from({ length: 10 }, (_, index) => ({
         id: `ip-${index}`,
+        action: 'LOGIN',
         actorEmail: `user-${index}@example.test`,
         ip: '198.51.100.8',
         createdAt: new Date(start.getTime() + index * 60_000),
@@ -175,7 +177,7 @@ describe('audit isolation and durability', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           institutionId: actor.institutionId,
-          action: 'LOGIN',
+          action: { in: ['LOGIN', 'RATE_LIMITED'] },
           result: 'FAILED',
         }),
         take: 1000,
@@ -195,6 +197,77 @@ describe('audit isolation and durability', () => {
           count: 10,
         }),
       ]),
+    );
+  });
+
+  it('raises a rate-limit burst alert from blocked requests', async () => {
+    const start = new Date('2026-11-07T10:00:00Z');
+    const blocked = Array.from({ length: 3 }, (_, index) => ({
+      id: `rate-${index}`,
+      action: 'RATE_LIMITED',
+      actorEmail: 'staff@example.test',
+      ip: '198.51.100.9',
+      createdAt: new Date(start.getTime() + index * 60_000),
+    }));
+    const findMany = jest
+      .fn()
+      .mockResolvedValueOnce(blocked)
+      .mockResolvedValueOnce([]);
+    const service = new AuditService({
+      auditLog: { findMany },
+    } as unknown as DatabaseService);
+
+    const result = await service.securitySummary(actor);
+
+    expect(result.failedLogins).toBe(0);
+    expect(result.rateLimitedRequests).toBe(3);
+    expect(result.alerts).toEqual([
+      expect.objectContaining({
+        kind: 'RATE_LIMIT_BURST',
+        subjectType: 'IP',
+        subject: '198.51.100.9',
+        count: 3,
+        auditIds: ['rate-0', 'rate-1', 'rate-2'],
+      }),
+    ]);
+  });
+
+  it('stores security alert status changes as audit events', async () => {
+    const create = jest.fn().mockResolvedValue({});
+    const service = new AuditService({
+      auditLog: { create },
+    } as unknown as DatabaseService);
+
+    await expect(
+      service.updateSecurityAlertStatus(
+        'a'.repeat(64),
+        'RESOLVED',
+        'Đã kiểm tra và khóa nguồn truy cập',
+        {
+          ...actor,
+          id: '00000000-0000-0000-0000-000000000001',
+          email: 'admin@example.test',
+        } as AuthActor,
+        '192.0.2.10',
+      ),
+    ).resolves.toEqual({
+      success: true,
+      id: 'a'.repeat(64),
+      status: 'RESOLVED',
+    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'SECURITY_ALERT_STATUS',
+          target: 'a'.repeat(64),
+          result: 'SUCCESS',
+          ip: '192.0.2.10',
+          metadata: expect.objectContaining({
+            status: 'RESOLVED',
+            note: 'Đã kiểm tra và khóa nguồn truy cập',
+          }),
+        }),
+      }),
     );
   });
 });

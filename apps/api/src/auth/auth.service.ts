@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import {
@@ -279,6 +283,68 @@ export class AuthService {
       }),
     ]);
     return { success: true };
+  }
+
+  async listSessions(actor: AuthActor) {
+    const sessions = await this.database.refreshSession.findMany({
+      where: {
+        accountId: actor.id,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        familyId: true,
+        ip: true,
+        userAgent: true,
+        createdAt: true,
+        expiresAt: true,
+      },
+    });
+    return {
+      data: sessions.map((session) => ({
+        ...session,
+        current: session.familyId === actor.sessionId,
+      })),
+    };
+  }
+
+  async revokeSession(actor: AuthActor, sessionId: string, ip?: string) {
+    return this.database.$transaction(async (transaction) => {
+      const session = await transaction.refreshSession.findFirst({
+        where: { id: sessionId, accountId: actor.id },
+        select: { id: true, familyId: true },
+      });
+      if (!session)
+        throw new NotFoundException('Không tìm thấy phiên đăng nhập');
+      const revokedAt = new Date();
+      const revoked = await transaction.refreshSession.updateMany({
+        where: {
+          accountId: actor.id,
+          familyId: session.familyId,
+          revokedAt: null,
+        },
+        data: { revokedAt },
+      });
+      await this.audit.log(
+        {
+          userId: actor.id,
+          institutionId: actor.institutionId,
+          userEmail: actor.email,
+          action: AuditAction.REVOKE_SESSION,
+          target: session.familyId,
+          ip,
+          metadata: {
+            sessionId: session.id,
+            revokedCount: revoked.count,
+          },
+        },
+        transaction,
+      );
+      return { success: true, revokedCount: revoked.count };
+    });
   }
 
   async changePassword(

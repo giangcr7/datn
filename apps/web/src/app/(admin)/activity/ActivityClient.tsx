@@ -32,7 +32,9 @@ import {
   type ActivityEntry,
   type ActivityFilters,
   type SecurityAlert,
+  type SecurityAlertStatus,
   type SecuritySummary,
+  type SessionDevice,
 } from "@/lib/activity";
 
 const emptyFilters: ActivityFilters = {
@@ -100,6 +102,9 @@ const metadataLabels: Record<string, string> = {
 
 const timeLabel = (value: string) =>
   new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+
+const sessionAgentLabel = (value: string | null) =>
+  value?.trim() || "Không xác định thiết bị / trình duyệt";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -272,30 +277,92 @@ function CodeValue({ value }: { value: string | null | undefined }) {
   );
 }
 
-function SecurityAlertItem({ alert }: { alert: SecurityAlert }) {
+function SecurityAlertItem({
+  alert,
+  onStatusChange,
+  statusLoading,
+}: {
+  alert: SecurityAlert;
+  onStatusChange: (id: string, status: SecurityAlertStatus) => void;
+  statusLoading: boolean;
+}) {
   const isIp = alert.kind === "IP_FAILURE_BURST";
+  const isRateLimit = alert.kind === "RATE_LIMIT_BURST";
+  const status = alert.status || "OPEN";
+  const statusLabels: Record<SecurityAlertStatus, string> = {
+    OPEN: "Mới",
+    ACKNOWLEDGED: "Đã xem",
+    RESOLVED: "Đã xử lý",
+    DISMISSED: "Đã bỏ qua",
+  };
+  const statusColors: Record<SecurityAlertStatus, string> = {
+    OPEN: "red",
+    ACKNOWLEDGED: "blue",
+    RESOLVED: "green",
+    DISMISSED: "default",
+  };
   return (
-    <List.Item>
+    <List.Item
+      actions={[
+        ...(status === "OPEN"
+          ? [
+              <Button
+                key="acknowledge"
+                size="small"
+                loading={statusLoading}
+                onClick={() => onStatusChange(alert.id, "ACKNOWLEDGED")}
+              >
+                Đã xem
+              </Button>,
+            ]
+          : []),
+        ...(status === "OPEN" || status === "ACKNOWLEDGED"
+          ? [
+              <Button
+                key="resolve"
+                size="small"
+                type="primary"
+                loading={statusLoading}
+                onClick={() => onStatusChange(alert.id, "RESOLVED")}
+              >
+                Đã xử lý
+              </Button>,
+            ]
+          : [
+              <Button
+                key="reopen"
+                size="small"
+                loading={statusLoading}
+                onClick={() => onStatusChange(alert.id, "OPEN")}
+              >
+                Mở lại
+              </Button>,
+            ]),
+      ]}
+    >
       <List.Item.Meta
         title={
           <Space wrap>
             <Tag color={alert.severity === "HIGH" ? "red" : "orange"}>
               {alert.severity === "HIGH" ? "Mức cao" : "Cần chú ý"}
             </Tag>
+            <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
             <Typography.Text strong>
-              {isIp
-                ? "Một IP thử đăng nhập dồn dập"
-                : "Một tài khoản bị thử mật khẩu nhiều lần"}
+              {isRateLimit
+                ? "Request bị chặn do vượt giới hạn tần suất"
+                : isIp
+                  ? "Một IP thử đăng nhập dồn dập"
+                  : "Một tài khoản bị thử mật khẩu nhiều lần"}
             </Typography.Text>
           </Space>
         }
         description={
           <Space direction="vertical" size={2}>
             <Typography.Text>
-              {isIp ? "IP" : "Email"}:{" "}
+              {alert.subjectType}:{" "}
               <Typography.Text code>{alert.subject}</Typography.Text> ·{" "}
               <Typography.Text strong>
-                {alert.count} lần thất bại
+                {alert.count} {isRateLimit ? "request bị chặn" : "lần thất bại"}
               </Typography.Text>{" "}
               trong {alert.windowMinutes} phút.
             </Typography.Text>
@@ -315,6 +382,11 @@ function SecurityAlertItem({ alert }: { alert: SecurityAlert }) {
                 </Typography.Text>
               )}
             </Space>
+            {alert.statusNote && (
+              <Typography.Text type="secondary">
+                Ghi chú xử lý: {alert.statusNote} · {alert.statusChangedBy}
+              </Typography.Text>
+            )}
           </Space>
         }
       />
@@ -343,6 +415,11 @@ export default function ActivityClient() {
   const [security, setSecurity] = useState<SecuritySummary | null>(null);
   const [securityLoading, setSecurityLoading] = useState(true);
   const [securityError, setSecurityError] = useState("");
+  const [securityActionId, setSecurityActionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<SessionDevice[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState("");
+  const [sessionActionId, setSessionActionId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -400,6 +477,28 @@ export default function ActivityClient() {
   }, [refresh]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    setSessionsLoading(true);
+    setSessionsError("");
+    workflowJson<{ data: SessionDevice[] }>("/api/activity/sessions", {
+      signal: controller.signal,
+    })
+      .then((result) => setSessions(result.data))
+      .catch((failure: unknown) => {
+        if (!controller.signal.aborted)
+          setSessionsError(
+            failure instanceof Error
+              ? failure.message
+              : "Không tải được phiên đăng nhập",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSessionsLoading(false);
+      });
+    return () => controller.abort();
+  }, [refresh]);
+
+  useEffect(() => {
     if (!selected) {
       setRelated([]);
       return;
@@ -434,6 +533,45 @@ export default function ActivityClient() {
     }
     setFilters(next);
     setPagination((previous) => ({ ...previous, page: 1 }));
+  }
+
+  async function updateSecurityAlertStatus(
+    id: string,
+    status: SecurityAlertStatus,
+  ) {
+    setSecurityActionId(id);
+    try {
+      await workflowJson(`/api/activity/security/${id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      setRefresh((value) => value + 1);
+    } catch (failure) {
+      setSecurityError(
+        failure instanceof Error
+          ? failure.message
+          : "Không cập nhật được cảnh báo",
+      );
+    } finally {
+      setSecurityActionId(null);
+    }
+  }
+
+  async function revokeSession(sessionId: string) {
+    setSessionActionId(sessionId);
+    try {
+      await workflowJson(`/api/activity/sessions/${sessionId}`, {
+        method: "DELETE",
+      });
+      setRefresh((value) => value + 1);
+    } catch (failure) {
+      setSessionsError(
+        failure instanceof Error ? failure.message : "Không thu hồi được phiên",
+      );
+    } finally {
+      setSessionActionId(null);
+    }
   }
 
   const diffRows = useMemo(() => {
@@ -483,6 +621,10 @@ export default function ActivityClient() {
                 value={security.failedLogins}
               />
               <Statistic
+                title="Request bị chặn"
+                value={security.rateLimitedRequests}
+              />
+              <Statistic
                 title="Cảnh báo đang có"
                 value={security.alerts.length}
               />
@@ -495,7 +637,13 @@ export default function ActivityClient() {
                 bordered
                 size="small"
                 dataSource={security.alerts}
-                renderItem={(alert) => <SecurityAlertItem alert={alert} />}
+                renderItem={(alert) => (
+                  <SecurityAlertItem
+                    alert={alert}
+                    onStatusChange={updateSecurityAlertStatus}
+                    statusLoading={securityActionId === alert.id}
+                  />
+                )}
               />
             ) : (
               <Alert
@@ -506,6 +654,82 @@ export default function ActivityClient() {
               />
             )}
           </>
+        )}
+      </Card>
+
+      <Card
+        className="mb-5"
+        size="small"
+        title="Phiên đăng nhập và thiết bị"
+        loading={sessionsLoading}
+      >
+        {sessionsError && (
+          <Alert showIcon type="warning" message={sessionsError} />
+        )}
+        {!sessionsLoading && sessions.length === 0 && !sessionsError && (
+          <Alert
+            showIcon
+            type="info"
+            message="Không có phiên đăng nhập đang hoạt động"
+          />
+        )}
+        {sessions.length > 0 && (
+          <List
+            bordered
+            size="small"
+            dataSource={sessions}
+            renderItem={(session) => (
+              <List.Item
+                actions={[
+                  <Button
+                    key="revoke"
+                    danger
+                    size="small"
+                    disabled={session.current}
+                    loading={sessionActionId === session.id}
+                    onClick={() =>
+                      Modal.confirm({
+                        title: "Thu hồi phiên đăng nhập này?",
+                        content:
+                          "Thiết bị sẽ phải đăng nhập lại ở lần truy cập tiếp theo.",
+                        okText: "Thu hồi",
+                        okButtonProps: { danger: true },
+                        cancelText: "Hủy",
+                        onOk: () => revokeSession(session.id),
+                      })
+                    }
+                  >
+                    {session.current ? "Đang dùng" : "Thu hồi"}
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space wrap>
+                      <Typography.Text strong>
+                        {session.current
+                          ? "Thiết bị hiện tại"
+                          : "Phiên đăng nhập"}
+                      </Typography.Text>
+                      {session.current && <Tag color="blue">Đang dùng</Tag>}
+                      {session.ip && <Tag>{session.ip}</Tag>}
+                    </Space>
+                  }
+                  description={
+                    <Space direction="vertical" size={2}>
+                      <Typography.Text className="break-all">
+                        {sessionAgentLabel(session.userAgent)}
+                      </Typography.Text>
+                      <Typography.Text type="secondary">
+                        Tạo lúc {timeLabel(session.createdAt)} · hết hạn lúc{" "}
+                        {timeLabel(session.expiresAt)}
+                      </Typography.Text>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
         )}
       </Card>
 

@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { currentRequestId } from '../request-context';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -37,6 +38,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       message: [message],
       path: req.url,
+      requestId: currentRequestId(),
       timestamp: new Date().toISOString(),
     });
   }

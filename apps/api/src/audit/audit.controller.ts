@@ -1,7 +1,16 @@
-import { Controller, Get, Query, UseGuards, Param, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { AuditService } from './audit.service';
+import { AuditService, type SecurityAlertStatus } from './audit.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -36,6 +45,21 @@ export class AuditController {
   @Get(':id/related')
   findRelated(@Param('id') id: string, @Req() req: { user: AuthActor }) {
     return this.auditService.findRelated(id, req.user);
+  }
+
+  @Post('security-alerts/:id/status')
+  updateSecurityAlertStatus(
+    @Param('id') id: string,
+    @Body() body: { status?: SecurityAlertStatus; note?: string },
+    @Req() req: { user: AuthActor; ip?: string },
+  ) {
+    return this.auditService.updateSecurityAlertStatus(
+      id,
+      body.status as SecurityAlertStatus,
+      body.note,
+      req.user,
+      req.ip,
+    );
   }
 
   @Get('user/:userId')

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
@@ -27,6 +27,7 @@ import { ChangeRequestModule } from './requests/change-request.module';
 import { InboxModule } from './inbox/inbox.module';
 import { requestRateLimits } from './auth/rate-limit';
 import { ShareModule } from './shares/share.module';
+import { AuditThrottlerGuard } from './auth/audit-throttler.guard';
 
 @Module({
   imports: [
@@ -62,6 +63,6 @@ import { ShareModule } from './shares/share.module';
     OutboxModule,
     RegistryImportModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: AuditThrottlerGuard }],
 })
 export class AppModule {}

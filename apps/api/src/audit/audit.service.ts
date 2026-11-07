@@ -5,11 +5,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { Prisma } from '../generated/prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { jsonData, pagination } from '../database/data-utils';
 import type { AuthActor } from '../auth/auth-actor';
 import type { AuditQueryDto } from './audit-query.dto';
+import { currentRequestId } from '../common/request-context';
 
 export enum AuditAction {
   LOGIN = 'LOGIN',
@@ -22,6 +24,9 @@ export enum AuditAction {
   CREATE_STUDENT = 'CREATE_STUDENT',
   VERIFY_CERT = 'VERIFY_CERT',
   SHARE_DIPLOMA = 'SHARE_DIPLOMA',
+  RATE_LIMITED = 'RATE_LIMITED',
+  SECURITY_ALERT_STATUS = 'SECURITY_ALERT_STATUS',
+  REVOKE_SESSION = 'REVOKE_SESSION',
 }
 
 type TargetKind =
@@ -47,15 +52,27 @@ type AuditEntry = AuditRecord & {
   references: AuditReference[];
 };
 
-type SecurityAlert = {
-  kind: 'EMAIL_FAILURE_BURST' | 'IP_FAILURE_BURST';
+export type SecurityAlertStatus =
+  | 'OPEN'
+  | 'ACKNOWLEDGED'
+  | 'RESOLVED'
+  | 'DISMISSED';
+
+export type SecurityAlert = {
+  id: string;
+  kind: 'EMAIL_FAILURE_BURST' | 'IP_FAILURE_BURST' | 'RATE_LIMIT_BURST';
   severity: 'HIGH' | 'MEDIUM';
+  subjectType: 'EMAIL' | 'IP';
   subject: string;
   count: number;
   windowMinutes: number;
   firstAt: Date;
   lastAt: Date;
   auditIds: string[];
+  status: SecurityAlertStatus;
+  statusNote: string | null;
+  statusChangedAt: Date | null;
+  statusChangedBy: string | null;
 };
 
 const UUID_PATTERN =
@@ -84,10 +101,34 @@ const referenceLabels: Record<string, string> = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const securityAlertId = (kind: SecurityAlert['kind'], subject: string) =>
+  createHash('sha256').update(`${kind}:${subject}`).digest('hex');
+
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
   constructor(private readonly database: DatabaseService) {}
+
+  async institutionIdForEmail(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return undefined;
+    try {
+      const account = await this.database.account.findUnique({
+        where: { email: normalizedEmail },
+        select: {
+          memberships: {
+            where: { active: true, campus: { active: true } },
+            select: { campus: { select: { institutionId: true } } },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+          },
+        },
+      });
+      return account?.memberships[0]?.campus.institutionId;
+    } catch {
+      return undefined;
+    }
+  }
 
   private assertReader(actor: AuthActor) {
     if (
@@ -445,6 +486,7 @@ export class AuditService {
               },
             })
           : null;
+      const requestId = currentRequestId();
       await database.auditLog.create({
         data: {
           actorId,
@@ -458,7 +500,12 @@ export class AuditService {
           userAgent: data.userAgent,
           errorMessage: data.errorMessage,
           metadata:
-            data.metadata === undefined ? undefined : jsonData(data.metadata),
+            data.metadata === undefined && !requestId
+              ? undefined
+              : jsonData({
+                  ...(data.metadata || {}),
+                  ...(requestId ? { requestId } : {}),
+                }),
         },
       });
     } catch (error) {
@@ -552,26 +599,37 @@ export class AuditService {
   async securitySummary(actor: AuthActor) {
     this.assertReader(actor);
     const since = new Date(Date.now() - SECURITY_LOOKBACK_MS);
-    const failures = await this.database.auditLog.findMany({
+    const attempts = await this.database.auditLog.findMany({
       where: {
         institutionId: actor.institutionId,
-        action: 'LOGIN',
+        action: { in: ['LOGIN', 'RATE_LIMITED'] },
         result: 'FAILED',
         createdAt: { gte: since },
       },
       orderBy: { createdAt: 'asc' },
       take: 1000,
-      select: { id: true, actorEmail: true, ip: true, createdAt: true },
+      select: {
+        id: true,
+        action: true,
+        actorEmail: true,
+        ip: true,
+        createdAt: true,
+      },
     });
+    const failures = attempts.filter((item) => item.action === 'LOGIN');
+    const rateLimited = attempts.filter(
+      (item) => item.action === 'RATE_LIMITED',
+    );
     const alerts: SecurityAlert[] = [];
     const addBursts = (
+      records: typeof attempts,
       key: 'actorEmail' | 'ip',
       threshold: number,
       kind: SecurityAlert['kind'],
       severity: SecurityAlert['severity'],
     ) => {
-      const groups = new Map<string, typeof failures>();
-      failures.forEach((failure) => {
+      const groups = new Map<string, typeof attempts>();
+      records.forEach((failure) => {
         const value = failure[key];
         if (!value) return;
         const group = groups.get(value) || [];
@@ -589,21 +647,68 @@ export class AuditService {
           if (end - start + 1 < threshold) continue;
           const burst = group.slice(start, end + 1);
           alerts.push({
+            id: securityAlertId(kind, subject),
             kind,
             severity,
+            subjectType: key === 'ip' ? 'IP' : 'EMAIL',
             subject,
             count: burst.length,
             windowMinutes: 15,
             firstAt: burst[0].createdAt,
             lastAt: burst[burst.length - 1].createdAt,
             auditIds: burst.map((item) => item.id),
+            status: 'OPEN',
+            statusNote: null,
+            statusChangedAt: null,
+            statusChangedBy: null,
           });
           break;
         }
       });
     };
-    addBursts('actorEmail', 5, 'EMAIL_FAILURE_BURST', 'MEDIUM');
-    addBursts('ip', 10, 'IP_FAILURE_BURST', 'HIGH');
+    addBursts(failures, 'actorEmail', 5, 'EMAIL_FAILURE_BURST', 'MEDIUM');
+    addBursts(failures, 'ip', 10, 'IP_FAILURE_BURST', 'HIGH');
+    addBursts(rateLimited, 'ip', 3, 'RATE_LIMIT_BURST', 'HIGH');
+    const alertIds = alerts.map((alert) => alert.id);
+    if (alertIds.length) {
+      const statusLogs = await this.database.auditLog.findMany({
+        where: {
+          institutionId: actor.institutionId,
+          action: 'SECURITY_ALERT_STATUS',
+          target: { in: alertIds },
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: {
+          target: true,
+          actorEmail: true,
+          metadata: true,
+          createdAt: true,
+        },
+      });
+      const latest = new Map<string, (typeof statusLogs)[number]>();
+      statusLogs.forEach((entry) => {
+        if (entry.target) latest.set(entry.target, entry);
+      });
+      alerts.forEach((alert) => {
+        const status = latest.get(alert.id);
+        const metadata =
+          status && isRecord(status.metadata) ? status.metadata : null;
+        const requestedStatus = metadata?.status;
+        if (
+          status &&
+          (requestedStatus === 'OPEN' ||
+            requestedStatus === 'ACKNOWLEDGED' ||
+            requestedStatus === 'RESOLVED' ||
+            requestedStatus === 'DISMISSED')
+        ) {
+          alert.status = requestedStatus;
+          alert.statusNote =
+            typeof metadata?.note === 'string' ? metadata.note : null;
+          alert.statusChangedAt = status.createdAt;
+          alert.statusChangedBy = status.actorEmail;
+        }
+      });
+    }
     alerts.sort(
       (left, right) => right.lastAt.getTime() - left.lastAt.getTime(),
     );
@@ -611,8 +716,36 @@ export class AuditService {
       generatedAt: new Date(),
       lookbackHours: 24,
       failedLogins: failures.length,
+      rateLimitedRequests: rateLimited.length,
       alerts: alerts.slice(0, 20),
     };
+  }
+
+  async updateSecurityAlertStatus(
+    id: string,
+    status: SecurityAlertStatus,
+    note: string | undefined,
+    actor: AuthActor,
+    ip?: string,
+  ) {
+    this.assertReader(actor);
+    if (!/^[0-9a-f]{64}$/i.test(id))
+      throw new BadRequestException('Mã cảnh báo không hợp lệ');
+    if (!['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'DISMISSED'].includes(status))
+      throw new BadRequestException('Trạng thái cảnh báo không hợp lệ');
+    await this.log({
+      userId: actor.id,
+      institutionId: actor.institutionId,
+      userEmail: actor.email,
+      action: 'SECURITY_ALERT_STATUS',
+      target: id,
+      ip,
+      metadata: {
+        status,
+        ...(note?.trim() ? { note: note.trim().slice(0, 1000) } : {}),
+      },
+    });
+    return { success: true, id, status };
   }
 
   async findByUser(userId: string, actor: AuthActor) {

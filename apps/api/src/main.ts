@@ -2,6 +2,7 @@ import 'dotenv/config'; // PHẢI ở dòng đầu tiên — nạp .env trước
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { WinstonModule, WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { AppModule } from './app.module';
@@ -11,6 +12,7 @@ import { winstonConfig } from './config/logger.config';
 import helmet from 'helmet';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { trustedProxyRanges } from './auth/rate-limit';
+import { runRequestContext } from './common/request-context';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -18,6 +20,13 @@ async function bootstrap() {
   });
 
   app.useBodyParser('json', { limit: '8mb' });
+  app.use((req, res, next) => {
+    const supplied = req.header('x-request-id');
+    const requestId =
+      supplied && /^[0-9a-f-]{36}$/i.test(supplied) ? supplied : randomUUID();
+    res.setHeader('X-Request-Id', requestId);
+    runRequestContext(requestId, next);
+  });
   app.set('trust proxy', trustedProxyRanges(process.env.TRUSTED_PROXY_CIDRS));
   app.use(helmet());
   app.setGlobalPrefix('api');
