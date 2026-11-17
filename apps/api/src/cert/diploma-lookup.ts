@@ -14,7 +14,6 @@ export function diplomaLookupProjection(diploma: DiplomaWithRelations) {
   return {
     uuid: result.uuid,
     fullName: result.fullName,
-    mssv: result.mssv,
     major: result.major,
     degreeType: result.degreeType,
     grade: result.grade,

@@ -54,10 +54,14 @@ Proxy trust is off by default. For a deployment with a trusted ingress:
 ## Public verification policy
 
 Both JSON/QR and PDF endpoints apply a server-side allowlist. Successful public
-responses expose the diploma holder name, program, classification, degree type,
-graduation year, diploma/registry numbers, issue date and issue place. They do not
-expose student codes, GPA, birth date, signer metadata, transaction identifiers,
-hashes or PKI evidence. Technical evidence remains in internal verification,
+responses expose only the approved allowlist: diploma holder name, program,
+classification, degree type, graduation year, diploma/registry numbers, issue date
+and issue place. MSSV may be used as a search input, but is never returned by the
+public directory or personal lookup response. Public directory results require an
+active, approved diploma whose latest ISSUE anchor is COMMITTED. They do not
+expose GPA, birth date, signer metadata, transaction identifiers, hashes or PKI
+evidence.
+Technical evidence remains in internal verification,
 authenticated records, database history and the existing blockchain workflow.
 
 Invalid results omit diploma details. A committed supersession may retain only

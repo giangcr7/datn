@@ -58,6 +58,7 @@ describe('diploma projections', () => {
     expect(view.isVerifiable).toBe(true);
     for (const key of [
       'dob',
+      'mssv',
       'gpa',
       'proof',
       'requestedBy',

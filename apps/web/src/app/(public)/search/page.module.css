@@ -192,6 +192,35 @@
   color: var(--lookup-muted);
   background: rgb(255 255 255 / 68%);
 }
+.quickSearchDisabled {
+  padding: 14px 16px;
+  border: 1px solid #e8c98b;
+  color: #6b4b12;
+  background: #fff9eb;
+}
+.quickSearchDisabled p {
+  margin-top: 5px;
+}
+.quickDetailButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--lookup-blue);
+  border-radius: 3px;
+  color: var(--lookup-blue);
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quickDetailButton:hover {
+  color: #fff;
+  background: var(--lookup-blue);
+}
 .quickResultsTitle {
   margin-bottom: 12px;
   color: var(--lookup-navy);

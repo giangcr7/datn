@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { apiCall } from "@/lib/api";
+import { PUBLIC_SEARCH_MAX_LENGTH } from "@/lib/diploma-lookup";
 
 export async function POST(req: Request) {
   const headers = { "Cache-Control": "private, no-store" };
@@ -51,6 +52,15 @@ export async function GET(req: Request) {
   const headers = { "Cache-Control": "private, no-store" };
   try {
     const q = new URL(req.url).searchParams.get("q") || "";
+    if (q.trim().length > PUBLIC_SEARCH_MAX_LENGTH)
+      return NextResponse.json(
+        {
+          success: false,
+          code: "PUBLIC_SEARCH_QUERY_TOO_LONG",
+          error: `Từ khóa tìm kiếm không được vượt quá ${PUBLIC_SEARCH_MAX_LENGTH} ký tự.`,
+        },
+        { status: 400, headers },
+      );
     const data = await apiCall(
       "/cert/search?q=" + encodeURIComponent(q),
       "GET",
@@ -77,6 +87,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         success: false,
+        code: status === 403 ? "PUBLIC_DIRECTORY_DISABLED" : undefined,
         error:
           status === 429
             ? "Bạn đã tìm kiếm nhiều lần. Vui lòng chờ một phút rồi thử lại."

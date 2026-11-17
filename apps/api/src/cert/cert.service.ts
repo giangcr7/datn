@@ -40,9 +40,11 @@ import type { PrintDiplomaDataDto } from '../common/dto/print-diploma.dto';
 import { createDiplomaPdf } from '../signatures/pdf-signature-engine';
 import { RegisterQueryDto } from './register-query.dto';
 import { registerQuery, registerSuggestionsQuery } from './diploma-register';
-import { normalizeRegisterSearch } from './register-search';
+import { normalizeRegisterSearch, registerSearchPlan } from './register-search';
 import { LookupDiplomaDto } from './lookup-diploma.dto';
 import { diplomaLookupProjection, diplomaLookupQuery } from './diploma-lookup';
+import { publicSearchQuery, type PublicSearchScope } from './public-search';
+import { PUBLIC_SEARCH_MAX_LENGTH } from './public-search.dto';
 import {
   replacementErrors,
   replacementSource,
@@ -1202,22 +1204,50 @@ export class CertService {
       throw new ForbiddenException(
         'Tra cứu danh sách theo tên/MSSV chưa được mở công khai. Vui lòng dùng biểu mẫu tra cứu văn bằng hoặc đăng nhập.',
       );
-    if (!query || query.trim().length < 2)
+    const plan = registerSearchPlan(query);
+    if (plan.text.length < 2)
       throw new BadRequestException('Nhập ít nhất 2 ký tự');
-    const scope = actor
-      ? this.scope(actor)
-      : { status: 'ACTIVE' as const, workflowStatus: 'APPROVED' as const };
-    return (
-      await this.database.diploma.findMany({
-        where: {
-          AND: [scope, this.searchWhere(query.trim())],
-          status: 'ACTIVE',
-          workflowStatus: 'APPROVED',
-        },
-        include: diplomaInclude,
-        take: 20,
-      })
-    ).map((item) => publicDiplomaProjection(item));
+    if (plan.text.length > PUBLIC_SEARCH_MAX_LENGTH)
+      throw new BadRequestException(
+        `Từ khóa tìm kiếm không được vượt quá ${PUBLIC_SEARCH_MAX_LENGTH} ký tự`,
+      );
+
+    const scope: PublicSearchScope = actor
+      ? {
+          institutionId: actor.institutionId,
+          ...(actor.role === 'student'
+            ? {
+                studentId:
+                  actor.studentId || '00000000-0000-0000-0000-000000000000',
+              }
+            : actor.role === 'university' &&
+                (!actor.isHeadquarters || !actor.canApproveDiplomas)
+              ? { campusId: actor.campusId }
+              : {}),
+        }
+      : {};
+
+    return this.database.$transaction(
+      async (transaction) => {
+        const matches = await transaction.$queryRaw<{ id: string }[]>(
+          publicSearchQuery(plan.text, scope),
+        );
+        if (!matches.length) return [];
+        const ids = matches.map((item) => item.id);
+        const diplomas = await transaction.diploma.findMany({
+          where: actor
+            ? { AND: [this.scope(actor), { id: { in: ids } }] }
+            : { id: { in: ids } },
+          include: diplomaInclude,
+        });
+        const byId = new Map(diplomas.map((item) => [item.id, item]));
+        return ids.flatMap((id) => {
+          const diploma = byId.get(id);
+          return diploma ? [publicDiplomaProjection(diploma)] : [];
+        });
+      },
+      { isolationLevel: 'RepeatableRead' },
+    );
   }
   private registerAccess(query: RegisterQueryDto, actor: AuthActor) {
     if (

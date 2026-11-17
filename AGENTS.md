@@ -49,6 +49,7 @@
 
 ## Commit and publish completed work
 
+- Commit subjects use the pattern `Fix_Ten_chuc_nang` for fixes and `Feat_Ten_chuc_nang` for new features; keep the function name short, specific, and ASCII-safe.
 - After completing each feature, bug fix, or coherent change, including
   documentation or configuration changes, create a descriptive Git commit and
   push it to the current branch's configured upstream before reporting the task

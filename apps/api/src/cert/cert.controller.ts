@@ -20,6 +20,7 @@ import type { AuthActor } from '../auth/auth-actor';
 import { CertService } from './cert.service';
 import { RegisterQueryDto } from './register-query.dto';
 import { LookupDiplomaDto } from './lookup-diploma.dto';
+import { PublicSearchQueryDto } from './public-search.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -264,8 +265,8 @@ export class CertController {
   @Get('search')
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ medium: { ttl: 60000, limit: 30 } })
-  search(@Query('q') q: string, @Req() req: Request) {
-    return this.certService.search(q, (req as any).user);
+  search(@Query() query: PublicSearchQueryDto, @Req() req: Request) {
+    return this.certService.search(query.q, (req as any).user);
   }
   @Get('statistics')
   @UseGuards(JwtAuthGuard, RolesGuard)

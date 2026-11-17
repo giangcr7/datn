@@ -139,17 +139,12 @@ check(
 const result = {
   uuid: "00000000-0000-0000-0000-000000000001",
   fullName: "Nguyễn Văn Đức",
-  mssv: valid.mssv,
   soHieu: valid.soHieu,
   status: "ON_CHAIN",
 };
-const proofUrl = new URL(
-  helpers.lookupVerificationHref(result.uuid),
-  "http://localhost",
-);
 check(
-  "result links to existing verification flow",
-  JSON.parse(proofUrl.searchParams.get("proof")).uuid === result.uuid,
+  "lookup result keeps the public projection minimal",
+  !Object.hasOwn(result, "mssv") && result.uuid.length > 0,
 );
 const signal = new AbortController().signal;
 let captured;
@@ -226,6 +221,52 @@ await assert.rejects(
 );
 checks++;
 
+let quickCaptured;
+const quickResult = {
+  uuid: result.uuid,
+  fullName: result.fullName,
+  soHieu: result.soHieu,
+  status: result.status,
+};
+const quickRecords = await helpers.requestQuickDiplomaSearch(
+  "  Nguyễn   Văn  ",
+  signal,
+  async (url, options) => {
+    quickCaptured = { url, options };
+    return Response.json({ success: true, results: [quickResult] });
+  },
+);
+check(
+  "quick search uses GET with an encoded bounded query",
+  quickCaptured.url === "/api/search?q=Nguy%E1%BB%85n%20V%C4%83n" &&
+    quickCaptured.options.cache === "no-store" &&
+    quickCaptured.options.signal === signal,
+);
+check(
+  "quick search returns the sanitized public fields",
+  quickRecords[0].uuid === result.uuid &&
+    !Object.hasOwn(quickRecords[0], "mssv"),
+);
+const disabledQuickError = Object.assign(
+  new Error("Tra cứu nhanh chưa được mở công khai."),
+  { code: "PUBLIC_DIRECTORY_DISABLED" },
+);
+await assert.rejects(
+  () =>
+    helpers.requestQuickDiplomaSearch("Nguyen", signal, async () =>
+      Response.json(
+        {
+          success: false,
+          code: disabledQuickError.code,
+          error: disabledQuickError.message,
+        },
+        { status: 403 },
+      ),
+    ),
+  (error) => error.code === "PUBLIC_DIRECTORY_DISABLED",
+);
+checks++;
+
 const require = createRequire(import.meta.url);
 function compile(source, dependencies) {
   const compiled = ts.transpileModule(source, {
@@ -295,9 +336,9 @@ check(
   /\.introduction\s*\{[^}]*text-align: center/s.test(css),
 );
 check(
-  "reset appears before the centered search action",
-  html.indexOf('aria-label="Nhập lại thông tin"') <
-    html.indexOf('type="submit"') && html.includes("Tra cứu thông tin"),
+  "reset and the centered detailed search action are present",
+  html.includes('aria-label="Nhập lại thông tin"') &&
+    html.includes("Tra cứu thông tin"),
 );
 check("no unsupported identity-card search is offered", !html.includes("CCCD"));
 for (const field of helpers.lookupGroups.flatMap((group) => group.fields)) {
@@ -322,7 +363,7 @@ check(
 );
 check(
   "lookup is distinct from PDF verification",
-  html.includes("không thay thế việc xác thực tệp văn bằng"),
+  html.includes("không thay thế xác thực"),
 );
 check(
   "no technical proof field is presented",
@@ -362,6 +403,7 @@ let backendCall;
 let backendReply = [result];
 let backendError;
 const api = compile(route, {
+  "@/lib/diploma-lookup": helpers,
   "@/lib/api": {
     apiCall: async (...args) => {
       backendCall = args;
@@ -411,6 +453,7 @@ check(
     (await response.json()).error.includes("chưa được mở công khai"),
 );
 backendError = undefined;
+response = await api.POST(request(payload));
 check(
   "proxy forwards structured fields to the lookup endpoint",
   backendCall[0] === "/cert/lookup" &&

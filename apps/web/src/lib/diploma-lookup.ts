@@ -5,6 +5,8 @@ export const degreeLabels: Record<string, string> = {
   DOCTOR: "Tiến sĩ",
   OTHER: "Khác",
 };
+export const PUBLIC_SEARCH_MAX_LENGTH = 80;
+
 export const classificationLabels = [
   "Xuất sắc",
   "Giỏi",
@@ -233,7 +235,6 @@ export function lookupPayload(fields: LookupFields) {
 export type DiplomaLookupResult = {
   uuid: string;
   fullName: string;
-  mssv: string;
   soHieu: string;
   soVaoSo?: string;
   className?: string | null;
@@ -250,7 +251,6 @@ export type DiplomaLookupResult = {
 export type QuickDiplomaSearchResult = {
   uuid: string;
   fullName: string;
-  mssv?: string | null;
   major?: string | null;
   degreeType?: string | null;
   grade?: string | null;
@@ -262,10 +262,12 @@ export type QuickDiplomaSearchResult = {
   isVerifiable?: boolean;
 };
 
+export type QuickSearchError = Error & { code?: string };
+
 function isLookupResult(value: unknown): value is DiplomaLookupResult {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
-  return ["uuid", "fullName", "mssv", "soHieu", "status"].every(
+  return ["uuid", "fullName", "soHieu", "status"].every(
     (key) => typeof record[key] === "string",
   );
 }
@@ -334,6 +336,10 @@ export async function requestQuickDiplomaSearch(
 ): Promise<QuickDiplomaSearchResult[]> {
   const normalized = clean(query);
   if (normalized.length < 2) return [];
+  if (normalized.length > PUBLIC_SEARCH_MAX_LENGTH)
+    throw new Error(
+      `Từ khóa tìm kiếm không được vượt quá ${PUBLIC_SEARCH_MAX_LENGTH} ký tự.`,
+    );
   let response: Response;
   try {
     response = await request(
@@ -356,11 +362,13 @@ export async function requestQuickDiplomaSearch(
   const data =
     body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   if (!response.ok || data.success !== true) {
-    throw new Error(
+    const error = new Error(
       typeof data.error === "string"
         ? data.error
         : "Không thể tìm kiếm văn bằng.",
-    );
+    ) as QuickSearchError;
+    if (typeof data.code === "string") error.code = data.code;
+    throw error;
   }
   if (!Array.isArray(data.results) || !data.results.every(isQuickSearchResult))
     throw new Error("Dữ liệu tìm kiếm không hợp lệ.");

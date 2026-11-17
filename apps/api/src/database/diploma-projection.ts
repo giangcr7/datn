@@ -287,10 +287,8 @@ export function publicDiplomaProjection(diploma: DiplomaWithRelations) {
   return {
     uuid: projection.uuid,
     fullName: projection.fullName,
-    mssv: projection.mssv,
     major: projection.major,
     degreeType: projection.degreeType,
-    printedDiploma: projection.printedDiploma,
     grade: projection.grade,
     namTotNghiep: projection.namTotNghiep,
     soHieu: projection.soHieu,

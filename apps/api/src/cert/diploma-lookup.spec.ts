@@ -237,7 +237,6 @@ describe('personal diploma lookup', () => {
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({
       fullName: input.fullName,
-      mssv: input.mssv,
       major: input.major,
       soVaoSo: input.soVaoSo,
       status: 'ON_CHAIN',
@@ -250,6 +249,7 @@ describe('personal diploma lookup', () => {
     );
     for (const key of [
       'dob',
+      'mssv',
       'gpa',
       'proof',
       'payload',

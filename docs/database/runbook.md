@@ -95,7 +95,7 @@ Driver hiện tại lưu nguồn .xlsx trong local private storage hoặc S3. PD
 
 - TLS termination, DB TLS, CORS allowlist và tắt mọi TLS bypass.
 - Secret manager cho DB/JWT/SMTP/Fabric; thay tài khoản bootstrap và yêu cầu đổi password.
-- `PUBLIC_DIRECTORY_ENABLED=false` mặc định. Chỉ mở tra cứu tên/MSSV sau khi có chính sách công khai; projection không chứa DOB/GPA/proof/account.
+- `PUBLIC_DIRECTORY_ENABLED=false` mặc định. Chỉ mở tra cứu tên/MSSV sau khi có chính sách công khai; MSSV chỉ là điều kiện tìm kiếm, không được trả ra public. Public search chỉ trả allowlist và chỉ nhận văn bằng `ACTIVE + APPROVED` có anchor `ISSUE/COMMITTED`; projection không chứa DOB/GPA/proof/account.
 - `POST /api/verify` dùng UUID/hash như định danh chia sẻ, không chứng minh quyền sở hữu. Không đưa proof đầy đủ vào URL nếu không cần chia sẻ PII.
 - Review dependency audit và các release gate trong `production-gates.md`; không tự chạy `npm audit fix --force`.
 - Cutover Mongo, deploy Fabric, review dữ liệu thật, restore drill và load test phải nghiệm thu riêng. Build/test local đạt chưa đồng nghĩa hệ thống production-ready hoàn toàn.

@@ -14,11 +14,13 @@ import {
   lookupDate,
   lookupGroups,
   lookupStatus,
+  PUBLIC_SEARCH_MAX_LENGTH,
   requestDiplomaLookup,
   requestQuickDiplomaSearch,
   validateLookupFields,
   type DiplomaLookupResult,
   type QuickDiplomaSearchResult,
+  type QuickSearchError,
   type LookupErrors,
   type LookupField,
   type LookupFields,
@@ -39,6 +41,7 @@ export default function SearchPage() {
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickSearched, setQuickSearched] = useState(false);
   const [quickError, setQuickError] = useState("");
+  const [quickDisabled, setQuickDisabled] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const quickController = useRef<AbortController | null>(null);
   const quickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,6 +68,7 @@ export default function SearchPage() {
     quickController.current?.abort();
     if (quickTimer.current) clearTimeout(quickTimer.current);
     setQuickError("");
+    setQuickDisabled(false);
     setQuickSearched(query.length >= 2);
     if (query.length < 2) {
       setQuickLoading(false);
@@ -90,6 +94,8 @@ export default function SearchPage() {
       )
         return;
       setQuickResults([]);
+      const quickFailure = failure as QuickSearchError;
+      setQuickDisabled(quickFailure.code === "PUBLIC_DIRECTORY_DISABLED");
       setQuickError(
         failure instanceof Error
           ? failure.message
@@ -106,6 +112,7 @@ export default function SearchPage() {
     quickController.current?.abort();
     if (quickTimer.current) clearTimeout(quickTimer.current);
     setQuickError("");
+    setQuickDisabled(false);
     const query = value.trim();
     if (query.length < 2) {
       setQuickLoading(false);
@@ -133,6 +140,7 @@ export default function SearchPage() {
     setQuickSearched(false);
     setQuickLoading(false);
     setQuickError("");
+    setQuickDisabled(false);
   }
 
   function clearSearch() {
@@ -154,6 +162,21 @@ export default function SearchPage() {
     clearSearch();
     setFields(emptyLookupFields());
     document.getElementById("lookup-fullName")?.focus();
+  }
+
+  function openDetailedLookup(diploma: QuickDiplomaSearchResult) {
+    clearSearch();
+    setFields((current) => ({
+      ...current,
+      fullName: diploma.fullName,
+      soHieu: diploma.soHieu || "",
+    }));
+    requestAnimationFrame(() => {
+      document
+        .getElementById("exact-lookup")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("lookup-dob")?.focus();
+    });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -248,7 +271,7 @@ export default function SearchPage() {
               onChange={(event) => changeQuickQuery(event.target.value)}
               placeholder="Nhập họ tên, MSSV, số hiệu hoặc số vào sổ…"
               autoComplete="off"
-              maxLength={120}
+              maxLength={PUBLIC_SEARCH_MAX_LENGTH}
               aria-describedby="quick-search-hint"
             />
             {quickQuery && (
@@ -285,9 +308,26 @@ export default function SearchPage() {
             </p>
           )}
           {!quickLoading && quickError && (
-            <p className={styles.error} role="alert">
-              {quickError}
-            </p>
+            <div
+              className={
+                quickDisabled ? styles.quickSearchDisabled : styles.error
+              }
+              role="alert"
+            >
+              {quickDisabled && <strong>Tra cứu nhanh đang bị khóa</strong>}
+              <p>{quickError}</p>
+              <button
+                className={styles.quickDetailButton}
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById("exact-lookup")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                Dùng biểu mẫu tra cứu chi tiết
+              </button>
+            </div>
           )}
           {!quickLoading &&
             quickSearched &&
@@ -327,10 +367,6 @@ export default function SearchPage() {
                       </div>
                       <dl className={styles.quickResultDetails}>
                         <div>
-                          <dt>MSSV</dt>
-                          <dd>{diploma.mssv || "Chưa ghi nhận"}</dd>
-                        </div>
-                        <div>
                           <dt>Số hiệu</dt>
                           <dd>{diploma.soHieu || "Chưa ghi nhận"}</dd>
                         </div>
@@ -348,6 +384,13 @@ export default function SearchPage() {
                           ? "Đã có thể xác thực trên blockchain."
                           : "Cần dùng biểu mẫu chi tiết để đối chiếu thêm."}
                       </p>
+                      <button
+                        className={styles.quickDetailButton}
+                        type="button"
+                        onClick={() => openDetailedLookup(diploma)}
+                      >
+                        Tra cứu chi tiết <span aria-hidden="true">→</span>
+                      </button>
                     </article>
                   );
                 })}
@@ -358,6 +401,7 @@ export default function SearchPage() {
       </section>
 
       <form
+        id="exact-lookup"
         className={styles.form}
         onSubmit={submit}
         noValidate
@@ -551,7 +595,6 @@ export default function SearchPage() {
                 </div>
                 <dl className={styles.resultDetails}>
                   {[
-                    ["Mã số sinh viên", diploma.mssv],
                     ["Số hiệu văn bằng", diploma.soHieu],
                     ["Số vào sổ", diploma.soVaoSo],
                     ["Lớp", diploma.className],
