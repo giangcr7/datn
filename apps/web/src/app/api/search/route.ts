@@ -48,6 +48,7 @@ export async function GET(req: Request) {
   const session = (await getServerSession(authOptions)) as {
     accessToken?: string;
   } | null;
+  const headers = { "Cache-Control": "private, no-store" };
   try {
     const q = new URL(req.url).searchParams.get("q") || "";
     const data = await apiCall(
@@ -56,18 +57,38 @@ export async function GET(req: Request) {
       undefined,
       session?.accessToken,
     );
-    return NextResponse.json({
-      success: true,
-      total: data.length,
-      results: data,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        total: data.length,
+        results: data,
+      },
+      { headers },
+    );
   } catch (error: unknown) {
+    const backendStatus =
+      error instanceof Error && "status" in error ? error.status : undefined;
+    const status =
+      typeof backendStatus === "number" &&
+      backendStatus >= 400 &&
+      backendStatus < 500
+        ? backendStatus
+        : 502;
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Không thể tra cứu",
+        error:
+          status === 429
+            ? "Bạn đã tìm kiếm nhiều lần. Vui lòng chờ một phút rồi thử lại."
+            : status === 403
+              ? "Tra cứu nhanh chưa được mở công khai. Vui lòng dùng biểu mẫu tra cứu chi tiết hoặc đăng nhập."
+              : status === 502
+                ? "Chưa thể kết nối kho văn bằng. Vui lòng thử lại sau."
+                : error instanceof Error
+                  ? error.message
+                  : "Không thể tra cứu",
       },
-      { status: 400 },
+      { status, headers },
     );
   }
 }

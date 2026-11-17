@@ -247,6 +247,21 @@ export type DiplomaLookupResult = {
   status: string;
 };
 
+export type QuickDiplomaSearchResult = {
+  uuid: string;
+  fullName: string;
+  mssv?: string | null;
+  major?: string | null;
+  degreeType?: string | null;
+  grade?: string | null;
+  namTotNghiep?: number | null;
+  soHieu?: string | null;
+  issueDate?: string | null;
+  status: string;
+  isRevoked?: boolean;
+  isVerifiable?: boolean;
+};
+
 function isLookupResult(value: unknown): value is DiplomaLookupResult {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
@@ -297,6 +312,58 @@ export async function requestDiplomaLookup(
     );
   if (!Array.isArray(data.results) || !data.results.every(isLookupResult))
     throw new Error("Kết quả tra cứu chưa đầy đủ. Vui lòng thử lại sau.");
+  return data.results;
+}
+
+function isQuickSearchResult(
+  value: unknown,
+): value is QuickDiplomaSearchResult {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.uuid === "string" &&
+    typeof record.fullName === "string" &&
+    typeof record.status === "string"
+  );
+}
+
+export async function requestQuickDiplomaSearch(
+  query: string,
+  signal: AbortSignal,
+  request: typeof fetch = fetch,
+): Promise<QuickDiplomaSearchResult[]> {
+  const normalized = clean(query);
+  if (normalized.length < 2) return [];
+  let response: Response;
+  try {
+    response = await request(
+      `/api/search?q=${encodeURIComponent(normalized)}`,
+      {
+        cache: "no-store",
+        signal,
+      },
+    );
+  } catch (error) {
+    if (signal.aborted) throw error;
+    throw new Error("Không thể kết nối kho văn bằng. Vui lòng thử lại.");
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new Error("Kho văn bằng chưa phản hồi đúng.");
+  }
+  const data =
+    body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  if (!response.ok || data.success !== true) {
+    throw new Error(
+      typeof data.error === "string"
+        ? data.error
+        : "Không thể tìm kiếm văn bằng.",
+    );
+  }
+  if (!Array.isArray(data.results) || !data.results.every(isQuickSearchResult))
+    throw new Error("Dữ liệu tìm kiếm không hợp lệ.");
   return data.results;
 }
 

@@ -282,8 +282,8 @@ const html = renderToStaticMarkup(
   React.createElement(Shell, null, React.createElement(Page)),
 );
 check(
-  "the reference subtitle is preserved",
-  html.includes("Vui lòng nhập thông tin để tra cứu"),
+  "quick search subtitle is present",
+  html.includes("Tìm nhanh theo tên, MSSV, số hiệu hoặc số vào sổ"),
 );
 check(
   "lookup uses school blue and the shared page background",
@@ -346,8 +346,16 @@ check(
     page.includes("sequence.current !== requestId"),
 );
 check(
-  "search no longer runs on every keystroke",
-  !page.includes("setTimeout") && !page.includes("debounce"),
+  "quick search is debounced and cancels stale requests",
+  page.includes("setTimeout") &&
+    page.includes("quickController.current?.abort()") &&
+    page.includes("350"),
+);
+check(
+  "quick search controls and result state are present",
+  html.includes('id="quick-diploma-search"') &&
+    html.includes("Tìm kiếm") &&
+    page.includes("requestQuickDiplomaSearch"),
 );
 
 let backendCall;
@@ -362,9 +370,7 @@ const api = compile(route, {
     },
   },
   "next-auth": {
-    getServerSession: () => {
-      throw new Error("POST lookup must not require login");
-    },
+    getServerSession: () => null,
   },
   "@/lib/auth-options": { authOptions: {} },
 });
@@ -380,6 +386,31 @@ check(
   response.status === 200 &&
     (await response.json()).results[0].uuid === result.uuid,
 );
+
+backendReply = [result];
+response = await api.GET(
+  new Request("http://localhost/api/search?q=Nguyen", { method: "GET" }),
+);
+check(
+  "quick search proxies a bounded GET query",
+  response.status === 200 &&
+    backendCall[0] === "/cert/search?q=Nguyen" &&
+    backendCall[1] === "GET",
+);
+check(
+  "quick search responses are not cached",
+  response.headers.get("cache-control") === "private, no-store",
+);
+backendError = Object.assign(new Error("Directory disabled"), { status: 403 });
+response = await api.GET(
+  new Request("http://localhost/api/search?q=Nguyen", { method: "GET" }),
+);
+check(
+  "quick search preserves the public-directory restriction",
+  response.status === 403 &&
+    (await response.json()).error.includes("chưa được mở công khai"),
+);
+backendError = undefined;
 check(
   "proxy forwards structured fields to the lookup endpoint",
   backendCall[0] === "/cert/lookup" &&

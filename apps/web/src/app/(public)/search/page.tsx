@@ -15,8 +15,10 @@ import {
   lookupGroups,
   lookupStatus,
   requestDiplomaLookup,
+  requestQuickDiplomaSearch,
   validateLookupFields,
   type DiplomaLookupResult,
+  type QuickDiplomaSearchResult,
   type LookupErrors,
   type LookupField,
   type LookupFields,
@@ -30,17 +32,108 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
+  const [quickQuery, setQuickQuery] = useState("");
+  const [quickResults, setQuickResults] = useState<QuickDiplomaSearchResult[]>(
+    [],
+  );
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickSearched, setQuickSearched] = useState(false);
+  const [quickError, setQuickError] = useState("");
   const controller = useRef<AbortController | null>(null);
+  const quickController = useRef<AbortController | null>(null);
+  const quickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quickSequence = useRef(0);
   const sequence = useRef(0);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
+  const quickResultsHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(
     () => () => {
       sequence.current++;
       controller.current?.abort();
+      quickSequence.current++;
+      quickController.current?.abort();
+      if (quickTimer.current) clearTimeout(quickTimer.current);
     },
     [],
   );
+
+  async function runQuickSearch(value: string, focusResults = false) {
+    const query = value.trim();
+    quickSequence.current++;
+    const requestId = quickSequence.current;
+    quickController.current?.abort();
+    if (quickTimer.current) clearTimeout(quickTimer.current);
+    setQuickError("");
+    setQuickSearched(query.length >= 2);
+    if (query.length < 2) {
+      setQuickLoading(false);
+      setQuickResults([]);
+      return;
+    }
+    const activeController = new AbortController();
+    quickController.current = activeController;
+    setQuickLoading(true);
+    try {
+      const matches = await requestQuickDiplomaSearch(
+        query,
+        activeController.signal,
+      );
+      if (quickSequence.current !== requestId) return;
+      setQuickResults(matches);
+      if (focusResults)
+        requestAnimationFrame(() => quickResultsHeading.current?.focus());
+    } catch (failure) {
+      if (
+        quickSequence.current !== requestId ||
+        activeController.signal.aborted
+      )
+        return;
+      setQuickResults([]);
+      setQuickError(
+        failure instanceof Error
+          ? failure.message
+          : "Không thể tìm kiếm văn bằng.",
+      );
+    } finally {
+      if (quickSequence.current === requestId) setQuickLoading(false);
+    }
+  }
+
+  function changeQuickQuery(value: string) {
+    setQuickQuery(value);
+    quickSequence.current++;
+    quickController.current?.abort();
+    if (quickTimer.current) clearTimeout(quickTimer.current);
+    setQuickError("");
+    const query = value.trim();
+    if (query.length < 2) {
+      setQuickLoading(false);
+      setQuickResults([]);
+      setQuickSearched(false);
+      return;
+    }
+    setQuickSearched(true);
+    quickTimer.current = setTimeout(() => {
+      void runQuickSearch(query);
+    }, 350);
+  }
+
+  function submitQuickSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void runQuickSearch(quickQuery, true);
+  }
+
+  function resetQuickSearch() {
+    setQuickQuery("");
+    quickSequence.current++;
+    quickController.current?.abort();
+    if (quickTimer.current) clearTimeout(quickTimer.current);
+    setQuickResults([]);
+    setQuickSearched(false);
+    setQuickLoading(false);
+    setQuickError("");
+  }
 
   function clearSearch() {
     sequence.current++;
@@ -110,8 +203,159 @@ export default function SearchPage() {
       </nav>
       <div className={styles.introduction}>
         <h1>Tra cứu văn bằng tốt nghiệp</h1>
-        <p>Vui lòng nhập thông tin để tra cứu</p>
+        <p>Tìm nhanh theo tên, MSSV, số hiệu hoặc số vào sổ</p>
       </div>
+
+      <section
+        className={styles.quickSearch}
+        aria-labelledby="quick-search-title"
+      >
+        <div className={styles.quickSearchHeading}>
+          <div>
+            <p className={styles.eyebrow}>TÌM NHANH TRONG KHO VĂN BẰNG</p>
+            <h2 id="quick-search-title">Bạn muốn tìm văn bằng nào?</h2>
+          </div>
+          <span className={styles.quickSearchLimit}>Tối thiểu 2 ký tự</span>
+        </div>
+        <form className={styles.quickSearchForm} onSubmit={submitQuickSearch}>
+          <label className={styles.srOnly} htmlFor="quick-diploma-search">
+            Tìm kiếm văn bằng
+          </label>
+          <div className={styles.quickSearchInputWrap}>
+            <svg
+              className={styles.searchIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="6.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              />
+              <path
+                d="m16 16 4.5 4.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+            <input
+              id="quick-diploma-search"
+              value={quickQuery}
+              onChange={(event) => changeQuickQuery(event.target.value)}
+              placeholder="Nhập họ tên, MSSV, số hiệu hoặc số vào sổ…"
+              autoComplete="off"
+              maxLength={120}
+              aria-describedby="quick-search-hint"
+            />
+            {quickQuery && (
+              <button
+                className={styles.clearQuickButton}
+                type="button"
+                onClick={resetQuickSearch}
+                aria-label="Xóa tìm kiếm nhanh"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <button
+            className={styles.quickSearchButton}
+            type="submit"
+            disabled={quickLoading}
+          >
+            {quickLoading ? "Đang tìm…" : "Tìm kiếm"}
+          </button>
+        </form>
+        <p className={styles.quickSearchHint} id="quick-search-hint">
+          Tìm theo một phần tên hoặc mã. Kết quả nhanh chỉ hiển thị văn bằng đã
+          được phát hành trong hệ thống.
+        </p>
+        <div
+          className={styles.quickSearchResults}
+          aria-live="polite"
+          aria-busy={quickLoading}
+        >
+          {quickLoading && (
+            <p className={styles.quickSearchStatus}>
+              Đang tìm trong kho văn bằng…
+            </p>
+          )}
+          {!quickLoading && quickError && (
+            <p className={styles.error} role="alert">
+              {quickError}
+            </p>
+          )}
+          {!quickLoading &&
+            quickSearched &&
+            !quickError &&
+            quickResults.length === 0 && (
+              <p className={styles.quickSearchStatus}>
+                Không tìm thấy văn bằng phù hợp. Thử tên đầy đủ hoặc mã chính
+                xác hơn.
+              </p>
+            )}
+          {!quickLoading && quickResults.length > 0 && (
+            <>
+              <h3
+                ref={quickResultsHeading}
+                tabIndex={-1}
+                className={styles.quickResultsTitle}
+              >
+                Tìm thấy {quickResults.length} kết quả
+                {quickResults.length === 20 &&
+                  " (đang hiển thị 20 kết quả đầu)"}
+              </h3>
+              <div className={styles.quickResultGrid}>
+                {quickResults.map((diploma) => {
+                  const status = lookupStatus(diploma.status);
+                  return (
+                    <article
+                      className={styles.quickResultCard}
+                      key={diploma.uuid}
+                    >
+                      <div className={styles.quickResultTop}>
+                        <h4>{diploma.fullName}</h4>
+                        <span
+                          className={styles.badge + " " + styles[status.tone]}
+                        >
+                          {status.label}
+                        </span>
+                      </div>
+                      <dl className={styles.quickResultDetails}>
+                        <div>
+                          <dt>MSSV</dt>
+                          <dd>{diploma.mssv || "Chưa ghi nhận"}</dd>
+                        </div>
+                        <div>
+                          <dt>Số hiệu</dt>
+                          <dd>{diploma.soHieu || "Chưa ghi nhận"}</dd>
+                        </div>
+                        <div>
+                          <dt>Ngành</dt>
+                          <dd>{diploma.major || "Chưa ghi nhận"}</dd>
+                        </div>
+                        <div>
+                          <dt>Năm tốt nghiệp</dt>
+                          <dd>{diploma.namTotNghiep || "Chưa ghi nhận"}</dd>
+                        </div>
+                      </dl>
+                      <p className={styles.quickResultHint}>
+                        {diploma.isVerifiable
+                          ? "Đã có thể xác thực trên blockchain."
+                          : "Cần dùng biểu mẫu chi tiết để đối chiếu thêm."}
+                      </p>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </section>
 
       <form
         className={styles.form}

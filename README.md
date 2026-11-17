@@ -50,6 +50,8 @@ Kiểm thử trang chủ và CSS: `node scripts/test-homepage.mjs`. Để kiểm
 
 ## Tra cứu văn bằng trong kho
 
+- Trang /search có ô **Tìm nhanh trong kho văn bằng**, tìm theo một phần họ tên, MSSV, số hiệu hoặc số vào sổ; kết quả được debounce 350 ms, hủy request cũ và giới hạn 20 kết quả. Chức năng này dùng GET /api/search và chỉ trả văn bằng đã phát hành khi PUBLIC_DIRECTORY_ENABLED=true theo chính sách công khai.
+
 - Trang `/search` có tiêu đề giữa, nền xanh nhạt, ô nhập và nút tra cứu xanh theo nhận diện nhà trường. Hiển thị đủ 14 trường trong ba nhóm: người được cấp (họ tên, ngày sinh, MSSV); đào tạo (lớp, ngành, trình độ, năm tốt nghiệp, xếp loại, điểm trung bình); văn bằng (số hiệu, số vào sổ, ngày cấp, số và ngày quyết định). Không thêm ô CCCD khi kho chưa có dữ liệu đối chiếu.
 - Bắt buộc họ tên, ngày sinh và ít nhất một số định danh (MSSV/số hiệu/số vào sổ). Các trường khác không bắt buộc; nếu nhập, tất cả điều kiện phải khớp. Tên người và tên ngành không phân biệt dấu tiếng Việt/chữ hoa; các số định danh và trường khác khớp chính xác, giữ số 0 đầu mã.
 - `POST /api/search` chuyển JSON sang `POST /cert/lookup`. Tra cứu cá nhân không yêu cầu đăng nhập, giới hạn 10 lần/phút theo cơ chế throttling API; không ghi họ tên/ngày sinh lên URL và không cache kết quả. `GET /cert/search?q=...` vẫn giữ chính sách `PUBLIC_DIRECTORY_ENABLED` và phạm vi tài khoản cũ, không trở thành danh bạ công khai.
