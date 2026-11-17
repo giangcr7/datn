@@ -47,6 +47,11 @@ export interface WorkflowDiploma {
     signedAt: string;
     certificateSerial: string;
   }[];
+  workflowStatus?: string;
+  anchorStatus?: string | null;
+  txId?: string | null;
+  certHash?: string | null;
+  version?: number | null;
 }
 
 export interface WorkflowPage {

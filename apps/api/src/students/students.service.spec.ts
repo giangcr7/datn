@@ -65,6 +65,119 @@ async function excel(
   return Buffer.from(await workbook.xlsx.writeBuffer()).toString('base64');
 }
 
+describe('student detail lookup', () => {
+  it('returns the selected student with scoped training and diploma details', async () => {
+    const database = {
+      student: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'student',
+          studentCode: code,
+          fullName: name,
+          dateOfBirth: new Date('2000-01-02'),
+          birthPlace: 'Hà Nội',
+          gender: 'MALE',
+          ethnicity: 'Kinh',
+          nationality: 'Việt Nam',
+          contactEmail: email,
+          phone: '0900000000',
+          createdAt: new Date('2025-01-01T00:00:00Z'),
+          updatedAt: new Date('2025-01-02T00:00:00Z'),
+          account: {
+            id: 'account',
+            email,
+            active: true,
+            mustChangePassword: false,
+            createdAt: new Date('2025-01-01T00:00:00Z'),
+            updatedAt: new Date('2025-01-02T00:00:00Z'),
+          },
+          enrollments: [
+            {
+              id: 'enrollment',
+              program: { id: 'program', name: 'Công nghệ thông tin', nameEn: null },
+              campus: { id: 'campus', code: 'CS1', name: 'Cơ sở 1' },
+              academicClass: { id: 'class', code: 'CNTT01', cohortCode: 'K20' },
+              startYear: 2020,
+              endYear: 2024,
+              cohortCode: 'K20',
+              createdAt: new Date('2020-09-01T00:00:00Z'),
+            },
+          ],
+          graduations: [
+            {
+              id: 'graduation',
+              graduationYear: 2024,
+              gpa: 3.5,
+              gpaScale: 4,
+              classification: 'GOOD',
+              degreeType: 'BACHELOR',
+              specialization: null,
+              program: { id: 'program', name: 'Công nghệ thông tin', nameEn: null },
+              decision: null,
+              enrollment: null,
+              diplomas: [
+                {
+                  id: 'diploma',
+                  certificateNo: 'A-001',
+                  registryNo: 'S-001',
+                  issuedOn: new Date('2024-07-01'),
+                  status: 'ACTIVE',
+                  workflowStatus: 'APPROVED',
+                  revokedReason: null,
+                  revokedAt: null,
+                  versions: [
+                    {
+                      version: 1,
+                      payloadHash: 'hash',
+                      anchors: [
+                        {
+                          status: 'COMMITTED',
+                          transactionId: 'tx-1',
+                          blockNumber: BigInt(7),
+                          committedAt: new Date('2024-07-02T00:00:00Z'),
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    };
+    const service = new StudentsService(
+      database as unknown as DatabaseService,
+    );
+
+    await expect(service.findOne('student', actor)).resolves.toMatchObject({
+      success: true,
+      data: {
+        studentId: code,
+        account: { status: 'ACTIVE' },
+        enrollments: [{ campus: { code: 'CS1' } }],
+        graduations: [
+          {
+            diplomas: [
+              {
+                certificateNo: 'A-001',
+                anchor: { blockNumber: '7', transactionId: 'tx-1' },
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(database.student.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'student',
+          institutionId: actor.institutionId,
+        }),
+      }),
+    );
+  });
+});
+
 describe('student account creation', () => {
   it('creates a pending account with a hashed temporary password', async () => {
     const { service, transaction } = fixture();

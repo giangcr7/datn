@@ -60,6 +60,13 @@ export class StudentsController {
     return this.studentsService.findAll(+page, +limit, search, req.user);
   }
 
+  @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'university')
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.studentsService.findOne(id, req.user);
+  }
+
   @Post()
   @UseGuards(RolesGuard)
   @Roles('university')

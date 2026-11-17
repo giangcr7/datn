@@ -79,6 +79,8 @@ export default function CertificatesClient({
 }) {
   const workspace = getWorkspace(user);
   const [detailRecord, setDetailRecord] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
   const [replacementRecord, setReplacementRecord] = useState<any>(null);
   const [loadingVerify, setLoadingVerify] = useState<Record<string, boolean>>(
     {},
@@ -101,6 +103,8 @@ export default function CertificatesClient({
   const [exporting, setExporting] = useState(false);
   const requestId = useRef(0);
   const registerAbort = useRef<AbortController | null>(null);
+  const detailCache = useRef(new Map<string, any>());
+  const detailRequestId = useRef(0);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
@@ -342,6 +346,35 @@ export default function CertificatesClient({
     }
   };
 
+  const openCertificateDetail = async (record: any) => {
+    const currentRequest = ++detailRequestId.current;
+    const cached = detailCache.current.get(record.uuid);
+    setDetailRecord(cached || record);
+    setDetailLoading(!cached);
+    setDetailError("");
+    try {
+      const response = await fetch(`/api/cert/${encodeURIComponent(record.uuid)}`, {
+        cache: "no-store",
+      });
+      const json = await response.json();
+      if (!response.ok || json.success === false)
+        throw new Error(json.error || "Không tải được chi tiết văn bằng");
+      if (currentRequest !== detailRequestId.current) return;
+      const detail = json.data ?? json;
+      detailCache.current.set(record.uuid, detail);
+      setDetailRecord(detail);
+    } catch (error) {
+      if (currentRequest === detailRequestId.current && !cached)
+        setDetailError(
+          error instanceof Error
+            ? error.message
+            : "Không tải được chi tiết văn bằng",
+        );
+    } finally {
+      if (currentRequest === detailRequestId.current) setDetailLoading(false);
+    }
+  };
+
   const statusLabels = registerStatuses;
 
   const columns = [
@@ -406,7 +439,7 @@ export default function CertificatesClient({
             key: "detail",
             icon: <EyeOutlined />,
             label: "Chi tiết",
-            onClick: () => setDetailRecord(record),
+            onClick: () => void openCertificateDetail(record),
           },
           ...(actions.history
             ? [
@@ -525,12 +558,31 @@ export default function CertificatesClient({
       )}
       <Modal
         open={!!detailRecord}
-        onCancel={() => setDetailRecord(null)}
+        onCancel={() => {
+          detailRequestId.current += 1;
+          setDetailRecord(null);
+          setDetailError("");
+        }}
         footer={null}
-        title="Chi tiết hồ sơ văn bằng"
-        width={720}
+        title={
+          detailRecord
+            ? `Chi tiết văn bằng${detailRecord.soHieu ? ` — ${detailRecord.soHieu}` : ""}`
+            : "Chi tiết văn bằng"
+        }
+        width={820}
       >
-        {detailRecord && (
+        {detailLoading ? (
+          <div className="flex justify-center py-12">
+            <Spin tip="Đang tải đầy đủ thông tin văn bằng..." />
+          </div>
+        ) : detailError ? (
+          <Alert
+            type="error"
+            showIcon
+            title="Không tải được chi tiết"
+            description={detailError}
+          />
+        ) : detailRecord ? (
           <>
             {detailRecord.replaces && (
               <Alert
@@ -559,6 +611,7 @@ export default function CertificatesClient({
               />
             )}
             <Descriptions
+              title="Thông tin chính"
               column={1}
               bordered
               size="small"
@@ -668,8 +721,139 @@ export default function CertificatesClient({
                 },
               ]}
             />
+            <Descriptions
+              className="mt-4"
+              title="Trạng thái xử lý và blockchain"
+              column={1}
+              bordered
+              size="small"
+              items={[
+                {
+                  key: "workflow",
+                  label: "Trạng thái quy trình",
+                  children: detailRecord.workflowStatus || "—",
+                },
+                {
+                  key: "anchor",
+                  label: "Trạng thái ghi blockchain",
+                  children: detailRecord.anchorStatus || "Chưa có",
+                },
+                {
+                  key: "version",
+                  label: "Phiên bản dữ liệu",
+                  children: detailRecord.version ?? "—",
+                },
+                {
+                  key: "hash",
+                  label: "Mã băm văn bằng",
+                  children: detailRecord.certHash ? (
+                    <Text copyable style={{ wordBreak: "break-all" }}>
+                      {detailRecord.certHash}
+                    </Text>
+                  ) : (
+                    "Chưa có"
+                  ),
+                },
+                {
+                  key: "issuerMsp",
+                  label: "MSP đơn vị phát hành",
+                  children: detailRecord.issuerMspId || "—",
+                },
+              ]}
+            />
+            <Descriptions
+              className="mt-4"
+              title="PDF và chữ ký số"
+              column={1}
+              bordered
+              size="small"
+              items={[
+                {
+                  key: "pdf",
+                  label: "PDF phát hành",
+                  children: detailRecord.signedPdfAvailable
+                    ? "Có thể tải bản đã ký số"
+                    : "Chưa đủ điều kiện phát hành hoặc chưa có PDF ký số",
+                },
+                {
+                  key: "mode",
+                  label: "Chế độ ký",
+                  children: detailRecord.pdfSigningMode || "—",
+                },
+                {
+                  key: "signatureCount",
+                  label: "Số chữ ký",
+                  children: detailRecord.pdfSignatureCount ?? 0,
+                },
+                {
+                  key: "signatures",
+                  label: "Người ký và thời điểm",
+                  children: detailRecord.pdfSignatures?.length
+                    ? detailRecord.pdfSignatures
+                        .map(
+                          (signature: any) =>
+                            `${signature.signatureOrder}. ${signature.signerName || "Không rõ"} · ${signature.signedAt ? new Date(signature.signedAt).toLocaleString("vi-VN") : "Chưa ghi nhận"}`,
+                        )
+                        .join("; ")
+                    : "Chưa có chữ ký",
+                },
+                {
+                  key: "pdfHash",
+                  label: "Mã băm PDF",
+                  children: detailRecord.signedPdfHash ? (
+                    <Text copyable style={{ wordBreak: "break-all" }}>
+                      {detailRecord.signedPdfHash}
+                    </Text>
+                  ) : (
+                    "Chưa có"
+                  ),
+                },
+              ]}
+            />
+            <Descriptions
+              className="mt-4"
+              title="Nguồn dữ liệu và thời gian xử lý"
+              column={1}
+              bordered
+              size="small"
+              items={[
+                {
+                  key: "source",
+                  label: "Nguồn dữ liệu",
+                  children: detailRecord.sourceFileName || "Hồ sơ lập riêng",
+                },
+                {
+                  key: "row",
+                  label: "Vị trí nguồn",
+                  children: detailRecord.sourceSheet
+                    ? `${detailRecord.sourceSheet} · dòng ${detailRecord.sourceRowNumber ?? "—"}`
+                    : "—",
+                },
+                {
+                  key: "requested",
+                  label: "Gửi yêu cầu",
+                  children: detailRecord.requestedAt
+                    ? new Date(detailRecord.requestedAt).toLocaleString("vi-VN")
+                    : "—",
+                },
+                {
+                  key: "approved",
+                  label: "Duyệt phát hành",
+                  children: detailRecord.approvedAt
+                    ? new Date(detailRecord.approvedAt).toLocaleString("vi-VN")
+                    : "—",
+                },
+                {
+                  key: "updated",
+                  label: "Cập nhật gần nhất",
+                  children: detailRecord.updatedAt
+                    ? new Date(detailRecord.updatedAt).toLocaleString("vi-VN")
+                    : "—",
+                },
+              ]}
+            />
           </>
-        )}
+        ) : null}
       </Modal>
       <div className="min-w-0">
         <div className="min-w-0">

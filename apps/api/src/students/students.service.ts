@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  NotFoundException,
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -81,6 +82,185 @@ export class StudentsService {
         createdAt: student.createdAt.toISOString(),
       })),
       total,
+    };
+  }
+
+  async findOne(id: string, actor: AuthActor) {
+    this.staff(actor);
+    const student = await this.database.student.findFirst({
+      where: {
+        id,
+        institutionId: actor.institutionId,
+        ...(actor.role !== 'admin'
+          ? {
+              OR: [
+                { enrollments: { some: { campusId: actor.campusId } } },
+                {
+                  account: {
+                    memberships: { some: { campusId: actor.campusId } },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        account: {
+          select: {
+            id: true,
+            email: true,
+            active: true,
+            mustChangePassword: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        enrollments: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            program: { select: { id: true, name: true, nameEn: true } },
+            campus: { select: { id: true, code: true, name: true } },
+            academicClass: { select: { id: true, code: true, cohortCode: true } },
+          },
+        },
+        graduations: {
+          orderBy: { graduationYear: 'desc' },
+          include: {
+            program: { select: { id: true, name: true, nameEn: true } },
+            decision: {
+              select: {
+                documentNumber: true,
+                decisionYear: true,
+                signedOn: true,
+                signerName: true,
+              },
+            },
+            enrollment: {
+              include: {
+                campus: { select: { id: true, code: true, name: true } },
+                academicClass: {
+                  select: { id: true, code: true, cohortCode: true },
+                },
+              },
+            },
+            diplomas: {
+              orderBy: { createdAt: 'desc' },
+              select: {
+                id: true,
+                certificateNo: true,
+                registryNo: true,
+                issuedOn: true,
+                status: true,
+                workflowStatus: true,
+                revokedReason: true,
+                revokedAt: true,
+                versions: {
+                  orderBy: { version: 'desc' },
+                  take: 1,
+                  select: {
+                    version: true,
+                    payloadHash: true,
+                    anchors: {
+                      where: { eventType: 'ISSUE' },
+                      orderBy: { createdAt: 'desc' },
+                      take: 1,
+                      select: {
+                        status: true,
+                        transactionId: true,
+                        blockNumber: true,
+                        committedAt: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!student)
+      throw new NotFoundException('Không tìm thấy hồ sơ sinh viên trong phạm vi quyền');
+
+    return {
+      success: true,
+      data: {
+        id: student.id,
+        studentId: student.studentCode,
+        name: student.fullName,
+        dob: student.dateOfBirth?.toISOString().slice(0, 10) || null,
+        birthPlace: student.birthPlace,
+        gender: student.gender,
+        ethnicity: student.ethnicity,
+        nationality: student.nationality,
+        email: student.contactEmail,
+        phone: student.phone,
+        createdAt: student.createdAt.toISOString(),
+        updatedAt: student.updatedAt.toISOString(),
+        account: student.account
+          ? {
+              id: student.account.id,
+              email: student.account.email,
+              active: student.account.active,
+              status: student.account.mustChangePassword
+                ? 'PENDING_ACTIVATION'
+                : 'ACTIVE',
+              createdAt: student.account.createdAt.toISOString(),
+              updatedAt: student.account.updatedAt.toISOString(),
+            }
+          : null,
+        enrollments: student.enrollments.map((enrollment) => ({
+          id: enrollment.id,
+          program: enrollment.program,
+          campus: enrollment.campus,
+          academicClass: enrollment.academicClass,
+          startYear: enrollment.startYear,
+          endYear: enrollment.endYear,
+          cohortCode: enrollment.cohortCode,
+          createdAt: enrollment.createdAt.toISOString(),
+        })),
+        graduations: student.graduations.map((graduation) => ({
+          id: graduation.id,
+          graduationYear: graduation.graduationYear,
+          gpa: graduation.gpa === null ? null : Number(graduation.gpa),
+          gpaScale: graduation.gpaScale,
+          classification: graduation.classification,
+          degreeType: graduation.degreeType,
+          specialization: graduation.specialization,
+          program: graduation.program,
+          decision: graduation.decision,
+          enrollment: graduation.enrollment
+            ? {
+                campus: graduation.enrollment.campus,
+                academicClass: graduation.enrollment.academicClass,
+              }
+            : null,
+          diplomas: graduation.diplomas.map((diploma) => ({
+            id: diploma.id,
+            certificateNo: diploma.certificateNo,
+            registryNo: diploma.registryNo,
+            issuedOn: diploma.issuedOn?.toISOString().slice(0, 10) || null,
+            status: diploma.status,
+            workflowStatus: diploma.workflowStatus,
+            revokedReason: diploma.revokedReason,
+            revokedAt: diploma.revokedAt?.toISOString() || null,
+            version: diploma.versions[0]?.version ?? null,
+            certHash: diploma.versions[0]?.payloadHash ?? null,
+            anchor: diploma.versions[0]?.anchors[0]
+              ? {
+                  status: diploma.versions[0].anchors[0].status,
+                  transactionId: diploma.versions[0].anchors[0].transactionId,
+                  blockNumber:
+                    diploma.versions[0].anchors[0].blockNumber?.toString() ||
+                    null,
+                  committedAt:
+                    diploma.versions[0].anchors[0].committedAt?.toISOString() ||
+                    null,
+                }
+              : null,
+          })),
+        })),
+      },
     };
   }
 

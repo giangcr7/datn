@@ -1,7 +1,7 @@
 "use client";
 
 import PageTitle from "@/components/PageTitle";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Table,
   Button,
@@ -11,6 +11,11 @@ import {
   Space,
   message,
   Tooltip,
+  Drawer,
+  Descriptions,
+  Spin,
+  Alert,
+  Tag,
 } from "antd";
 import { FileExcelOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
@@ -31,6 +36,11 @@ export default function StudentsClient({
     pageSize: 20,
     total: 0,
   });
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [studentDetail, setStudentDetail] = useState<any>(null);
+  const [studentDetailLoading, setStudentDetailLoading] = useState(false);
+  const [studentDetailError, setStudentDetailError] = useState("");
+  const studentDetailRequestId = useRef(0);
 
   const fetchStudents = useCallback(async (page = 1, limit = 20, q = "") => {
     setLoading(true);
@@ -54,6 +64,35 @@ export default function StudentsClient({
       setLoading(false);
     }
   }, []);
+
+  const openStudentDetail = async (record: any) => {
+    const currentRequest = ++studentDetailRequestId.current;
+    setSelectedStudent(record);
+    setStudentDetail(null);
+    setStudentDetailError("");
+    setStudentDetailLoading(true);
+    try {
+      const response = await fetch(
+        `/api/students/${encodeURIComponent(record.id)}`,
+        { cache: "no-store" },
+      );
+      const json = await response.json();
+      if (!response.ok || json.success === false)
+        throw new Error(json.error || "Không tải được chi tiết sinh viên");
+      if (currentRequest !== studentDetailRequestId.current) return;
+      setStudentDetail(json.data ?? json);
+    } catch (error) {
+      if (currentRequest === studentDetailRequestId.current)
+        setStudentDetailError(
+          error instanceof Error
+            ? error.message
+            : "Không tải được chi tiết sinh viên",
+        );
+    } finally {
+      if (currentRequest === studentDetailRequestId.current)
+        setStudentDetailLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchStudents();
@@ -96,6 +135,11 @@ export default function StudentsClient({
       key: "action",
       render: (_: any, record: any) => (
         <Space>
+          <Tooltip title="Xem đầy đủ hồ sơ sinh viên">
+            <Button size="small" onClick={() => void openStudentDetail(record)}>
+              Chi tiết
+            </Button>
+          </Tooltip>
           {!record.hasPassword && (
             <Tooltip title="Gửi lại mật khẩu tạm thời qua email">
               <Button
@@ -162,6 +206,135 @@ export default function StudentsClient({
             onChange={(e) => setSearch(e.target.value)}
             onSearch={(value) => fetchStudents(1, pagination.pageSize, value)}
           />
+          <Drawer
+            title={
+              studentDetail
+                ? `Chi tiết sinh viên — ${studentDetail.name}`
+                : `Chi tiết sinh viên — ${selectedStudent?.name || ""}`
+            }
+            open={!!selectedStudent}
+            onClose={() => {
+              studentDetailRequestId.current += 1;
+              setSelectedStudent(null);
+              setStudentDetail(null);
+              setStudentDetailError("");
+            }}
+            width={760}
+          >
+            {studentDetailLoading ? (
+              <div className="flex justify-center py-12">
+                <Spin tip="Đang tải hồ sơ sinh viên..." />
+              </div>
+            ) : studentDetailError ? (
+              <Alert
+                type="error"
+                showIcon
+                title="Không tải được chi tiết"
+                description={studentDetailError}
+              />
+            ) : studentDetail ? (
+              <Space direction="vertical" size="large" className="w-full">
+                <Descriptions title="Thông tin cá nhân" bordered column={1} size="small">
+                  <Descriptions.Item label="Họ và tên">{studentDetail.name || "—"}</Descriptions.Item>
+                  <Descriptions.Item label="MSSV">{studentDetail.studentId || "—"}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày sinh">{studentDetail.dob || "—"}</Descriptions.Item>
+                  <Descriptions.Item label="Nơi sinh">{studentDetail.birthPlace || "—"}</Descriptions.Item>
+                  <Descriptions.Item label="Giới tính">{studentDetail.gender || "—"}</Descriptions.Item>
+                  <Descriptions.Item label="Dân tộc / Quốc tịch">
+                    {[studentDetail.ethnicity, studentDetail.nationality].filter(Boolean).join(" / ") || "—"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Email / Điện thoại">
+                    {[studentDetail.email, studentDetail.phone].filter(Boolean).join(" · ") || "—"}
+                  </Descriptions.Item>
+                </Descriptions>
+                <Descriptions title="Tài khoản truy cập" bordered column={1} size="small">
+                  <Descriptions.Item label="Trạng thái">
+                    {studentDetail.account ? (
+                      <Tag color={studentDetail.account.active ? "green" : "red"}>
+                        {studentDetail.account.active
+                          ? studentDetail.account.status === "ACTIVE"
+                            ? "Đang hoạt động"
+                            : "Chờ kích hoạt"
+                          : "Đã khóa"}
+                      </Tag>
+                    ) : (
+                      "Chưa có tài khoản"
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Email tài khoản">
+                    {studentDetail.account?.email || "—"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Cập nhật gần nhất">
+                    {studentDetail.account?.updatedAt
+                      ? new Date(studentDetail.account.updatedAt).toLocaleString("vi-VN")
+                      : "—"}
+                  </Descriptions.Item>
+                </Descriptions>
+                <div>
+                  <Typography.Title level={5}>Ngành, lớp và cơ sở</Typography.Title>
+                  <Table
+                    rowKey="id"
+                    size="small"
+                    bordered
+                    pagination={false}
+                    dataSource={studentDetail.enrollments || []}
+                    locale={{ emptyText: "Chưa có thông tin đào tạo" }}
+                    columns={[
+                      { title: "Ngành", render: (_: unknown, row: any) => row.program?.name || "—" },
+                      { title: "Lớp", render: (_: unknown, row: any) => row.academicClass?.code || "—" },
+                      { title: "Cơ sở", render: (_: unknown, row: any) => row.campus?.name || row.campus?.code || "—" },
+                      { title: "Niên khóa", render: (_: unknown, row: any) => [row.startYear, row.endYear].filter(Boolean).join(" - ") || row.cohortCode || "—" },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <Typography.Title level={5}>Tốt nghiệp và văn bằng</Typography.Title>
+                  {(studentDetail.graduations || []).map((graduation: any) => (
+                    <Descriptions
+                      key={graduation.id}
+                      className="mb-4"
+                      title={`${graduation.graduationYear} — ${graduation.program?.name || "Chưa xác định ngành"}`}
+                      bordered
+                      column={1}
+                      size="small"
+                      items={[
+                        { key: "gpa", label: "GPA / Xếp loại", children: `${graduation.gpa ?? "—"} / ${graduation.classification || "—"}` },
+                        { key: "degree", label: "Loại bằng", children: graduation.degreeType || "—" },
+                        { key: "decision", label: "Quyết định", children: graduation.decision?.documentNumber || "—" },
+                        {
+                          key: "diplomas",
+                          label: "Văn bằng",
+                          children: graduation.diplomas?.length ? (
+                            <Space wrap>
+                              {graduation.diplomas.map((diploma: any) => (
+                                <Button
+                                  key={diploma.id}
+                                  type="link"
+                                  size="small"
+                                  onClick={() =>
+                                    router.push(
+                                      `/certificates?search=${encodeURIComponent(diploma.certificateNo)}`,
+                                    )
+                                  }
+                                >
+                                  {diploma.certificateNo} · {diploma.status}
+                                </Button>
+                              ))}
+                            </Space>
+                          ) : (
+                            "Chưa có văn bằng"
+                          ),
+                        },
+                      ]}
+                    />
+                  ))}
+                  {!studentDetail.graduations?.length && (
+                    <Typography.Text type="secondary">Chưa có hồ sơ tốt nghiệp.</Typography.Text>
+                  )}
+                </div>
+              </Space>
+            ) : null}
+          </Drawer>
         </div>
 
         <Table

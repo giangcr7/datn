@@ -102,6 +102,8 @@ export default function DiplomaWorkflowWorkspace({
   const [dialog, setDialog] = useState<ActionDialog | null>(null);
   const [reason, setReason] = useState("");
   const [detail, setDetail] = useState<WorkflowDiploma | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
   const [results, setResults] = useState<WorkflowResult[]>([]);
   const [newRequestOpen, setNewRequestOpen] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
@@ -116,6 +118,26 @@ export default function DiplomaWorkflowWorkspace({
     });
     if (batchId) params.set("batchId", batchId);
     return endpoint + "?" + params.toString();
+  }
+
+  async function openDetail(record: WorkflowDiploma) {
+    setDetail(record);
+    setDetailLoading(true);
+    setDetailError("");
+    try {
+      const result = await workflowJson<any>(
+        "/api/cert/" + encodeURIComponent(record.uuid),
+      );
+      setDetail((result.data ?? result) as WorkflowDiploma);
+    } catch (error) {
+      setDetailError(
+        error instanceof Error
+          ? error.message
+          : "Không tải được đầy đủ chi tiết hồ sơ",
+      );
+    } finally {
+      setDetailLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -400,7 +422,7 @@ export default function DiplomaWorkflowWorkspace({
               size="small"
               aria-label="Xem chi tiết hồ sơ"
               icon={<EyeOutlined />}
-              onClick={() => setDetail(record)}
+              onClick={() => void openDetail(record)}
             />
           </Tooltip>
           {prepare && !!record.requestErrors?.length ? (
@@ -814,6 +836,24 @@ export default function DiplomaWorkflowWorkspace({
       >
         {detail && (
           <>
+            {detailLoading && (
+              <Alert
+                className="mb-4"
+                type="info"
+                showIcon
+                message="Đang tải bản chi tiết theo mã hồ sơ"
+                description="Thông tin bên dưới đang được đối chiếu lại với dữ liệu hiện tại của hệ thống."
+              />
+            )}
+            {detailError && (
+              <Alert
+                className="mb-4"
+                type="error"
+                showIcon
+                message="Không tải được bản chi tiết mới nhất"
+                description={detailError}
+              />
+            )}
             <Descriptions
               bordered
               column={1}
@@ -917,6 +957,25 @@ export default function DiplomaWorkflowWorkspace({
                   children: detail.sourceSheet
                     ? detail.sourceSheet + " · dòng " + detail.sourceRowNumber
                     : "—",
+                },
+                {
+                  key: "workflow",
+                  label: "Trạng thái quy trình",
+                  children: detail.workflowStatus || "—",
+                },
+                {
+                  key: "anchor",
+                  label: "Blockchain / mã giao dịch",
+                  children: [detail.anchorStatus, detail.txId]
+                    .filter(Boolean)
+                    .join(" · ") || "Chưa ghi nhận",
+                },
+                {
+                  key: "version",
+                  label: "Phiên bản / mã băm",
+                  children: [detail.version, detail.certHash]
+                    .filter(Boolean)
+                    .join(" · ") || "Chưa ghi nhận",
                 },
               ]}
             />
