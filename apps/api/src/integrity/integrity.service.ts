@@ -14,12 +14,10 @@ import type { AuthActor } from '../auth/auth-actor';
 import {
   aggregateRisk,
   ANOMALY_RULE_VERSION,
-  findBurstWindow,
   makeCandidate,
   type AnomalyCandidate,
 } from './anomaly-engine';
 
-const ANOMALY_WINDOW_MS = 15 * 60 * 1000;
 const ANCHOR_GRACE_MS = 24 * 60 * 60 * 1000;
 const MAX_SCAN_LIMIT = 1000;
 const MAX_ACTIVE_DUPLICATE_SCAN = 5000;
@@ -339,53 +337,6 @@ export class IntegrityService {
               studentId,
               activeDiplomaIds: group.map((item) => item.id),
               count: group.length,
-            },
-          }),
-        ),
-      );
-    });
-
-    const issueEventsByActor = new Map<
-      string,
-      Array<{
-        id: string;
-        diplomaId: string;
-        actorId: string | null;
-        createdAt: Date;
-      }>
-    >();
-    for (const diploma of diplomas) {
-      for (const event of diploma.events) {
-        if (event.eventType !== 'ISSUE') continue;
-        const actorKey = event.actorId || 'unknown';
-        const group = issueEventsByActor.get(actorKey) || [];
-        group.push({
-          id: `${diploma.id}:${event.createdAt.toISOString()}`,
-          diplomaId: diploma.id,
-          actorId: event.actorId,
-          createdAt: event.createdAt,
-        });
-        issueEventsByActor.set(actorKey, group);
-      }
-    }
-    issueEventsByActor.forEach((events, actorId) => {
-      const burst = findBurstWindow(events, 10, ANOMALY_WINDOW_MS);
-      if (!burst) return;
-      const diplomaIds = [...new Set(burst.map((event) => event.diplomaId))];
-      diplomaIds.forEach((diplomaId) =>
-        add(
-          makeCandidate({
-            diplomaId,
-            type: 'ISSUE_BURST',
-            riskScore: 35,
-            source: 'AI_RULES',
-            evidence: {
-              actorId: actorId === 'unknown' ? null : actorId,
-              eventCount: burst.length,
-              windowMinutes: 15,
-              firstAt: burst[0].createdAt.toISOString(),
-              lastAt: burst[burst.length - 1].createdAt.toISOString(),
-              diplomaIds,
             },
           }),
         ),

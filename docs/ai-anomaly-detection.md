@@ -16,8 +16,14 @@ Quy tac `rules-v1` hien tai:
 - `MULTIPLE_ACTIVE_DIPLOMAS`: mot sinh vien co nhieu van bang ACTIVE.
 - `POST_APPROVAL_MUTATION`: co thay doi quy trinh sau thoi diem approve.
 - `VERSION_CHURN`: van bang co tu 3 phien ban tro len.
-- `ISSUE_BURST`: mot actor phat hanh it nhat 10 ho so trong 15 phut.
 - `ANOMALY_RISK`: tong hop diem cua cac tin hieu tren cung mot van bang, toi da 100.
+
+San luong phat hanh cao cua tai khoan nha truong khong phai la bat thuong vi
+nha truong duoc phep phat hanh theo nghiep vu. He thong chi luu san luong trong
+audit/thong ke; khong cong diem rui ro chi vi co nhieu van bang trong mot khoang
+thoi gian. Neu can phat hien tai khoan bi chiem quyen, phai dung tin hieu dang
+nhap, IP, pham vi co so, thay doi du lieu, hash va anchor thay vi dem so luong
+phat hanh.
 
 Muc do duoc tinh tu diem: `LOW` duoi 40, `MEDIUM` tu 40, `HIGH` tu 70,
 `CRITICAL` tu 90.

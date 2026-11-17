@@ -80,7 +80,6 @@ const typeLabels: Record<string, string> = {
   MULTIPLE_ACTIVE_DIPLOMAS: "Nhiều văn bằng ACTIVE",
   POST_APPROVAL_MUTATION: "Thay đổi sau duyệt",
   VERSION_CHURN: "Đổi phiên bản nhiều",
-  ISSUE_BURST: "Burst phát hành",
 };
 
 const formatTime = (value: string | null | undefined) =>

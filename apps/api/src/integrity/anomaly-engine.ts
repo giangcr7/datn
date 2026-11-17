@@ -14,13 +14,6 @@ export type AnomalyCandidate = {
   fabricHash?: string | null;
 };
 
-export type BurstRecord = {
-  id: string;
-  diplomaId: string;
-  actorId?: string | null;
-  createdAt: Date;
-};
-
 export function severityForScore(score: number): AnomalySeverity {
   if (score >= 90) return 'CRITICAL';
   if (score >= 70) return 'HIGH';
@@ -45,28 +38,6 @@ export function makeCandidate(
     severity: severityForScore(riskScore),
     ruleVersion: candidate.ruleVersion || ANOMALY_RULE_VERSION,
   };
-}
-
-export function findBurstWindow(
-  records: BurstRecord[],
-  threshold: number,
-  windowMs: number,
-) {
-  const sorted = [...records].sort(
-    (left, right) => left.createdAt.getTime() - right.createdAt.getTime(),
-  );
-  let start = 0;
-  for (let end = 0; end < sorted.length; end++) {
-    while (
-      start < end &&
-      sorted[end].createdAt.getTime() - sorted[start].createdAt.getTime() >
-        windowMs
-    ) {
-      start++;
-    }
-    if (end - start + 1 >= threshold) return sorted.slice(start, end + 1);
-  }
-  return null;
 }
 
 export function aggregateRisk(
