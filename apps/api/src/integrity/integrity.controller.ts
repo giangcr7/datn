@@ -39,8 +39,44 @@ export class IntegrityController {
   }
 
   @Get('alerts')
-  getAlerts(@Query('resolved') resolved = 'false', @Req() req: any) {
-    return this.integrityService.getAlerts(resolved === 'true', req.user);
+  getAlerts(
+    @Query('resolved') resolved = 'false',
+    @Query('severity') severity: string | undefined,
+    @Query('limit') limit = '100',
+    @Req() req: any,
+  ) {
+    return this.integrityService.getAlerts(resolved === 'true', req.user, {
+      severity,
+      limit: Number(limit),
+    });
+  }
+
+  @Post('anomaly-scan')
+  runAnomalyScan(
+    @Query('days') days = '7',
+    @Query('limit') limit = '500',
+    @Req() req: any,
+  ) {
+    return this.integrityService.runAnomalyScan(
+      Number(days),
+      Number(limit),
+      req.user,
+    );
+  }
+
+  @Get('anomalies')
+  getAnomalies(
+    @Query('resolved') resolved = 'false',
+    @Query('severity') severity: string | undefined,
+    @Query('limit') limit = '100',
+    @Req() req: any,
+  ) {
+    return this.integrityService.getAnomalies(
+      resolved === 'true',
+      req.user,
+      severity,
+      Number(limit),
+    );
   }
 
   @Post('alerts/:id/resolve')
@@ -50,5 +86,23 @@ export class IntegrityController {
     @Req() req: any,
   ) {
     return this.integrityService.resolveAlert(id, body.note, req.user);
+  }
+
+  @Post('anomalies/:id/resolve')
+  resolveAnomaly(
+    @Param('id') id: string,
+    @Body() body: { note: string },
+    @Req() req: any,
+  ) {
+    return this.integrityService.resolveAlert(id, body.note, req.user);
+  }
+
+  @Post('anomalies/:id/reopen')
+  reopenAnomaly(
+    @Param('id') id: string,
+    @Body() body: { note: string },
+    @Req() req: any,
+  ) {
+    return this.integrityService.reopenAlert(id, body.note, req.user);
   }
 }

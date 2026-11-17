@@ -682,16 +682,24 @@ model IntegrityAlert {
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   diplomaId    String    @map("diploma_id") @db.Uuid
   type         String    @db.VarChar(60)
+  riskScore    Int       @default(0) @map("risk_score")
+  severity     String    @default("LOW") @db.VarChar(20)
+  ruleVersion  String    @default("rules-v1") @map("rule_version") @db.VarChar(40)
+  source       String    @default("INTEGRITY") @db.VarChar(30)
+  evidence     Json?     @db.JsonB
   databaseHash String?   @map("database_hash") @db.Char(64)
   fabricHash   String?   @map("fabric_hash") @db.Char(64)
   resolvedAt   DateTime? @map("resolved_at") @db.Timestamptz(3)
   resolvedById String?   @map("resolved_by_id") @db.Uuid
   note         String?   @db.Text
+  lastSeenAt   DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   diploma      Diploma   @relation(fields: [diplomaId], references: [id], onDelete: Restrict)
   resolvedBy   Account?  @relation(fields: [resolvedById], references: [id], onDelete: Restrict)
 
   @@index([diplomaId, type, resolvedAt])
+  @@index([severity, resolvedAt, lastSeenAt])
+  @@index([ruleVersion, createdAt])
   @@map("integrity_alerts")
 }
 

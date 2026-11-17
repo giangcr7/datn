@@ -29,6 +29,7 @@ import {
   FolderOpenOutlined,
   AppstoreOutlined,
   HistoryOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -49,6 +50,7 @@ const navigationIcons: Record<string, React.ReactNode> = {
   "/diploma-records": <FolderOpenOutlined />,
   "/catalog": <AppstoreOutlined />,
   "/activity": <HistoryOutlined />,
+  "/anomalies": <WarningOutlined />,
   "/users": <UserOutlined />,
   "/explorer": <DeploymentUnitOutlined />,
   "/certificates": <SafetyCertificateOutlined />,

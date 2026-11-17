@@ -67,6 +67,11 @@ export function getWorkspace(user?: WorkspaceUser | null): {
           label: "Nhật ký hoạt động",
           description: "Tra cứu hoạt động trong phạm vi nhà trường.",
         },
+        {
+          path: "/anomalies",
+          label: "Phát hiện bất thường",
+          description: "Xem điểm rủi ro, quy tắc và bằng chứng cảnh báo.",
+        },
       ] satisfies WorkspaceLink[],
     };
   }
@@ -148,6 +153,11 @@ export function getWorkspace(user?: WorkspaceUser | null): {
           label: "Đối chiếu blockchain",
           description:
             "Đối chiếu giao dịch phát hành, thu hồi và theo dõi lỗi đồng bộ.",
+        },
+        {
+          path: "/anomalies",
+          label: "Phát hiện bất thường",
+          description: "Rà soát rủi ro hành vi, quy trình và blockchain.",
         },
       ] satisfies WorkspaceLink[],
     };
