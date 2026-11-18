@@ -49,6 +49,8 @@ export interface AuditReference {
   key: string;
   label: string;
   value: string;
+  displayValue?: string;
+  details?: Record<string, string | number | null>;
   kind: "target" | "request" | "blockchain" | "source" | "record";
 }
 
@@ -57,6 +59,7 @@ export interface ActivityEntry {
   institutionId: string | null;
   actorId: string | null;
   actorEmail: string;
+  actorName: string | null;
   action: string;
   target: string | null;
   result: string;

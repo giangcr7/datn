@@ -7,6 +7,7 @@ import {
   Alert,
   Button,
   Card,
+  Collapse,
   Descriptions,
   Empty,
   Form,
@@ -77,6 +78,7 @@ const metadataLabels: Record<string, string> = {
   corrections: "Nội dung điều chỉnh",
   academic: "Thông tin học vụ",
   certificateNo: "Số hiệu văn bằng",
+  campusName: "Cơ sở quản lý",
   classCode: "Lớp",
   classification: "Xếp loại tốt nghiệp",
   count: "Số lượng",
@@ -91,12 +93,21 @@ const metadataLabels: Record<string, string> = {
   fullName: "Họ và tên",
   fullNameLatin: "Họ tên trang tiếng Anh",
   graduationYear: "Năm tốt nghiệp",
+  decisionNumber: "Số quyết định tốt nghiệp",
+  diplomaStatus: "Tình trạng văn bằng hiện tại",
   gpa: "Điểm trung bình",
   issueDate: "Ngày cấp",
+  issuedOn: "Ngày cấp hiện tại",
   issuePlace: "Nơi cấp",
   majorNameEn: "Tên ngành tiếng Anh",
   note: "Ghi chú xử lý",
   outboxId: "Mã hàng đợi blockchain",
+  originType: "Hình thức tạo hồ sơ",
+  sourceFile: "Tệp nguồn",
+  sheetName: "Trang dữ liệu",
+  rowNumber: "Dòng dữ liệu",
+  importRowStatus: "Trạng thái dòng hiện tại",
+  reviewedAt: "Thời điểm rà soát hiện tại",
   previousAttempts: "Số lần thử trước",
   previousError: "Lỗi lần thử trước",
   previousIssuedOn: "Ngày cấp trước đó",
@@ -119,7 +130,57 @@ const metadataLabels: Record<string, string> = {
   transactionId: "Mã giao dịch blockchain",
   txId: "Mã giao dịch blockchain",
   version: "Phiên bản dữ liệu",
+  workflowStatus: "Trạng thái xử lý hiện tại",
 };
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const statusLabels: Record<string, Record<string, string>> = {
+  originType: { ISSUANCE: "Cấp mới", DIGITIZATION: "Số hóa văn bằng đã cấp" },
+  importRowStatus: {
+    READY: "Sẵn sàng",
+    NEEDS_REVIEW: "Cần rà soát",
+    IMPORTED: "Đã nhập",
+    SKIPPED: "Đã bỏ qua",
+  },
+  diplomaStatus: {
+    DRAFT: "Bản nháp",
+    ACTIVE: "Có hiệu lực",
+    REVOKED: "Đã thu hồi",
+    SUPERSEDED: "Đã thay thế",
+  },
+  workflowStatus: {
+    DRAFT: "Bản nháp",
+    REQUESTED: "Chờ duyệt",
+    APPROVED: "Đã duyệt",
+    REJECTED: "Đã từ chối",
+  },
+};
+
+function businessMetadata(value: unknown): unknown {
+  if (typeof value === "string" && uuidPattern.test(value)) return undefined;
+  if (Array.isArray(value))
+    return value.map(businessMetadata).filter((item) => item !== undefined);
+  if (isRecord(value))
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, child]) => {
+        const filtered = businessMetadata(child);
+        return filtered === undefined ? [] : [[key, filtered]];
+      }),
+    );
+  return value;
+}
+
+function targetText(entry: ActivityEntry) {
+  return (
+    entry.targetLabel ||
+    (entry.target && !uuidPattern.test(entry.target)
+      ? entry.target
+      : entry.target
+        ? "Không tìm thấy thông tin đối tượng trong phạm vi dữ liệu"
+        : "Không có đối tượng được ghi nhận")
+  );
+}
 
 const timeLabel = (value: string) =>
   new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -142,6 +203,8 @@ function metadataText(key: string, value: unknown) {
   if (typeof value === "boolean") return value ? "Có" : "Không";
   if (typeof value === "number") return value.toLocaleString("vi-VN");
   if (typeof value !== "string") return String(value);
+
+  if (statusLabels[key]?.[value]) return statusLabels[key][value];
 
   if (/At$|Date$|On$/.test(key) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return new Date(`${value}T00:00:00+07:00`).toLocaleDateString("vi-VN", {
@@ -430,6 +493,7 @@ export default function ActivityClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ActivityEntry | null>(null);
+  const selectedId = selected?.id;
   const [related, setRelated] = useState<ActivityEntry[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedError, setRelatedError] = useState("");
@@ -520,18 +584,21 @@ export default function ActivityClient() {
   }, [refresh]);
 
   useEffect(() => {
-    if (!selected) {
+    if (!selectedId) {
       setRelated([]);
       return;
     }
     const controller = new AbortController();
     setRelatedLoading(true);
+    setRelated([]);
     setRelatedError("");
     workflowJson<{ data: ActivityEntry[] }>(
-      `/api/activity/${encodeURIComponent(selected.id)}/related`,
+      `/api/activity/${encodeURIComponent(selectedId)}/related`,
       { signal: controller.signal },
     )
-      .then((result) => setRelated(result.data))
+      .then((result) => {
+        if (!controller.signal.aborted) setRelated(result.data);
+      })
       .catch((failure: unknown) => {
         if (!controller.signal.aborted)
           setRelatedError(
@@ -544,7 +611,7 @@ export default function ActivityClient() {
         if (!controller.signal.aborted) setRelatedLoading(false);
       });
     return () => controller.abort();
-  }, [selected?.id]);
+  }, [selectedId]);
 
   function applyFilters(values: ActivityFilters) {
     const next = { ...emptyFilters, ...values };
@@ -606,10 +673,17 @@ export default function ActivityClient() {
   const detailMetadata = useMemo(() => {
     if (!selected?.metadata) return null;
     const entries = Object.entries(selected.metadata).filter(
-      ([key]) => key !== "before" && key !== "after",
+      ([key]) =>
+        key !== "before" &&
+        key !== "after" &&
+        (key !== "changes" || !diffRows.length),
     );
-    return entries.length ? Object.fromEntries(entries) : null;
-  }, [selected]);
+    const filtered = businessMetadata(Object.fromEntries(entries)) as Record<
+      string,
+      unknown
+    >;
+    return Object.keys(filtered).length ? filtered : null;
+  }, [selected, diffRows]);
 
   return (
     <div className="workspace-page">
@@ -853,24 +927,9 @@ export default function ActivityClient() {
             key: "target",
             width: 310,
             render: (_, entry: ActivityEntry) => (
-              <Space direction="vertical" size={0}>
-                <Typography.Text
-                  ellipsis={{
-                    tooltip: entry.targetLabel || entry.target || undefined,
-                  }}
-                >
-                  {entry.targetLabel || entry.target || "—"}
-                </Typography.Text>
-                {entry.targetLabel && entry.target && (
-                  <Typography.Text
-                    type="secondary"
-                    className="text-xs"
-                    copyable={{ text: entry.target }}
-                  >
-                    {entry.target}
-                  </Typography.Text>
-                )}
-              </Space>
+              <Typography.Text ellipsis={{ tooltip: targetText(entry) }}>
+                {targetText(entry)}
+              </Typography.Text>
             ),
           },
           {
@@ -904,14 +963,13 @@ export default function ActivityClient() {
         {selected && (
           <Space direction="vertical" size={16} className="w-full">
             <Descriptions bordered column={1} size="small">
-              <Descriptions.Item label="Mã nhật ký">
-                <CodeValue value={selected.id} />
-              </Descriptions.Item>
               <Descriptions.Item label="Thời điểm">
                 {timeLabel(selected.createdAt)}
               </Descriptions.Item>
               <Descriptions.Item label="Người thực hiện">
-                {selected.actorEmail}
+                {selected.actorName
+                  ? `${selected.actorName} (${selected.actorEmail})`
+                  : selected.actorEmail}
               </Descriptions.Item>
               <Descriptions.Item label="Hoạt động">
                 {activityLabels[selected.action] || selected.action}
@@ -921,34 +979,28 @@ export default function ActivityClient() {
                   ? targetKindLabels[selected.targetKind] || selected.targetKind
                   : "Không xác định"}
               </Descriptions.Item>
-              <Descriptions.Item label="Đối tượng dễ hiểu">
-                <Space direction="vertical" size={2}>
-                  <Typography.Text strong>
-                    {selected.targetLabel ||
-                      selected.target ||
-                      "Không có dữ liệu"}
-                  </Typography.Text>
-                  {selected.target && <CodeValue value={selected.target} />}
-                </Space>
+              <Descriptions.Item label="Đối tượng">
+                <Typography.Text strong>{targetText(selected)}</Typography.Text>
               </Descriptions.Item>
               <Descriptions.Item label="Kết quả">
                 <Tag color={selected.result === "SUCCESS" ? "green" : "red"}>
                   {selected.result === "SUCCESS" ? "Thành công" : "Thất bại"}
                 </Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="Mã tài khoản">
-                <CodeValue value={selected.actorId} />
-              </Descriptions.Item>
-              <Descriptions.Item label="Mã đơn vị">
-                <CodeValue value={selected.institutionId} />
-              </Descriptions.Item>
-              <Descriptions.Item label="Địa chỉ IP">
-                <CodeValue value={selected.ip} />
-              </Descriptions.Item>
-              <Descriptions.Item label="Thiết bị / trình duyệt">
-                {selected.userAgent || "Không có dữ liệu"}
-              </Descriptions.Item>
             </Descriptions>
+
+            <Alert
+              type="info"
+              showIcon
+              message="Tên tài khoản và hồ sơ liên quan là thông tin hiện tại; nội dung nhật ký phản ánh dữ liệu đã ghi khi thực hiện thao tác."
+            />
+            {selected.action === "COMMIT_IMPORT_ROW" && (
+              <Alert
+                type="info"
+                showIcon
+                message="Đây là thao tác lưu hồ sơ đã rà soát, không tự xác nhận việc phát hành hoặc ghi blockchain."
+              />
+            )}
 
             {selected.errorMessage && (
               <Alert
@@ -959,21 +1011,31 @@ export default function ActivityClient() {
               />
             )}
 
-            <Card size="small" title="Mã tham chiếu liên quan">
-              {selected.references.length ? (
+            <Card size="small" title="Hồ sơ liên quan (thông tin hiện tại)">
+              {selected.references.some((reference) => reference.details) ? (
                 <List
                   size="small"
                   bordered
-                  dataSource={selected.references}
+                  dataSource={selected.references.filter(
+                    (reference) => reference.details,
+                  )}
                   renderItem={(reference) => (
                     <List.Item>
-                      <Space wrap>
-                        <Tag>
-                          {referenceKindLabels[reference.kind] ||
-                            reference.kind}
-                        </Tag>
-                        <Typography.Text>{reference.label}</Typography.Text>
-                        <CodeValue value={reference.value} />
+                      <Space direction="vertical" className="w-full">
+                        <Typography.Text strong>
+                          {reference.key === "target" &&
+                          selected.targetKind === "import-row"
+                            ? "Dòng dữ liệu nguồn"
+                            : reference.key === "graduationId"
+                              ? "Hồ sơ tốt nghiệp"
+                              : reference.key === "replacementId"
+                                ? "Văn bằng thay thế"
+                                : "Văn bằng"}
+                        </Typography.Text>
+                        <MetadataValue
+                          fieldKey="details"
+                          value={reference.details}
+                        />
                       </Space>
                     </List.Item>
                   )}
@@ -981,7 +1043,7 @@ export default function ActivityClient() {
               ) : (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Không có mã tham chiếu bổ sung"
+                  description="Không có thông tin hồ sơ liên quan trong phạm vi dữ liệu"
                 />
               )}
             </Card>
@@ -1003,14 +1065,30 @@ export default function ActivityClient() {
                         title: "Trước thay đổi",
                         dataIndex: "before",
                         render: (value: unknown, row) => (
-                          <MetadataValue fieldKey={row.field} value={value} />
+                          <MetadataValue
+                            fieldKey={row.field}
+                            value={
+                              typeof value === "string" &&
+                              uuidPattern.test(value)
+                                ? "Mã nội bộ: xem thông tin kỹ thuật"
+                                : value
+                            }
+                          />
                         ),
                       },
                       {
                         title: "Sau thay đổi",
                         dataIndex: "after",
                         render: (value: unknown, row) => (
-                          <MetadataValue fieldKey={row.field} value={value} />
+                          <MetadataValue
+                            fieldKey={row.field}
+                            value={
+                              typeof value === "string" &&
+                              uuidPattern.test(value)
+                                ? "Mã nội bộ: xem thông tin kỹ thuật"
+                                : value
+                            }
+                          />
                         ),
                       },
                     ]}
@@ -1030,10 +1108,72 @@ export default function ActivityClient() {
               </Card>
             )}
 
+            <Collapse
+              items={[
+                {
+                  key: "technical",
+                  label: "Thông tin kỹ thuật và dữ liệu nhật ký gốc",
+                  children: (
+                    <Space direction="vertical" className="w-full" size={12}>
+                      <Descriptions bordered column={1} size="small">
+                        <Descriptions.Item label="Mã nhật ký">
+                          <CodeValue value={selected.id} />
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Mã tài khoản">
+                          <CodeValue value={selected.actorId} />
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Mã đơn vị">
+                          <CodeValue value={selected.institutionId} />
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Địa chỉ IP">
+                          <CodeValue value={selected.ip} />
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Thiết bị / trình duyệt">
+                          {selected.userAgent || "Không có dữ liệu"}
+                        </Descriptions.Item>
+                      </Descriptions>
+                      {selected.references.length > 0 && (
+                        <List
+                          size="small"
+                          bordered
+                          dataSource={selected.references}
+                          renderItem={(reference) => (
+                            <List.Item>
+                              <Space wrap>
+                                <Tag>
+                                  {referenceKindLabels[reference.kind] ||
+                                    reference.kind}
+                                </Tag>
+                                <Typography.Text>
+                                  {reference.label}
+                                </Typography.Text>
+                                <CodeValue value={reference.value} />
+                              </Space>
+                            </List.Item>
+                          )}
+                        />
+                      )}
+                      {selected.metadata && (
+                        <MetadataValue
+                          fieldKey="metadata"
+                          value={selected.metadata}
+                        />
+                      )}
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+
             <Card
               size="small"
               title={`Chuỗi hoạt động liên quan${related.length ? ` (${related.length})` : ""}`}
             >
+              <Typography.Paragraph type="secondary">
+                Tối đa 50 hoạt động trong khoảng 180 ngày trước và sau thao tác,
+                theo đối tượng hoặc thao tác cùng loại; danh sách có thể chưa
+                đầy đủ.
+              </Typography.Paragraph>
               {relatedError && (
                 <Alert showIcon type="warning" message={relatedError} />
               )}
@@ -1082,9 +1222,7 @@ export default function ActivityClient() {
                         description={
                           <Space direction="vertical" size={0}>
                             <Typography.Text>
-                              {entry.targetLabel ||
-                                entry.target ||
-                                "Không có đối tượng"}
+                              {targetText(entry)}
                             </Typography.Text>
                             <Typography.Text type="secondary">
                               {entry.actorEmail}

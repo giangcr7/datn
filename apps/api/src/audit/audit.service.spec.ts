@@ -87,6 +87,151 @@ describe('audit isolation and durability', () => {
     expect(count).toHaveBeenCalledWith({ where });
   });
 
+  it('resolves import-row references in batches within the institution', async () => {
+    const rowId = '11111111-1111-4111-8111-111111111111';
+    const diplomaId = '22222222-2222-4222-8222-222222222222';
+    const graduationId = '33333333-3333-4333-8333-333333333333';
+    const actorId = '44444444-4444-4444-8444-444444444444';
+    const entry = {
+      id: '55555555-5555-4555-8555-555555555555',
+      actorId,
+      actorEmail: 'staff@example.test',
+      action: 'COMMIT_IMPORT_ROW',
+      target: rowId,
+      metadata: { diplomaId, graduationId, originType: 'ISSUANCE' },
+    };
+    const diplomaFind = jest.fn().mockResolvedValue([
+      {
+        id: diplomaId,
+        certificateNo: 'VB-001',
+        registryNo: 'SO-001',
+        issuedOn: null,
+        status: 'DRAFT',
+        workflowStatus: 'DRAFT',
+        campus: { name: 'Campus' },
+        graduation: {
+          graduationYear: 2025,
+          student: { fullName: 'Student Name', studentCode: 'SV001' },
+          program: { name: 'Computing' },
+        },
+      },
+    ]);
+    const graduationFind = jest.fn().mockResolvedValue([
+      {
+        id: graduationId,
+        graduationYear: 2025,
+        student: { fullName: 'Student Name', studentCode: 'SV001' },
+        program: { name: 'Computing' },
+        decision: { documentNumber: 'QD-001' },
+      },
+    ]);
+    const accountFind = jest
+      .fn()
+      .mockResolvedValue([{ id: actorId, displayName: 'Officer' }]);
+    const rowFind = jest.fn().mockResolvedValue([
+      {
+        id: rowId,
+        rowNumber: 2,
+        sheetName: '2025',
+        status: 'IMPORTED',
+        reviewedAt: null,
+        batch: { document: { fileName: 'import.xlsx' } },
+      },
+    ]);
+    const service = new AuditService({
+      auditLog: {
+        findMany: jest.fn().mockResolvedValue([entry]),
+        count: jest.fn().mockResolvedValue(1),
+      },
+      diploma: { findMany: diplomaFind },
+      graduationRecord: { findMany: graduationFind },
+      account: { findMany: accountFind },
+      importRow: { findMany: rowFind },
+    } as unknown as DatabaseService);
+
+    const result = await service.findAll(actor);
+    expect(diplomaFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: [diplomaId] }, institutionId: actor.institutionId },
+      }),
+    );
+    expect(graduationFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: { in: [graduationId] },
+          institutionId: actor.institutionId,
+        },
+      }),
+    );
+    expect(accountFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: { in: [actorId] },
+          memberships: {
+            some: { campus: { institutionId: actor.institutionId } },
+          },
+        },
+      }),
+    );
+    expect(rowFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: { in: [rowId] },
+          batch: { institutionId: actor.institutionId },
+        },
+      }),
+    );
+    expect(result.data[0].actorName).toBe('Officer');
+    expect(result.data[0].targetKind).toBe('import-row');
+    expect(result.data[0].targetLabel).toContain('import.xlsx');
+    expect(result.data[0].metadata).toEqual(entry.metadata);
+    expect(
+      result.data[0].references.find((ref) => ref.key === 'target')?.details,
+    ).toMatchObject({
+      sourceFile: 'import.xlsx',
+      rowNumber: 2,
+      importRowStatus: 'IMPORTED',
+    });
+    expect(
+      result.data[0].references.find((ref) => ref.key === 'diplomaId')?.details,
+    ).toMatchObject({
+      fullName: 'Student Name',
+      studentCode: 'SV001',
+      certificateNo: 'VB-001',
+      registryNo: 'SO-001',
+      diplomaStatus: 'DRAFT',
+    });
+    expect(
+      result.data[0].references.find((ref) => ref.key === 'graduationId')
+        ?.details,
+    ).toMatchObject({ decisionNumber: 'QD-001' });
+  });
+
+  it('keeps unresolved references without inventing related details', async () => {
+    const diplomaId = '22222222-2222-4222-8222-222222222222';
+    const service = new AuditService({
+      auditLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            actorId: null,
+            action: 'COMMIT_IMPORT_ROW',
+            target: null,
+            metadata: { diplomaId },
+          },
+        ]),
+        count: jest.fn().mockResolvedValue(1),
+      },
+      diploma: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as DatabaseService);
+    const result = await service.findAll(actor);
+    expect(result.data[0]).toMatchObject({
+      actorName: null,
+      targetLabel: null,
+      references: [{ key: 'diplomaId', value: diplomaId }],
+    });
+    expect(result.data[0].references[0]).not.toHaveProperty('details');
+  });
+
   it('does not expose user audit events from another institution', async () => {
     const findMany = jest.fn().mockResolvedValue([]);
     const service = new AuditService({

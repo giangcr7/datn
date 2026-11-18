@@ -43,11 +43,14 @@ export interface AuditReference {
   key: string;
   label: string;
   value: string;
+  displayValue?: string;
+  details?: Record<string, string | number | null>;
   kind: 'target' | 'request' | 'blockchain' | 'source' | 'record';
 }
 
-type AuditRecord = Prisma.AuditLogGetPayload<{}>;
+type AuditRecord = Prisma.AuditLogGetPayload<Prisma.AuditLogDefaultArgs>;
 type AuditEntry = AuditRecord & {
+  actorName: string | null;
   targetKind: TargetKind | null;
   targetLabel: string | null;
   references: AuditReference[];
@@ -256,7 +259,22 @@ export class AuditService {
       id: string;
       certificateNo: string;
       registryNo: string;
-      graduation: { student: { fullName: string; studentCode: string } };
+      issuedOn: Date | null;
+      status: string;
+      workflowStatus: string;
+      campus: { name: string };
+      graduation: {
+        graduationYear: number;
+        student: { fullName: string; studentCode: string };
+        program: { name: string };
+      };
+    };
+    type GraduationSummary = {
+      id: string;
+      graduationYear: number;
+      student: { fullName: string; studentCode: string };
+      program: { name: string };
+      decision: { documentNumber: string } | null;
     };
     type StudentSummary = { id: string; fullName: string; studentCode: string };
     type ProgramSummary = { id: string; code: string; name: string };
@@ -276,6 +294,8 @@ export class AuditService {
       id: string;
       rowNumber: number;
       sheetName: string;
+      status: string;
+      reviewedAt: Date | null;
       batch: { document: { fileName: string } };
     };
     type ChangeRequestSummary = {
@@ -295,7 +315,29 @@ export class AuditService {
             .filter((id): id is string => !!id && UUID_PATTERN.test(id)),
         ),
       );
-    const diplomaIds = idsByKind('diploma');
+    const entryReferences = entries.map((entry) => this.references(entry));
+    const referenceIds = (keys: string[]) =>
+      entryReferences.flatMap((refs) =>
+        refs
+          .filter(
+            (ref) => keys.includes(ref.key) && UUID_PATTERN.test(ref.value),
+          )
+          .map((ref) => ref.value),
+      );
+    const diplomaIds = Array.from(
+      new Set([
+        ...idsByKind('diploma'),
+        ...referenceIds(['diplomaId', 'replacementId']),
+      ]),
+    );
+    const graduationIds = Array.from(new Set(referenceIds(['graduationId'])));
+    const actorIds = Array.from(
+      new Set(
+        entries
+          .map((entry) => entry.actorId)
+          .filter((id): id is string => !!id && UUID_PATTERN.test(id)),
+      ),
+    );
     const studentIds = idsByKind('student');
     const programIds = idsByKind('program');
     const diplomaTypeIds = idsByKind('diploma-type');
@@ -312,6 +354,8 @@ export class AuditService {
       importBatches,
       importRows,
       changeRequests,
+      graduations,
+      accounts,
     ] = (await Promise.all([
       diplomaIds.length
         ? this.database.diploma.findMany({
@@ -320,9 +364,15 @@ export class AuditService {
               id: true,
               certificateNo: true,
               registryNo: true,
+              issuedOn: true,
+              status: true,
+              workflowStatus: true,
+              campus: { select: { name: true } },
               graduation: {
                 select: {
+                  graduationYear: true,
                   student: { select: { fullName: true, studentCode: true } },
+                  program: { select: { name: true } },
                 },
               },
             },
@@ -369,6 +419,8 @@ export class AuditService {
               id: true,
               rowNumber: true,
               sheetName: true,
+              status: true,
+              reviewedAt: true,
               batch: { select: { document: { select: { fileName: true } } } },
             },
           })
@@ -394,6 +446,27 @@ export class AuditService {
             },
           })
         : Promise.resolve([] as ChangeRequestSummary[]),
+      graduationIds.length
+        ? this.database.graduationRecord.findMany({
+            where: { id: { in: graduationIds }, institutionId },
+            select: {
+              id: true,
+              graduationYear: true,
+              student: { select: { fullName: true, studentCode: true } },
+              program: { select: { name: true } },
+              decision: { select: { documentNumber: true } },
+            },
+          })
+        : Promise.resolve([] as GraduationSummary[]),
+      actorIds.length
+        ? this.database.account.findMany({
+            where: {
+              id: { in: actorIds },
+              memberships: { some: { campus: { institutionId } } },
+            },
+            select: { id: true, displayName: true },
+          })
+        : Promise.resolve([] as { id: string; displayName: string }[]),
     ])) as [
       DiplomaSummary[],
       StudentSummary[],
@@ -403,6 +476,8 @@ export class AuditService {
       ImportBatchSummary[],
       ImportRowSummary[],
       ChangeRequestSummary[],
+      GraduationSummary[],
+      { id: string; displayName: string }[],
     ];
     const summaries = new Map<string, string>();
     const put = (kind: TargetKind, id: string, label: string) =>
@@ -451,16 +526,80 @@ export class AuditService {
         `Yêu cầu chỉnh sửa ${item.diploma.graduation.student.fullName} — số hiệu ${item.diploma.certificateNo} (${item.status})`,
       ),
     );
-    return entries.map((entry) => {
+    const importRowMap = new Map(importRows.map((item) => [item.id, item]));
+    const diplomaMap = new Map(diplomas.map((item) => [item.id, item]));
+    const graduationMap = new Map(graduations.map((item) => [item.id, item]));
+    const accountMap = new Map(
+      accounts.map((item) => [item.id, item.displayName]),
+    );
+    return entries.map((entry, index) => {
       const kind = this.targetKind(entry.action);
       return {
         ...entry,
+        actorName: entry.actorId ? accountMap.get(entry.actorId) || null : null,
         targetKind: kind,
         targetLabel:
           kind && entry.target
             ? summaries.get(`${kind}:${entry.target}`) || null
             : null,
-        references: this.references(entry),
+        references: entryReferences[index].map((reference) => {
+          const importRow = importRowMap.get(reference.value);
+          const diploma = diplomaMap.get(reference.value);
+          const graduation = graduationMap.get(reference.value);
+          if (
+            reference.key === 'target' &&
+            kind === 'import-row' &&
+            importRow
+          ) {
+            return {
+              ...reference,
+              displayValue: summaries.get(`import-row:${importRow.id}`),
+              details: {
+                sourceFile: importRow.batch.document.fileName,
+                sheetName: importRow.sheetName,
+                rowNumber: importRow.rowNumber,
+                importRowStatus: importRow.status,
+                reviewedAt: importRow.reviewedAt?.toISOString() || null,
+              },
+            };
+          }
+          if (
+            (['diplomaId', 'replacementId'].includes(reference.key) ||
+              (reference.key === 'target' && kind === 'diploma')) &&
+            diploma
+          ) {
+            return {
+              ...reference,
+              displayValue: summaries.get(`diploma:${diploma.id}`),
+              details: {
+                fullName: diploma.graduation.student.fullName,
+                studentCode: diploma.graduation.student.studentCode,
+                programName: diploma.graduation.program.name,
+                graduationYear: diploma.graduation.graduationYear,
+                certificateNo: diploma.certificateNo,
+                registryNo: diploma.registryNo,
+                campusName: diploma.campus.name,
+                issuedOn: diploma.issuedOn?.toISOString() || null,
+                diplomaStatus: diploma.status,
+                workflowStatus: diploma.workflowStatus,
+              },
+            };
+          }
+          if (reference.key === 'graduationId' && graduation) {
+            return {
+              ...reference,
+              displayValue: `${graduation.student.fullName} (${graduation.student.studentCode})`,
+              details: {
+                fullName: graduation.student.fullName,
+                studentCode: graduation.student.studentCode,
+                programName: graduation.program.name,
+                graduationYear: graduation.graduationYear,
+                decisionNumber: graduation.decision?.documentNumber || null,
+              },
+            };
+          }
+          return reference;
+        }),
       };
     });
   }
