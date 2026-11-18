@@ -283,7 +283,7 @@ export class AuditService {
       id: string;
       code: string;
       name: string;
-      graduationYear: number;
+      graduationYear: number | null;
     };
     type ImportBatchSummary = {
       id: string;
@@ -499,11 +499,7 @@ export class AuditService {
       put('diploma-type', item.id, `${item.name} (${item.code})`),
     );
     batches.forEach((item) =>
-      put(
-        'issuance-batch',
-        item.id,
-        `${item.name} (${item.code}, ${item.graduationYear})`,
-      ),
+      put('issuance-batch', item.id, `${item.name} (${item.code})`),
     );
     importBatches.forEach((item) =>
       put(

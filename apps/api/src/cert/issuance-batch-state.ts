@@ -36,6 +36,7 @@ export function emptyBatchSummary() {
 
 export function issuanceBatchRow(
   record: DiplomaWithRelations & { events?: { eventType: string }[] },
+  issuanceYear?: number | null,
 ) {
   const view = diplomaProjection(record);
   const state: BatchState =
@@ -69,6 +70,14 @@ export function issuanceBatchRow(
       record.issuedOn.getUTCFullYear() < record.graduation.graduationYear
     )
       errors.push('Ngày cấp chưa hợp lệ với hồ sơ tốt nghiệp');
+    if (
+      issuanceYear &&
+      record.issuedOn &&
+      record.issuedOn.getUTCFullYear() !== issuanceYear
+    )
+      errors.push(
+        `Năm trên ngày cấp không trùng năm phát hành ${issuanceYear} của đợt`,
+      );
     if (record.graduation.graduationYear > now.getUTCFullYear())
       errors.push('Năm tốt nghiệp ở tương lai');
     if (

@@ -287,7 +287,9 @@ export class CertService {
               signerTitle: normalizeText(body.diplomaSignerTitle),
               fullNameLatin: normalizeText(body.fullNameLatin) || null,
               majorNameEn:
-                normalizeText(body.majorNameEn) || alias.program?.nameEn || null,
+                normalizeText(body.majorNameEn) ||
+                alias.program?.nameEn ||
+                null,
             },
           }),
         });
@@ -751,7 +753,12 @@ export class CertService {
     ip?: string,
     expectedUpdatedAt?: string,
     handlingNote?: string,
-    batchGuard?: { id: string; updatedAt: string; reviewToken: string },
+    batchGuard?: {
+      id: string;
+      updatedAt: string;
+      reviewToken: string;
+      issuanceYear?: number | null;
+    },
   ) {
     this.approver(actor);
     return this.database.$transaction(async (transaction) => {
@@ -791,7 +798,7 @@ export class CertService {
           'Hồ sơ hoặc đợt cấp bằng đã thay đổi sau khi kiểm tra. Hãy tải lại trước khi duyệt.',
         );
       if (batchGuard) {
-        const checked = issuanceBatchRow(diploma);
+        const checked = issuanceBatchRow(diploma, batchGuard.issuanceYear);
         if (!checked.ready)
           throw new ConflictException(
             checked.checkErrors.join('; ') ||

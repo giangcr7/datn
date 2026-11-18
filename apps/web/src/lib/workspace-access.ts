@@ -97,12 +97,6 @@ export function getWorkspace(user?: WorkspaceUser | null): {
                 "Tiếp nhận đề nghị của sinh viên và theo dõi xử lý thay thế.",
             },
             {
-              path: "/diploma-records/batches",
-              label: "Đợt cấp văn bằng",
-              description:
-                "Gom hồ sơ theo quyết định tốt nghiệp, kiểm tra và theo dõi phát hành từng đợt.",
-            },
-            {
               path: "/students",
               label: "Hồ sơ sinh viên",
               description: "Quản lý và đối soát thông tin sinh viên.",
@@ -126,9 +120,9 @@ export function getWorkspace(user?: WorkspaceUser | null): {
             },
             {
               path: "/issue",
-              label: "Duyệt và phát hành",
+              label: "Phát hành văn bằng",
               description:
-                "Xem trước PDF, duyệt, ký số và ghi nhận blockchain.",
+                "Tạo đợt theo năm phát hành, kiểm tra, ký số và theo dõi blockchain.",
             },
           ],
         },

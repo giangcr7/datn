@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 
 assert(
   process.env.ISSUANCE_TEST_DATABASE_URL,
@@ -13,17 +14,18 @@ assert(
   "Refusing to run against a business database",
 );
 const require = createRequire(import.meta.url);
-const {
-  DatabaseService,
-} = require("../apps/api/dist/database/database.service.js");
-const { CertService } = require("../apps/api/dist/cert/cert.service.js");
-const {
-  IssuanceBatchService,
-} = require("../apps/api/dist/cert/issuance-batch.service.js");
-const {
-  IssuanceBatchController,
-} = require("../apps/api/dist/cert/issuance-batch.controller.js");
-const { JwtAuthGuard } = require("../apps/api/dist/auth/jwt.guard.js");
+const apiDist = resolve(process.env.ISSUANCE_API_DIST || "apps/api/dist");
+const apiModule = (name) =>
+  resolve(apiDist, name + (process.env.ISSUANCE_API_SOURCE ? ".ts" : ".js"));
+const { DatabaseService } = require(apiModule("database/database.service"));
+const { CertService } = require(apiModule("cert/cert.service"));
+const { IssuanceBatchService } = require(
+  apiModule("cert/issuance-batch.service"),
+);
+const { IssuanceBatchController } = require(
+  apiModule("cert/issuance-batch.controller"),
+);
+const { JwtAuthGuard } = require(apiModule("auth/jwt.guard"));
 const { Test } = require("@nestjs/testing");
 const { ValidationPipe } = require("@nestjs/common");
 const database = new DatabaseService({ getOrThrow: () => target.href });
@@ -199,64 +201,56 @@ try {
         graduationYear: 2024,
       };
       const query = { page: 1, limit: 20 };
-      const batch = (await service.create(metadata, main.actor)).data;
+      const batch = await transaction.diplomaIssuanceBatch.create({
+        data: {
+          ...metadata,
+          institutionId: main.institution.id,
+          campusId: main.campus.id,
+          createdById: main.actor.id,
+        },
+      });
+      const newBatch = (
+        await service.create({ issuanceYear: 2026, batchNumber: 1 }, main.actor)
+      ).data;
       check(
-        "creates a scoped batch from an existing graduation decision",
-        batch.decisionNo === "123/QĐ-KT" && batch.decisionDate === "2024-06-01",
+        "new batch uses issuance year, not graduation year",
+        newBatch.issuanceYear === 2026 &&
+          newBatch.graduationYear === null &&
+          newBatch.decisionNo === null,
       );
       await fails(
-        "duplicate code has a readable conflict",
-        () => service.create(metadata, main.actor),
+        "duplicate issuance year and number rejected",
+        () =>
+          service.create({ issuanceYear: 2026, batchNumber: 1 }, main.actor),
         409,
       );
-      await fails(
-        "cross-institution decision rejected",
-        () =>
-          service.create(
-            { ...metadata, code: "FOREIGN", decisionId: foreign.decision.id },
-            main.actor,
-          ),
-        400,
+      const newCandidates = await service.candidates(
+        newBatch.id,
+        query,
+        main.actor,
       );
-      await fails(
-        "cross-institution program rejected",
-        () =>
-          service.create(
-            {
-              ...metadata,
-              code: "FOREIGN_PROGRAM",
-              programId: foreign.program.id,
-            },
-            main.actor,
-          ),
-        400,
+      check(
+        "new batch allows different graduation years and decisions without crossing institutions",
+        newCandidates.data.some((row) => row.uuid === wrongYear.id) &&
+          newCandidates.data.some((row) => row.uuid === wrongDecision.id) &&
+          !newCandidates.data.some((row) => row.uuid === outside.id),
       );
-      await fails(
-        "missing decision date is not invented",
-        () =>
-          service.create(
-            { ...metadata, code: "NO_DATE", decisionId: unsignedDecision.id },
-            main.actor,
-          ),
-        400,
+      await service.changeMembers(
+        newBatch.id,
+        { diplomaIds: [wrongYear.id, wrongDecision.id] },
+        true,
+        main.actor,
       );
-      await fails(
-        "future graduation year rejected",
-        () =>
-          service.create(
-            { ...metadata, code: "FUTURE", graduationYear: 2200 },
-            main.actor,
-          ),
-        400,
+      check(
+        "new batch accepts members from different years and decisions",
+        (await service.detail(newBatch.id, query, main.actor)).summary.total ===
+          2,
       );
-      await fails(
-        "empty graduation scope rejected",
-        () =>
-          service.create(
-            { ...metadata, code: "EMPTY", graduationYear: 1900 },
-            main.actor,
-          ),
-        400,
+      await service.changeMembers(
+        newBatch.id,
+        { diplomaIds: [wrongYear.id, wrongDecision.id] },
+        false,
+        main.actor,
       );
       await fails(
         "other institution cannot inspect batch",
@@ -341,9 +335,15 @@ try {
         (await service.candidates(batch.id, query, main.actor)).pagination
           .total === 0,
       );
-      const another = (
-        await service.create({ ...metadata, code: "SECOND" }, main.actor)
-      ).data;
+      const another = await transaction.diplomaIssuanceBatch.create({
+        data: {
+          ...metadata,
+          code: "SECOND",
+          institutionId: main.institution.id,
+          campusId: main.campus.id,
+          createdById: main.actor.id,
+        },
+      });
       await fails(
         "same diploma cannot be assigned twice",
         () =>
@@ -611,7 +611,7 @@ try {
               ],
             },
           },
-        })) === 5,
+        })) === 6,
       );
       check(
         "isolated test does not create PDF files or signed documents",

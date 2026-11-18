@@ -72,6 +72,8 @@ const metadataLabels: Record<string, string> = {
   basis: "Căn cứ xử lý",
   before: "Thông tin trước thay đổi",
   batchId: "Mã đợt",
+  batchNumber: "Số đợt phát hành",
+  issuanceYear: "Năm phát hành",
   blockNumber: "Số block",
   changeRequestId: "Mã yêu cầu chỉnh sửa",
   code: "Mã nghiệp vụ",

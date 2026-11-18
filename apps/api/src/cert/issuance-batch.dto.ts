@@ -7,7 +7,6 @@ import {
   IsDateString,
   IsIn,
   IsInt,
-  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -25,6 +24,12 @@ export class IssuanceBatchQueryDto {
   @Type(() => Number) @IsInt() @Min(1) page = 1;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
   @IsOptional() @IsString() @MaxLength(255) @Transform(trim) search?: string;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1900)
+  @Max(2200)
+  issuanceYear?: number;
   @IsOptional()
   @IsIn([
     'DRAFT',
@@ -46,18 +51,9 @@ export class IssuanceBatchOptionsDto {
 }
 
 export class CreateIssuanceBatchDto {
-  @IsString()
-  @Matches(/^[A-Z0-9][A-Z0-9_-]{0,59}$/)
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
-  code!: string;
-  @IsString() @IsNotEmpty() @MaxLength(255) @Transform(trim) name!: string;
-  @IsUUID() decisionId!: string;
-  @IsOptional() @IsUUID() programId?: string;
-  @Type(() => Number) @IsInt() @Min(1900) @Max(2200) graduationYear!: number;
+  @Type(() => Number) @IsInt() @Min(1900) @Max(2200) issuanceYear!: number;
+  @Type(() => Number) @IsInt() @Min(1) @Max(999) batchNumber!: number;
 }
-
 export class IssuanceBatchMembersDto {
   @IsArray()
   @ArrayMinSize(1)

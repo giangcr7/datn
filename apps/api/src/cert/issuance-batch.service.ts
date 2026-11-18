@@ -85,9 +85,11 @@ export class IssuanceBatchService {
       code: batch.code,
       name: batch.name,
       graduationYear: batch.graduationYear,
+      issuanceYear: batch.issuanceYear,
+      batchNumber: batch.batchNumber,
       decisionId: batch.decisionId,
-      decisionNo: batch.decision.documentNumber,
-      decisionDate: dateOnly(batch.decision.signedOn),
+      decisionNo: batch.decision?.documentNumber ?? null,
+      decisionDate: dateOnly(batch.decision?.signedOn ?? null),
       programId: batch.programId,
       programName: batch.program?.name ?? null,
       createdBy: batch.createdBy.displayName,
@@ -121,11 +123,17 @@ export class IssuanceBatchService {
     return {
       ...this.scope(actor),
       supersedesId: null,
-      graduation: {
-        decisionId: batch.decisionId,
-        graduationYear: batch.graduationYear,
-        ...(batch.programId ? { programId: batch.programId } : {}),
-      },
+      ...(batch.decisionId
+        ? {
+            graduation: {
+              decisionId: batch.decisionId,
+              ...(batch.graduationYear !== null
+                ? { graduationYear: batch.graduationYear }
+                : {}),
+              ...(batch.programId ? { programId: batch.programId } : {}),
+            },
+          }
+        : {}),
     };
   }
 
@@ -179,61 +187,15 @@ export class IssuanceBatchService {
 
   async create(body: CreateIssuanceBatchDto, actor: AuthActor, ip?: string) {
     const scope = this.scope(actor);
-    if (body.graduationYear > new Date().getUTCFullYear())
-      throw new BadRequestException(
-        'Không lập đợt cho năm tốt nghiệp ở tương lai',
-      );
     try {
       return await this.database.$transaction(async (transaction) => {
-        const decision = await transaction.graduationDecision.findFirst({
-          where: { id: body.decisionId, institutionId: scope.institutionId },
-        });
-        if (!decision)
-          throw new BadRequestException('Quyết định không thuộc nhà trường');
-        if (!decision.signedOn)
-          throw new BadRequestException(
-            'Cần xác nhận ngày ký quyết định trong dữ liệu nguồn trước khi lập đợt',
-          );
-        if (decision.signedOn > new Date())
-          throw new BadRequestException(
-            'Ngày ký quyết định không được ở tương lai',
-          );
-        if (
-          body.programId &&
-          !(await transaction.program.findFirst({
-            where: {
-              id: body.programId,
-              institutionId: scope.institutionId,
-              active: true,
-            },
-          }))
-        )
-          throw new BadRequestException(
-            'Ngành không thuộc nhà trường hoặc đã ngừng sử dụng',
-          );
-        if (
-          !(await transaction.graduationRecord.findFirst({
-            where: {
-              institutionId: scope.institutionId,
-              decisionId: body.decisionId,
-              graduationYear: body.graduationYear,
-              ...(body.programId ? { programId: body.programId } : {}),
-              diplomas: { some: scope },
-            },
-            select: { id: true },
-          }))
-        )
-          throw new BadRequestException(
-            'Chưa có hồ sơ phù hợp quyết định, năm tốt nghiệp và ngành đã chọn',
-          );
         const batch = await transaction.diplomaIssuanceBatch.create({
           data: {
             ...scope,
-            code: body.code,
-            name: body.name,
-            decisionId: body.decisionId,
-            programId: body.programId || null,
-            graduationYear: body.graduationYear,
+            code: `CAPBANG_${body.issuanceYear}_${body.batchNumber}`,
+            name: `Đợt ${body.batchNumber} năm ${body.issuanceYear}`,
+            issuanceYear: body.issuanceYear,
+            batchNumber: body.batchNumber,
             createdById: actor.id,
           },
           include: batchInclude,
@@ -245,9 +207,8 @@ export class IssuanceBatchService {
             batch.id,
             {
               code: batch.code,
-              decisionId: batch.decisionId,
-              graduationYear: batch.graduationYear,
-              programId: batch.programId,
+              issuanceYear: batch.issuanceYear,
+              batchNumber: batch.batchNumber,
             },
             ip,
           ),
@@ -257,7 +218,7 @@ export class IssuanceBatchService {
     } catch (error) {
       if ((error as { code?: string }).code === 'P2002')
         throw new ConflictException(
-          'Mã đợt cấp văn bằng đã tồn tại trong nhà trường',
+          'Đợt phát hành này đã tồn tại trong năm của nhà trường',
         );
       throw error;
     }
@@ -269,6 +230,7 @@ export class IssuanceBatchService {
       async (transaction) => {
         const where: Prisma.DiplomaIssuanceBatchWhereInput = {
           ...scope,
+          ...(query.issuanceYear ? { issuanceYear: query.issuanceYear } : {}),
           ...(query.search
             ? {
                 OR: [
@@ -292,7 +254,12 @@ export class IssuanceBatchService {
           include: batchInclude,
           skip: (query.page - 1) * query.limit,
           take: query.limit,
-          orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+          orderBy: [
+            { issuanceYear: { sort: 'desc', nulls: 'last' } },
+            { batchNumber: 'desc' },
+            { createdAt: 'desc' },
+            { id: 'asc' },
+          ],
         });
         const counts = batches.length
           ? await transaction.$queryRaw<
@@ -350,7 +317,9 @@ export class IssuanceBatchService {
           throw new BadRequestException(
             'Đợt vượt giới hạn 5.000 hồ sơ; cần chia thành các đợt nhỏ',
           );
-        const rows = records.map(issuanceBatchRow);
+        const rows = records.map((record) =>
+          issuanceBatchRow(record, batch.issuanceYear),
+        );
         const summary = { ...emptyBatchSummary(), ready: 0, needsReview: 0 };
         for (const row of rows) {
           summary.total++;
@@ -455,7 +424,9 @@ export class IssuanceBatchService {
         ]);
         return {
           success: true,
-          data: records.map(issuanceBatchRow),
+          data: records.map((record) =>
+            issuanceBatchRow(record, batch.issuanceYear),
+          ),
           pagination: {
             total,
             page: query.page,
@@ -494,7 +465,7 @@ export class IssuanceBatchService {
       };
       if ((await transaction.diploma.count({ where })) !== ids.length)
         throw new ConflictException(
-          'Có hồ sơ đã thay đổi, đã thuộc đợt khác hoặc không phù hợp. Chỉ thêm/gỡ bản nháp chưa ký, đúng quyết định, năm và ngành; hãy tải lại danh sách.',
+          'Có hồ sơ đã thay đổi, đã thuộc đợt khác hoặc không phù hợp. Chỉ thêm/gỡ bản nháp chưa ký phù hợp phạm vi của đợt; hãy tải lại danh sách.',
         );
       if (
         adding &&
@@ -531,7 +502,7 @@ export class IssuanceBatchService {
     ip?: string,
   ) {
     this.scope(actor);
-    await this.batch(this.database, id, actor);
+    const batch = await this.batch(this.database, id, actor);
     const results: {
       uuid: string;
       success: boolean;
@@ -553,7 +524,7 @@ export class IssuanceBatchService {
           throw new ConflictException(
             'Hồ sơ không còn thuộc đợt cấp văn bằng này',
           );
-        const checked = issuanceBatchRow(record);
+        const checked = issuanceBatchRow(record, batch.issuanceYear);
         if (!checked.ready)
           throw new ConflictException(
             checked.checkErrors.join('; ') ||
@@ -569,6 +540,7 @@ export class IssuanceBatchService {
             id,
             updatedAt: entry.expectedUpdatedAt,
             reviewToken: entry.expectedReviewToken,
+            issuanceYear: batch.issuanceYear,
           },
         );
         results.push({

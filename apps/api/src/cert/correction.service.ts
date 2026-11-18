@@ -345,7 +345,8 @@ export class CorrectionService {
               where: { id: record.issuanceBatchId },
             });
           if (
-            body.namTotNghiep !== batch.graduationYear ||
+            (batch.graduationYear !== null &&
+              body.namTotNghiep !== batch.graduationYear) ||
             (batch.programId && body.programId !== batch.programId)
           )
             throw new ConflictException(

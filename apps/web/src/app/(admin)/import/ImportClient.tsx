@@ -481,11 +481,7 @@ export default function ImportClient({
           {!!batchSummary?.draftRows && (
             <Button
               icon={<ArrowRightOutlined />}
-              href={
-                batchId
-                  ? "/issue?batchId=" + encodeURIComponent(batchId)
-                  : "/issue"
-              }
+              href="/issue"
               disabled={!batchId || busy || batchSummary?.draftRows === 0}
             >
               {batchSummary

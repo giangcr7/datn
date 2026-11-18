@@ -73,7 +73,9 @@ export function dashboardBatchLink(batch: DashboardBatch) {
       "/import?" +
       new URLSearchParams({ batchId: batch.id, status: "IMPORTED" })
     );
-  return "/issue?" + new URLSearchParams({ batchId: batch.id });
+  return (
+    "/import?" + new URLSearchParams({ batchId: batch.id, status: "IMPORTED" })
+  );
 }
 
 export function dashboardTasks(

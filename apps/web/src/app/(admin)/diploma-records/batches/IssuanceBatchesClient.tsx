@@ -39,13 +39,12 @@ import {
   issuanceStateLabels,
   type IssuanceBatch,
   type IssuanceBatchDetail,
-  type IssuanceBatchOptions,
   type IssuanceBatchRow,
 } from "@/lib/issuance-batches";
 
 const endpoint = "/api/cert/issuance-batches";
 function detailHref(id: string) {
-  return "/diploma-records/batches?" + new URLSearchParams({ batchId: id });
+  return "/issue?" + new URLSearchParams({ issuanceBatchId: id });
 }
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Không xử lý được yêu cầu";
@@ -113,44 +112,8 @@ function CreateBatchModal({
   onCreated: (id: string) => void;
 }) {
   const [form] = Form.useForm();
-  const [options, setOptions] = useState<IssuanceBatchOptions>({
-    decisions: [],
-    programs: [],
-  });
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const selectedDecision = Form.useWatch("decisionId", form);
-  const decision = options.decisions.find(
-    (item) => item.id === selectedDecision,
-  );
-  useEffect(() => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      setLoading(true);
-      workflowJson<IssuanceBatchOptions>(
-        endpoint + "/options?" + new URLSearchParams({ search }),
-        { signal: controller.signal },
-      )
-        .then((result) => {
-          if (!controller.signal.aborted) {
-            setOptions(result);
-            setError("");
-          }
-        })
-        .catch((cause) => {
-          if (!controller.signal.aborted) setError(errorText(cause));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    }, 250);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [search]);
   async function save() {
     const values = await form.validateFields().catch(() => null);
     if (!values) return;
@@ -199,104 +162,45 @@ function CreateBatchModal({
       <Alert
         type="info"
         showIcon
-        title="Dùng quyết định đã có trong hồ sơ tốt nghiệp"
-        description="Không sửa quyết định nguồn, không đổi ngày cấp và không ký lại văn bằng đã phát hành. Mỗi hồ sơ chỉ thuộc một đợt."
-        className="mb-4"
+        title="Đợt được xác định theo năm phát hành"
+        description="Năm phát hành có thể khác năm tốt nghiệp và phải khớp năm trên ngày cấp văn bằng. Một đợt có thể gồm nhiều quyết định và ngành đào tạo."
         style={{ marginBottom: 16 }}
       />
-      <Form form={form} layout="vertical" disabled={busy}>
+      <Form
+        form={form}
+        layout="vertical"
+        disabled={busy}
+        initialValues={{
+          issuanceYear: new Date().getFullYear(),
+          batchNumber: 1,
+        }}
+      >
         <Row gutter={16}>
-          <Col xs={24} md={10}>
+          <Col xs={24} md={12}>
             <Form.Item
-              name="code"
-              label="Mã đợt"
-              rules={[
-                { required: true, whitespace: true, message: "Nhập mã đợt" },
-                {
-                  pattern: /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,59}$/,
-                  message:
-                    "Tối đa 60 ký tự: chữ không dấu, số, gạch ngang hoặc gạch dưới",
-                },
-              ]}
-            >
-              <Input placeholder="VD: CAPBANG_2026_01" maxLength={60} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={14}>
-            <Form.Item
-              name="name"
-              label="Tên đợt"
-              rules={[
-                { required: true, whitespace: true, message: "Nhập tên đợt" },
-              ]}
-            >
-              <Input
-                placeholder="VD: Cấp văn bằng đợt 1 năm 2026"
-                maxLength={255}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-        <Form.Item
-          name="decisionId"
-          label="Quyết định tốt nghiệp"
-          rules={[{ required: true, message: "Chọn quyết định" }]}
-        >
-          <Select
-            showSearch={{ filterOption: false, onSearch: setSearch }}
-            loading={loading}
-            placeholder="Tìm theo số quyết định"
-            options={options.decisions.map((item) => ({
-              value: item.id,
-              disabled: !item.signedOn,
-              label:
-                item.documentNumber +
-                " · " +
-                item.decisionYear +
-                " · " +
-                displayDate(item.signedOn),
-            }))}
-            onChange={(id) => {
-              const selected = options.decisions.find((item) => item.id === id);
-              form.setFieldValue(
-                "graduationYear",
-                selected?.graduationYears.length === 1
-                  ? selected.graduationYears[0]
-                  : undefined,
-              );
-            }}
-          />
-        </Form.Item>
-        <Row gutter={16}>
-          <Col xs={24} md={10}>
-            <Form.Item
-              name="graduationYear"
-              label="Năm tốt nghiệp"
-              extra={
-                decision?.graduationYears.length
-                  ? "Năm có trong hồ sơ: " + decision.graduationYears.join(", ")
-                  : undefined
-              }
-              rules={[{ required: true, message: "Nhập năm tốt nghiệp" }]}
+              name="issuanceYear"
+              label="Năm phát hành"
+              rules={[{ required: true, message: "Nhập năm phát hành" }]}
             >
               <InputNumber
                 min={1900}
-                max={new Date().getFullYear()}
+                max={2200}
                 precision={0}
                 style={{ width: "100%" }}
               />
             </Form.Item>
           </Col>
-          <Col xs={24} md={14}>
-            <Form.Item name="programId" label="Ngành đào tạo">
-              <Select
-                allowClear
-                showSearch={{ optionFilterProp: "label" }}
-                placeholder="Tất cả ngành của quyết định"
-                options={options.programs.map((item) => ({
-                  value: item.id,
-                  label: item.code + " · " + item.name,
-                }))}
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="batchNumber"
+              label="Số đợt"
+              rules={[{ required: true, message: "Nhập số đợt" }]}
+            >
+              <InputNumber
+                min={1}
+                max={999}
+                precision={0}
+                style={{ width: "100%" }}
               />
             </Form.Item>
           </Col>
@@ -395,7 +299,11 @@ function CandidateModal({
         className="mb-4"
         style={{ marginBottom: 16 }}
         title="Chỉ hiển thị bản nháp chưa ký, chưa thuộc đợt khác"
-        description="Danh sách đã lọc theo quyết định, năm và ngành của đợt. Hồ sơ chưa đủ dữ liệu vẫn có thể đưa vào để bổ sung, nhưng chưa được duyệt phát hành."
+        description={
+          batch.issuanceYear === null
+            ? "Đợt cũ chỉ nhận hồ sơ phù hợp quyết định, năm tốt nghiệp và ngành đã chọn."
+            : "Chọn các hồ sơ của nhà trường để đưa vào đợt. Hồ sơ thiếu dữ liệu cần được bổ sung trước khi phát hành."
+        }
       />
       {error && (
         <Alert
@@ -619,7 +527,7 @@ function BatchDetail({ id }: { id: string }) {
   return (
     <>
       <Space wrap className="mb-4" style={{ marginBottom: 16 }}>
-        <Link href="/diploma-records/batches">
+        <Link href="/issue">
           <Button
             icon={<ArrowLeftOutlined aria-hidden="true" />}
             disabled={busy}
@@ -672,25 +580,37 @@ function BatchDetail({ id }: { id: string }) {
               items={[
                 { key: "code", label: "Mã đợt", children: detail.batch.code },
                 {
+                  key: "issuanceYear",
+                  label: "Năm phát hành",
+                  children:
+                    detail.batch.issuanceYear ?? "Đợt cũ - chưa ghi nhận",
+                },
+                {
                   key: "decision",
                   label: "Quyết định",
-                  children: detail.batch.decisionNo,
+                  children: detail.batch.decisionNo ?? "Theo từng hồ sơ",
                 },
                 {
                   key: "date",
                   label: "Ngày ký quyết định",
-                  children: displayDate(detail.batch.decisionDate),
+                  children:
+                    detail.batch.issuanceYear === null
+                      ? displayDate(detail.batch.decisionDate)
+                      : "Theo từng hồ sơ",
                 },
                 {
                   key: "year",
                   label: "Năm tốt nghiệp",
-                  children: detail.batch.graduationYear,
+                  children: detail.batch.graduationYear ?? "Theo từng hồ sơ",
                 },
                 {
                   key: "program",
                   label: "Ngành",
                   children:
-                    detail.batch.programName || "Tất cả ngành của quyết định",
+                    detail.batch.programName ||
+                    (detail.batch.issuanceYear === null
+                      ? "Tất cả ngành của quyết định"
+                      : "Theo từng hồ sơ"),
                 },
                 {
                   key: "creator",
@@ -934,6 +854,7 @@ export default function IssuanceBatchesClient({
   const [rows, setRows] = useState<IssuanceBatch[]>([]);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [issuanceYear, setIssuanceYear] = useState<number | null>(null);
   const [total, setTotal] = useState(0);
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -947,7 +868,12 @@ export default function IssuanceBatchesClient({
     workflowJson<{ data: IssuanceBatch[]; pagination: { total: number } }>(
       endpoint +
         "?" +
-        new URLSearchParams({ page: String(page), limit: "20", search }),
+        new URLSearchParams({
+          page: String(page),
+          limit: "20",
+          search,
+          ...(issuanceYear ? { issuanceYear: String(issuanceYear) } : {}),
+        }),
       { signal: controller.signal },
     )
       .then((result) => {
@@ -966,7 +892,7 @@ export default function IssuanceBatchesClient({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [initialBatchId, page, search, revision]);
+  }, [initialBatchId, page, search, revision, issuanceYear]);
   const columns: ColumnsType<IssuanceBatch> = [
     {
       title: "Đợt cấp văn bằng",
@@ -978,7 +904,11 @@ export default function IssuanceBatchesClient({
             <Typography.Text strong>{row.name}</Typography.Text>
           </Link>
           <br />
-          <Typography.Text type="secondary">{row.code}</Typography.Text>
+          <Typography.Text type="secondary">
+            {row.issuanceYear === null
+              ? "Đợt cũ - chưa ghi nhận năm phát hành"
+              : `Năm phát hành ${row.issuanceYear} · Đợt ${row.batchNumber}`}
+          </Typography.Text>
         </>
       ),
     },
@@ -988,10 +918,10 @@ export default function IssuanceBatchesClient({
       width: 220,
       render: (_, row) => (
         <>
-          {row.decisionNo}
+          {row.decisionNo ?? "Theo từng hồ sơ"}
           <br />
           <Typography.Text type="secondary">
-            Ngày {displayDate(row.decisionDate)}
+            {row.decisionDate ? "Ngày " + displayDate(row.decisionDate) : ""}
           </Typography.Text>
         </>
       ),
@@ -1002,9 +932,12 @@ export default function IssuanceBatchesClient({
       width: 220,
       render: (_, row) => (
         <>
-          {row.graduationYear}
+          {row.graduationYear ?? "Theo từng hồ sơ"}
           <br />
-          {row.programName || "Tất cả ngành của quyết định"}
+          {row.programName ||
+            (row.issuanceYear === null
+              ? "Tất cả ngành của quyết định"
+              : "Theo từng hồ sơ")}
         </>
       ),
     },
@@ -1041,10 +974,10 @@ export default function IssuanceBatchesClient({
   ];
   return (
     <div className="workspace-page">
-      <PageTitle>Đợt cấp văn bằng</PageTitle>
+      <PageTitle>Phát hành văn bằng theo đợt</PageTitle>
       <p className="text-gray-500 mb-6">
-        Quản lý hồ sơ theo quyết định tốt nghiệp, kiểm tra điều kiện và theo dõi
-        tiến độ phát hành tại cơ sở chính.
+        Tạo hoặc chọn đợt theo năm phát hành, kiểm tra hồ sơ và theo dõi tiến độ
+        phát hành tại cơ sở chính.
       </p>
       {initialBatchId ? (
         <BatchDetail id={initialBatchId} />
@@ -1071,6 +1004,19 @@ export default function IssuanceBatchesClient({
               </Button>
             </Link>
           </Space>
+          <InputNumber
+            aria-label="Lọc năm phát hành"
+            placeholder="Lọc năm phát hành"
+            min={1900}
+            max={2200}
+            precision={0}
+            value={issuanceYear}
+            onChange={(value) => {
+              setPage(1);
+              setIssuanceYear(value);
+            }}
+            style={{ marginBottom: 16, width: 220 }}
+          />
           <Input.Search
             aria-label="Tìm đợt cấp văn bằng"
             placeholder="Mã đợt, tên đợt hoặc số quyết định"
@@ -1107,7 +1053,7 @@ export default function IssuanceBatchesClient({
             }}
             locale={{
               emptyText:
-                "Chưa có đợt phù hợp. Anh có thể lập đợt từ quyết định đã có trong hồ sơ tốt nghiệp.",
+                "Chưa có đợt phù hợp. Anh có thể tạo đợt theo năm phát hành.",
             }}
           />
         </>

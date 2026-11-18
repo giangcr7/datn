@@ -24,8 +24,10 @@ export interface IssuanceBatch {
   id: string;
   code: string;
   name: string;
-  graduationYear: number;
-  decisionNo: string;
+  graduationYear: number | null;
+  issuanceYear: number | null;
+  batchNumber: number | null;
+  decisionNo: string | null;
   decisionDate: string | null;
   programName: string | null;
   createdBy: string;

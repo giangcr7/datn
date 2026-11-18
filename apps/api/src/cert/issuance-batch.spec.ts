@@ -91,6 +91,11 @@ function setup() {
   const row = record();
   const transaction = {
     diplomaIssuanceBatch: {
+      create: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ ...batch, ...data, decision: null, program: null }),
+        ),
       findFirst: jest.fn().mockResolvedValue(batch),
       count: jest.fn().mockResolvedValue(1),
     },
@@ -120,30 +125,26 @@ function setup() {
 }
 
 describe('issuance batch DTO validation', () => {
-  it('normalizes batch codes and trims labels', async () => {
+  it('validates the issuance year independently of graduation year', async () => {
     const value = plainToInstance(CreateIssuanceBatchDto, {
-      code: ' test_2024 ',
-      name: ' Đợt 1 ',
-      decisionId: randomUUID(),
-      graduationYear: '2024',
+      issuanceYear: '2026',
+      batchNumber: '2',
     });
     expect(await validate(value)).toEqual([]);
-    expect(value.code).toBe('TEST_2024');
-    expect(value.name).toBe('Đợt 1');
-    expect(value.graduationYear).toBe(2024);
+    expect(value.issuanceYear).toBe(2026);
+    expect(value.batchNumber).toBe(2);
   });
   it.each([
-    { name: '  ' },
-    { code: 'ĐỢT 1' },
-    { graduationYear: 1899 },
-    { decisionId: 'bad-id' },
-    { programId: 'bad-id' },
-  ])('rejects invalid metadata %p', async (changes) => {
+    { issuanceYear: 1899 },
+    { issuanceYear: 2201 },
+    { issuanceYear: 2026.5 },
+    { batchNumber: 0 },
+    { batchNumber: 1000 },
+    { batchNumber: 1.5 },
+  ])('rejects invalid batch metadata %p', async (changes) => {
     const value = plainToInstance(CreateIssuanceBatchDto, {
-      code: 'TEST',
-      name: 'Đợt 1',
-      decisionId: randomUUID(),
-      graduationYear: 2024,
+      issuanceYear: 2026,
+      batchNumber: 1,
       ...changes,
     });
     expect((await validate(value)).length).toBeGreaterThan(0);
@@ -209,6 +210,13 @@ describe('issuance batch checks', () => {
     if (field === 'majorNameEn') value.graduation.program.nameEn = null;
     expect(issuanceBatchRow(value).ready).toBe(false);
   });
+  it('requires the diploma issue date to match the issuance year for new batches', () => {
+    expect(issuanceBatchRow(record(), 2024).ready).toBe(true);
+    expect(issuanceBatchRow(record(), 2026).checkErrors).toContain(
+      'Năm trên ngày cấp không trùng năm phát hành 2026 của đợt',
+    );
+    expect(issuanceBatchRow(record(), null).ready).toBe(true);
+  });
   it('blocks inactive programs and incomplete decisions', () => {
     const value = record();
     value.graduation.program.active = false;
@@ -253,6 +261,49 @@ describe('issuance batch checks', () => {
 });
 
 describe('issuance batch authorization and workflow', () => {
+  it('creates a numbered issuance-year batch without changing graduation metadata', async () => {
+    const { service, transaction } = setup();
+    const result = await service.create(
+      { issuanceYear: 2026, batchNumber: 2 },
+      actor,
+    );
+    expect(transaction.diplomaIssuanceBatch.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          issuanceYear: 2026,
+          batchNumber: 2,
+          code: 'CAPBANG_2026_2',
+        }),
+      }),
+    );
+    expect(result.data).toMatchObject({
+      issuanceYear: 2026,
+      batchNumber: 2,
+      decisionNo: null,
+    });
+  });
+  it('allows new batches to select diplomas without constraining graduation year or decision', async () => {
+    const { service, transaction } = setup();
+    transaction.diplomaIssuanceBatch.findFirst.mockResolvedValue({
+      ...batch,
+      issuanceYear: 2026,
+      batchNumber: 1,
+      decisionId: null,
+      graduationYear: null,
+      decision: null,
+    });
+    await service.candidates(batch.id, new IssuanceBatchQueryDto(), actor);
+    expect(
+      transaction.diploma.findMany.mock.calls[0][0].where,
+    ).not.toHaveProperty('graduation');
+  });
+  it('keeps legacy batches restricted to their original decision and graduation year', async () => {
+    const { service, transaction } = setup();
+    await service.candidates(batch.id, new IssuanceBatchQueryDto(), actor);
+    expect(
+      transaction.diploma.findMany.mock.calls[0][0].where.graduation,
+    ).toMatchObject({ decisionId: batch.decisionId, graduationYear: 2024 });
+  });
   it.each([
     { role: 'admin' },
     { role: 'student' },

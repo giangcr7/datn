@@ -32,6 +32,8 @@ const original = {
   id: id(1),
   code: "TEST_2024",
   name: "Đợt kiểm thử đã có",
+  issuanceYear: null,
+  batchNumber: null,
   graduationYear: 2024,
   decisionNo: "123/QĐ-KT",
   decisionDate: "2024-06-01",
@@ -123,6 +125,8 @@ const backend = createServer(async (request, response) => {
       const batch = {
         ...original,
         ...body,
+        name: `Đợt ${body.batchNumber} năm ${body.issuanceYear}`,
+        graduationYear: null,
         id: id(2),
         decisionNo: original.decisionNo,
       };
@@ -314,7 +318,7 @@ try {
         })
       ).status === 403,
     );
-    const accessResponse = await request("/diploma-records/batches", session);
+    const accessResponse = await request("/issue", session);
     const accessHtml = await accessResponse.text();
     check(
       "page does not admit unauthorized role " + JSON.stringify(flags),
@@ -343,7 +347,7 @@ try {
     "approver can access nested batch page",
     canAccessWorkspacePath(
       { role: "university", isHeadquarters: true, canApproveDiplomas: true },
-      "/diploma-records/batches",
+      "/issue",
     ),
   );
   check(
@@ -371,12 +375,11 @@ try {
     "issued document routes to the register",
     issuanceRowHref({ ...first, batchState: "ON_CHAIN" }) === "/certificates",
   );
-  const html = await (
-    await request("/diploma-records/batches", officer)
-  ).text();
+  const html = await (await request("/issue", officer)).text();
   check(
     "production page renders batch controls",
-    html.includes("Lập đợt cấp văn bằng") && html.includes("Đợt cấp văn bằng"),
+    html.includes("Lập đợt cấp văn bằng") &&
+      html.includes("Phát hành văn bằng theo đợt"),
   );
   if (process.env.ISSUANCE_BROWSER_MODULE) {
     const { chromium } = await import(
@@ -401,34 +404,27 @@ try {
     const page = await context.newPage(),
       errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto(base + "/diploma-records/batches");
+    await page.goto(base + "/issue");
     await page.getByText(original.name, { exact: true }).waitFor();
     await page
       .getByRole("button", { name: "Lập đợt cấp văn bằng", exact: true })
       .click();
     const create = page.getByRole("dialog");
-    await create.getByLabel("Mã đợt", { exact: true }).fill("UI_2024");
-    await create
-      .getByLabel("Tên đợt", { exact: true })
-      .fill("Đợt kiểm thử giao diện");
-    await create.getByLabel("Quyết định tốt nghiệp", { exact: true }).click();
-    await page
-      .getByTitle("123/QĐ-KT · 2024 · 1/6/2024", { exact: true })
-      .click();
+    await create.getByLabel("Năm phát hành", { exact: true }).fill("2026");
+    await create.getByLabel("Số đợt", { exact: true }).fill("2");
     await create.getByRole("button", { name: "Tạo đợt", exact: true }).click();
-    await page.getByText("Đợt kiểm thử giao diện", { exact: true }).waitFor();
+    await page.getByText("Đợt 2 năm 2026", { exact: true }).waitFor();
     check(
-      "create modal preserves authoritative decision, year and label",
+      "create modal submits issuance year and batch number",
       requests.some(
         (value) =>
           value.method === "POST" &&
           value.path === "/cert/issuance-batches" &&
-          value.body.code === "UI_2024" &&
-          value.body.graduationYear === 2024 &&
-          value.body.decisionId === id(70),
+          value.body.issuanceYear === 2026 &&
+          value.body.batchNumber === 2,
       ),
     );
-    await page.goto(base + "/diploma-records/batches?batchId=" + original.id);
+    await page.goto(base + "/issue?issuanceBatchId=" + original.id);
     await page.getByText(first.fullName, { exact: true }).waitFor();
     check(
       "incomplete member cannot be selected for signing",

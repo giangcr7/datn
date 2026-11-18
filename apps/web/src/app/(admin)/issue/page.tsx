@@ -1,12 +1,24 @@
+import { redirect } from "next/navigation";
 import { requireWorkspaceAccess } from "@/lib/workspace-session";
-import IssueClient from "./IssueClient";
+import IssuanceBatchesClient from "../diploma-records/batches/IssuanceBatchesClient";
 
 export default async function IssuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ batchId?: string }>;
+  searchParams: Promise<{ issuanceBatchId?: string; batchId?: string }>;
 }) {
-  const { user } = await requireWorkspaceAccess("/issue");
+  await requireWorkspaceAccess("/issue");
   const params = await searchParams;
-  return <IssueClient user={user} initialBatchId={params.batchId || ""} />;
+  if (params.batchId) {
+    redirect(
+      "/import?" +
+        new URLSearchParams({ batchId: params.batchId, status: "IMPORTED" }),
+    );
+  }
+  return (
+    <IssuanceBatchesClient
+      key={params.issuanceBatchId || "list"}
+      initialBatchId={params.issuanceBatchId || ""}
+    />
+  );
 }

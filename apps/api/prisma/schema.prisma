@@ -290,21 +290,24 @@ model DiplomaIssuanceBatch {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   institutionId  String   @map("institution_id") @db.Uuid
   campusId       String   @map("campus_id") @db.Uuid
-  decisionId     String   @map("decision_id") @db.Uuid
+  decisionId     String?  @map("decision_id") @db.Uuid
   programId      String?  @map("program_id") @db.Uuid
   code           String   @db.VarChar(60)
   name           String   @db.VarChar(255)
-  graduationYear Int      @map("graduation_year") @db.SmallInt
+  graduationYear Int?     @map("graduation_year") @db.SmallInt
+  issuanceYear   Int?     @map("issuance_year") @db.SmallInt
+  batchNumber    Int?     @map("batch_number") @db.SmallInt
   createdById    String   @map("created_by_id") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   institution    Institution @relation(fields: [institutionId], references: [id], onDelete: Restrict)
   campus         Campus @relation(fields: [campusId], references: [id], onDelete: Restrict)
-  decision       GraduationDecision @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  decision       GraduationDecision? @relation(fields: [decisionId], references: [id], onDelete: Restrict)
   program        Program? @relation(fields: [programId], references: [id], onDelete: Restrict)
   createdBy      Account @relation(fields: [createdById], references: [id], onDelete: Restrict)
   diplomas       Diploma[]
 
   @@unique([institutionId, code])
+  @@unique([institutionId, issuanceYear, batchNumber])
   @@index([institutionId, campusId, createdAt])
   @@map("diploma_issuance_batches")
 }
