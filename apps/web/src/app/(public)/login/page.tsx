@@ -1,62 +1,71 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { Form, Input, Button, Typography, Tabs, Checkbox, message } from "antd";
 import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import styles from "@/styles/public-pages.module.css";
+import {
+  clearRememberedEmail,
+  readRememberedEmail,
+  saveRememberedEmail,
+  type LoginRole,
+} from "@/lib/remember-login";
 
 const { Text } = Typography;
 
 type LoginValues = {
   email: string;
   password: string;
-  role: string;
+  role: LoginRole;
   remember: boolean;
 };
 
-function LoginContent() {
+function LoginForm({ role }: { role: LoginRole }) {
+  const [form] = Form.useForm<LoginValues>();
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Đọc tham số từ URL (ví dụ: /login?type=university)
-  const defaultTab = searchParams.get("type") || "student";
-
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  useEffect(() => {
+    const email = readRememberedEmail(role);
+    if (email && !form.isFieldTouched("email")) {
+      form.setFieldsValue({ email, remember: true });
+    }
+  }, [form, role]);
 
   const onFinish = async (values: LoginValues) => {
     setLoading(true);
     try {
-      const res = await signIn("credentials", {
+      const result = await signIn("credentials", {
         redirect: false,
         email: values.email,
         password: values.password,
-        role: values.role.toUpperCase(), // Map 'STUDENT' hoặc 'UNIVERSITY'
+        role: role.toUpperCase(),
         remember: values.remember ? "true" : "false",
       });
 
-      if (res?.error) {
-        message.error(res.error);
-      } else {
-        message.success("Đăng nhập thành công!");
-        if (values.role === "university" || values.role === "admin") {
-          router.push("/dashboard");
-        } else {
-          router.push("/student/dashboard");
-        }
-        router.refresh();
+      if (!result?.ok || result.error) {
+        message.error(result?.error || "Đăng nhập thất bại. Vui lòng thử lại!");
+        return;
       }
-    } catch (error) {
+      if (values.remember) saveRememberedEmail(role, values.email);
+      else clearRememberedEmail(role);
+      message.success("Đăng nhập thành công!");
+      router.push(role === "student" ? "/student/dashboard" : "/dashboard");
+      router.refresh();
+    } catch {
       message.error("Lỗi kết nối máy chủ. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
   };
 
-  const renderLoginForm = (role: string) => (
+  return (
     <Form
+      form={form}
+      name={`login-${role}`}
+      autoComplete="on"
       layout="vertical"
       initialValues={{ role, remember: false }}
       onFinish={onFinish}
@@ -78,6 +87,7 @@ function LoginContent() {
         ]}
       >
         <Input
+          autoComplete="username"
           prefix={<UserOutlined style={{ color: "rgba(0,0,0,.25)" }} />}
           placeholder={
             role === "university"
@@ -94,6 +104,7 @@ function LoginContent() {
         rules={[{ required: true, message: "Vui lòng nhập mật khẩu!" }]}
       >
         <Input.Password
+          autoComplete="current-password"
           prefix={<LockOutlined style={{ color: "rgba(0,0,0,.25)" }} />}
           placeholder="Mật khẩu"
           size="large"
@@ -102,11 +113,19 @@ function LoginContent() {
 
       <div className={styles.remember}>
         <Form.Item name="remember" valuePropName="checked" noStyle>
-          <Checkbox title="Giữ đăng nhập trong 7 ngày trên trình duyệt này">
+          <Checkbox
+            title="Nhớ email và giữ phiên đăng nhập trên trình duyệt này"
+            onChange={(event) => {
+              if (!event.target.checked) clearRememberedEmail(role);
+            }}
+          >
             Ghi nhớ đăng nhập
           </Checkbox>
         </Form.Item>
-        <Text type="secondary">Liên hệ quản trị viên nếu quên mật khẩu</Text>
+        <Text type="secondary">
+          Email được nhớ trên thiết bị này. Mật khẩu do trình duyệt quản lý nếu
+          anh cho phép.
+        </Text>
       </div>
 
       <Form.Item>
@@ -124,6 +143,12 @@ function LoginContent() {
       </Form.Item>
     </Form>
   );
+}
+
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("type") || "student";
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   return (
     <div className={styles.content}>
@@ -142,17 +167,17 @@ function LoginContent() {
             {
               key: "student",
               label: "Sinh viên",
-              children: renderLoginForm("student"),
+              children: <LoginForm role="student" />,
             },
             {
               key: "university",
               label: "Nhà trường",
-              children: renderLoginForm("university"),
+              children: <LoginForm role="university" />,
             },
             {
               key: "admin",
               label: "Quản trị viên",
-              children: renderLoginForm("admin"),
+              children: <LoginForm role="admin" />,
             },
           ]}
         />
